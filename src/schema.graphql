@@ -1,0 +1,32 @@
+type Synonym {
+     source: String!
+     name: String!
+}
+
+enum TargetDevelopmentLevel {
+     Tclin
+     Tchem
+     Tbio
+     Tdark
+}
+
+interface Entity {
+     id: ID!
+     name: String!
+     synonyms: [Synonym]
+     description: String
+}
+
+type Target implements Entity {
+     id: ID!
+     name: String!
+     synonyms: [Synonym]
+     description: String
+     tdl: TargetDevelopmentLevel
+     family: String
+}
+
+type Query {
+     targets(skip: Int, top: Int): [Target]
+     target(id: String): Target
+}

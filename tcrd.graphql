@@ -1,0 +1,303 @@
+# Write your query or mutation here
+{
+  pubmed(pmid: 12477932) {
+    title
+    targetCounts {
+      name
+      value
+    }
+    targets(
+      filter: {
+        facets: [{ name: "tdl", values: ["Tchem", "Tdark"] }]
+        term: "Sulfotransferase"
+      }
+    ) {
+      tcrdid
+      sym
+      uniprot
+      description
+      tdl
+      novelty
+      locsigs {
+        locid
+        location
+        signal
+        pubs {
+          pmid
+          title
+        }
+      }
+      expressionCounts {
+        name
+        value
+      }
+      expressions {
+        expid
+        type
+        tissue
+        value
+        conf
+        uberon{
+          uid
+          name
+          def
+        }
+        pub {
+          pmid
+          title
+          date
+        }
+      }
+    }
+  }
+  pubCount(term: "wnt")
+  pubs(skip: 17070, term: "wnt") {
+    pmid
+    title
+    targetCounts {
+      name
+      value
+    }
+  }
+  targets(
+    top: 5
+    skip: 0
+    filter: {
+      #term:"P50993"
+      term: "sodium"
+      #term:"SLC6A1"
+      facets: [
+        { name: "tdl", values: ["Tclin", "Tchem"] }
+        { name: "fam", values: ["Transporter"] }
+      ]
+      order: "!JensenLab PubMed Score"
+    }
+  ) {
+    tcrdid
+    uniprot
+    sym
+    tdl
+    description
+    novelty
+    diseaseCounts {
+      name
+      value
+    }
+    diseases(skip: 40) {
+      type
+      name
+      zscore
+      conf
+      drug
+      pvalue
+      source
+      targetCounts {
+        name
+        value
+      }
+      targets(
+        filter: {
+          facets: [
+            { name: "tdl", values: ["Tclin"] }
+            { name: "fam", values: ["Kinase", "Transporter"] }
+          ]
+        }
+      ) {
+        sym
+        uniprot
+        name
+        tdl
+        fam
+        novelty
+      }
+    }
+    patentCounts {
+      year
+      count
+    }
+    patentScores {
+      year
+      score
+    }
+    pubmedScores {
+      year
+      score
+    }
+    ppiCounts {
+      name
+      value
+    }
+    ppis(
+      filter: {
+        facets: [
+          { name: "ppitype", values: ["Reactome", "BioPlex"] }
+          { name: "tdl", values: ["Tbio"] }
+        ]
+      }
+    ) {
+      nid
+      type
+      props {
+        name
+        value
+      }
+      target {
+        tcrdid
+        uniprot
+        sym
+        tdl
+        novelty
+      }
+    }
+    pubCount
+    generifCount
+    generifs(term: "akt") {
+      text
+      pubs {
+        pmid
+        title
+        date
+      }
+    }
+    props(name: "JensenLab PubMed Score") {
+      name
+      value
+    }
+  }
+  target(
+    q: {
+      #geneid:116328
+      #tcrdid:15380
+      tcrdid: 19373
+    }
+  ) {
+    tcrdid
+    name
+    uniprot
+    description
+    tdl
+    sym
+    novelty
+    lincsCounts {
+      name
+      value
+    }
+    lincs(cellid: ["HELA"]) {
+      cellid
+      zscore
+      smiles
+    }
+    kegg(
+      top: 10
+      filter: {
+        term: "potassium"
+        facets: [{ name: "tdl", values: ["Tclin"] }]
+        order: "JensenLab PubMed Score"
+      }
+    ) {
+      nid
+      type
+      props {
+        name
+        value
+      }
+      target {
+        uniprot
+        sym
+        tdl
+        fam
+        novelty
+        description
+        props(name: "JensenLab PubMed Score") {
+          name
+          value
+        }
+      }
+    }
+    pathwayCounts {
+      name
+      value
+    }
+    pathways(type: "Reactome") {
+      type
+      name
+      targetCounts {
+        name
+        value
+      }
+      targets(
+        filter: {
+          facets: [{ name: "tdl", values: ["Tchem", "Tclin"] }]
+          term: "calcium receptor glutamate"
+        }
+      ) {
+        tdl
+        uniprot
+        sym
+        fam
+        description
+        novelty
+      }
+    }
+    pantherClasses {
+      pcid
+      name
+      parents
+    }
+    pantherPaths {
+      pcid
+      name
+      parents {
+        pcid
+        name
+        parents {
+          pcid
+          name
+          parents {
+            pcid
+            name
+          }
+        }
+      }
+    }
+    patentCounts {
+      year
+      count
+    }
+    patentScores {
+      year
+      score
+    }
+    pubmedScores {
+      year
+      score
+    }
+    pubs {
+      pmid
+      date
+      title
+      journal
+      abstract
+      targetCounts {
+        name
+        value
+      }
+    }
+    props {
+      name
+      value
+    }
+    xrefs(source: "PubMed") {
+      source
+      value
+    }
+  }
+  xref(source: "PubMed", value: "12477932") {
+    targets(tdl: "Tclin", fam: "Kinase") {
+      uniprot
+      sym
+      tdl
+      fam
+    }
+  }
+}
