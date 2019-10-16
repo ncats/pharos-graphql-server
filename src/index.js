@@ -99,11 +99,30 @@ type GeneRIF {
      pubs: [PubMed]
 }
 
+"""Ortholog"""
+type Ortholog {
+     orid: Int!
+     species: String!
+     sym: String!
+     name: String!
+     dbid: String
+     geneid: Int
+     source: [String]
+     diseases: [OrthologDisease]
+}
+
+type OrthologDisease {
+     ordid: Int!
+     score: Float!
+     diseases: [Disease]
+}
+
 """Disease entity"""
 type Disease {
      disid: Int!
      type: String!
      name: String!
+     did: String
      description: String
      zscore: Float
      evidence: String
@@ -229,11 +248,16 @@ type Target {
 """Tissue expression"""
      expressionCounts: [IntProp]
      expressions(skip: Int=0, top: Int=10, filter: Filter=undefined): [Expression]
+
+"""Ortholog protein"""
+     orthologCounts: [IntProp]
+     orthologs(skip: Int=0, top: Int=10, filter: Filter=undefined): [Ortholog]
 }
 
 type Query {
      targets(skip: Int = 0, top: Int = 10, filter: Filter = undefined): [Target]
      target(q: TargetInput): Target
+     diseases(skip: Int = 0, top: Int = 10, filter: Filter = undefined): [Disease]
      xref(source: String!, value: String!): Xref
      pubmed(pmid: Int!): PubMed
      pubCount(term: String = ""): Int
@@ -270,6 +294,15 @@ const resolvers = {
         
         targets: async (_, args, {dataSources}) => {
             const q = dataSources.tcrd.getTargets(args);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+
+        diseases: async (_, args, {dataSources}) => {
+            const q = dataSources.tcrd.getDiseases(args);
             return q.then(rows => {
                 return rows;
             }).catch(function(error) {
@@ -598,6 +631,28 @@ const resolvers = {
             }).catch(function(error) {
                 console.error(error);
             });
+        },
+
+        orthologCounts: async (target, args, {dataSources}) => {
+            const q = dataSources.tcrd.getOrthologCountsForTarget(target);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+        orthologs: async (target, args, {dataSources}) => {
+            const q = dataSources.tcrd.getOrthologsForTarget(target, args);
+            return q.then(rows => {
+                return rows.map(x => {
+                    if (x.sources) {
+                        x.source = x.sources.split(',').map(z => z.trim());
+                    }
+                    return x;
+                });
+            }).catch(function(error) {
+                console.error(error);
+            });
         }
     },
 
@@ -778,6 +833,30 @@ const resolvers = {
                     });
             }
             return null;
+        }
+    },
+
+    Ortholog: {
+        diseases: async (ortho, args, {dataSources}) => {
+            const q = dataSources.tcrd
+                  .getOrthologDiseasesForOrtholog(ortho, args);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        }
+    },
+
+    OrthologDisease: {
+        diseases: async (ortho, args, {dataSources}) => {
+            const q = dataSources.tcrd
+                  .getDiseasesForOrthologDisease(ortho, args);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
         }
     }
 };

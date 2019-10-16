@@ -43,7 +43,7 @@ function parseFilter (filter) {
 
 class TCRD extends SQLDataSource {
     getTarget (args) {
-        console.log('>>> getTarget: '+JSON.stringify(args));
+        //console.log('>>> getTarget: '+JSON.stringify(args));
         if (args.uniprot || args.sym || args.stringid) {
             var value;
             if (args.uniprot) value = args.uniprot;
@@ -105,6 +105,34 @@ order by novelty desc limit ? offset ?`, [args.top, args.skip]));
         }
         //console.log('>>> '+q);
         
+        return q;
+    }
+
+    getDiseases (args) {
+        let q = this.db.select(this.db.raw(`
+*,id as disid, dtype as type, drug_name as drug
+from disease`));
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                if ('type' == f.name)
+                    f.name = 'dtype';
+                q = q.whereIn(f.name, f.values);
+            }
+
+            if (args.filter.term != undefined && args.filter.term !== '') {
+                q = q.andWhere(this.db.raw(`
+match(name, description, drug_name) against(?)`, [args.filter.term]));
+            }
+        }
+
+        if (args.top)
+            q = q.limit(args.top);
+        
+        if (args.skip)
+            q = q.offset(args.skip);
+        
+        console.log('>>> getDiseases: '+q);
         return q;
     }
 
@@ -279,6 +307,8 @@ and f.itype = ?`, [filter.order]));
 
             for (var i in args.filter.facets) {
                 let f = args.filter.facets[i];
+                if ('type' == f.name)
+                    f.name = 'ppitype';
                 q = q.whereIn(f.name, f.values);
             }
 
@@ -355,6 +385,20 @@ from disease a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ? order by zscore desc
 limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
+    }
+
+    getOrthologDiseasesForOrtholog (ortho, args) {
+        return this.db.select(this.db.raw(`
+*,id as ordid from ortholog_disease 
+where ortholog_id = ?`, [ortho.orid]));
+    }
+
+    getDiseasesForOrthologDisease (ortho, args) {
+        return this.db.select(this.db.raw(`
+a.*,a.id as disid, a.dtype as type,drug_name as drug
+from disease a, ortholog_disease b
+where a.did = b.did
+and b.id = ? order by zscore desc`, [ortho.ordid]));
     }
 
     getTargetCountsForDisease (disease) {
@@ -716,22 +760,72 @@ group by etype order by value desc`, [target.tcrdid]));
 
     getExpressionsForTarget (target, args) {
         const EXPRESSION_SQL = `
-d.*,f.*, d.id as expid, d.etype as type, d.cell_id as cellid, d.oid as btoid
-from target a, protein b, 
-t2tc c left join tinx_novelty e on e.protein_id = c.protein_id,
-expression d left join uberon f on f.uid = d.uberon_id`;
-        let q;
+d.*,f.*, d.id as expid, d.etype as type, 
+d.cell_id as cellid, d.oid as btoid
+from t2tc c, expression d 
+left join uberon f on f.uid = d.uberon_id`;
+        let q = this.db.select(this.db.raw(EXPRESSION_SQL));
         if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                if ('type' == f.name)
+                    f.name = 'etype';                
+                q = q.whereIn(f.name, f.values);
+            }
+
+            if (args.filter.term != undefined && args.filter.term !== '') {
+                q = q.andWhere(this.db.raw(`
+match(d.tissue) against(?)`, [args.filter.term]));
+            }
         }
-        else {
-            q = this.db.select(this.db.raw(EXPRESSION_SQL+`
-where a.id = c.target_id and b.id = c.protein_id
-and b.id = d.protein_id
-and c.target_id = ?
-order by e.score desc
-limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
-        }
+        
+        q = q.andWhere(this.db.raw(`            
+d.protein_id = c.protein_id
+and c.target_id = ?`, [target.tcrdid]))
+            .limit(args.top)
+            .offset(args.skip);
+
         console.log('>>> getExpressionForTarget: '+q);
+        return q;
+    }
+
+    getOrthologCountsForTarget (target) {
+        return this.db.select(this.db.raw(`
+species as name, count(*) as value
+from ortholog a, t2tc b
+where a.protein_id = b.protein_id
+and b.target_id = ? group by species
+order by value desc`, [target.tcrdid]));
+    }
+    getOrthologsForTarget (target, args) {
+        const ORTHOLOG_SQL = `
+a.*,db_id as dbid,a.id as orid, c.score as score
+from t2tc b, ortholog a
+left join ortholog_disease c on c.ortholog_id = a.id`;
+        let q = this.db.select(this.db.raw(ORTHOLOG_SQL));
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.name, f.values);
+            }
+            
+            if (args.filter.term != undefined && args.filter.term !== '') {
+                q = q.andWhere(this.db.raw(`
+match(a.symbol,a.name) against(?)`, [args.filter.term]));
+                nosort = true;
+            }
+        }
+        
+        q = q.andWhere(this.db.raw(`
+a.protein_id = b.protein_id
+and b.target_id = ?`, [target.tcrdid]));
+
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+        
+        console.log('>>> getOrthologCountsForTarget: '+q);
         return q;
     }
 }

@@ -18,6 +18,22 @@
       description
       tdl
       novelty
+      orthologCounts {
+        name
+        value
+      }
+      orthologs {
+        species
+        name
+        source
+        diseases {
+          score
+          diseases {
+            did
+            name
+          }
+        }
+      }
       locsigs {
         locid
         location
@@ -31,13 +47,20 @@
         name
         value
       }
-      expressions {
+      expressions(
+        filter: {
+          term: "cerebellum"
+          facets: [
+            { name: "type", values: ["UniProt Tissue", "Consensus", "HPA"] }
+          ]
+        }
+      ) {
         expid
         type
         tissue
         value
         conf
-        uberon{
+        uberon {
           uid
           name
           def
@@ -79,6 +102,28 @@
     tdl
     description
     novelty
+    orthologCounts {
+      name
+      value
+    }
+    orthologs {
+      orid
+      species
+      name
+      source
+      diseases {
+        score
+        diseases {
+          did
+          name
+          targets {
+            sym
+            tdl
+            novelty
+          }
+        }
+      }
+    }
     diseaseCounts {
       name
       value
@@ -130,7 +175,7 @@
     ppis(
       filter: {
         facets: [
-          { name: "ppitype", values: ["Reactome", "BioPlex"] }
+          { name: "type", values: ["Reactome", "BioPlex"] }
           { name: "tdl", values: ["Tbio"] }
         ]
       }
