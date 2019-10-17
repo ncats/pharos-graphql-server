@@ -1,5 +1,22 @@
 # Write your query or mutation here
 {
+  search(term:"Lujan-Fryns") {
+    ...on Target {
+      sym
+      tdl
+      description
+      novelty
+    }
+    ...on Disease {
+      did
+      name
+      type
+    }
+    ...on PubMed {
+      pmid
+      title
+    }
+  }
   pubmed(pmid: 12477932) {
     title
     targetCounts {

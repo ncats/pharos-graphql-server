@@ -254,6 +254,8 @@ type Target {
      orthologs(skip: Int=0, top: Int=10, filter: Filter=undefined): [Ortholog]
 }
 
+union SearchResult = Target | Disease | PubMed
+
 type Query {
      targets(skip: Int = 0, top: Int = 10, filter: Filter = undefined): [Target]
      target(q: TargetInput): Target
@@ -262,6 +264,7 @@ type Query {
      pubmed(pmid: Int!): PubMed
      pubCount(term: String = ""): Int
      pubs(skip: Int=0, top: Int=10, term: String=""): [PubMed]
+     search(skip: Int=0, top: Int=10, term: String!): [SearchResult]
 }
 `;
 
@@ -281,7 +284,42 @@ const tcrd = new TCRD(tcrdConfig);
 //tcrd.getTarget({sym:'C8orf34'}).then(data => console.log(data));
 
 const resolvers = {
+    SearchResult: {
+        __resolveType(obj, context, info) {
+            //console.log('++++++ resolving '+obj);
+            if (obj.tcrdid)
+                return 'Target';
+            if (obj.disid)
+                return 'Disease';
+            if (obj.pmid)
+                return 'PubMed';
+            return null;
+        }
+    },
+    
     Query: {
+        search: async (_, args, {dataSources}) => {
+            args.filter = {
+                term: args.term
+            };
+            let t = dataSources.tcrd.getTargets(args);
+            let d = dataSources.tcrd.getDiseases(args);
+            let p = dataSources.tcrd.getPubs(args);
+
+            return Promise.all([t, d, p]).then(r => {
+                let results = [];
+                for (var i in r) {
+                    for (var j in r[i]) {
+                        //console.log('~~~~~~ '+r[i][j]);
+                        results.push(r[i][j]);
+                    }
+                }
+                return results;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+        
         target: async (_, args, {dataSources}) => {
             const q = dataSources.tcrd.getTarget(args.q);
             return q.then(rows => {
@@ -869,6 +907,8 @@ const schema = makeExecutableSchema({
 
 const server = new ApolloServer({
     schema: schema,
+    introspection: true,
+    playground: true,
     dataSources: () => ({
         tcrd: tcrd
     })
@@ -882,6 +922,7 @@ server.applyMiddleware({
     path: '/graphql'
 });
 
-app.listen({port: 4000}, () => {
-  console.log(`🚀 Server ready at http://localhost:4000/graphql`)
+const PORT = process.env.PORT || 4000;
+app.listen({port: PORT}, () => {
+  console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`)
 });
