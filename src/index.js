@@ -327,7 +327,7 @@ const resolvers = {
             args.filter = {
                 term: args.term
             };
-            let t = dataSources.tcrd.getTargets(args);
+            let t = dataSources.tcrd.searchTargets(args);
             let d = dataSources.tcrd.getDiseases(args);
             let p = dataSources.tcrd.getPubs(args);
             let o = dataSources.tcrd.getOrthologs(args);
@@ -434,10 +434,8 @@ const resolvers = {
         xrefs: async (target, args, {dataSources}) => {
             const q = dataSources.tcrd.getXrefsForTarget(target);
             return q.then(rows => {
-                if (args.source !== "") {
-                    console.log('+++ filtering xrefs: '+JSON.stringify(args));
+                if (args.source !== "")
                     return filter (rows, {source: args.source});
-                }
                 return rows;
             }).catch(function(error) {
                 console.error(error);
@@ -475,6 +473,8 @@ const resolvers = {
         synonyms: async (target, args, {dataSources}) => {
             const q = dataSources.tcrd.getSynonymsForTarget(target);
             return q.then(rows => {
+                if (args.name !== "")
+                    return filter (rows, {name: args.name});
                 return rows;
             }).catch(function(error) {
                 console.error(error);

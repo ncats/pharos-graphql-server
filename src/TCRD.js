@@ -68,6 +68,42 @@ and b.geneid=?`, [args.geneid]));
         return this.db.select(this.db.raw(TARGET_SQL+`
 and a.id = ?`, [args.tcrdid]));
     }
+
+    searchTargets (args) {
+        let q = this.db.select(this.db.raw(`
+a.*,b.*,e.score as novelty, a.id as tcrdid, 
+b.description as name, d.string_value as description
+from target a, protein b, t2tc c
+left join tinx_novelty e on e.protein_id = c.protein_id
+left join tdl_info d on d.protein_id = c.protein_id
+and d.itype = '${DESCRIPTION_TYPE}'
+where a.id = c.target_id and b.id = c.protein_id
+and (match(b.uniprot,b.sym,b.stringid) against(?)
+     or c.protein_id in 
+          (select protein_id from alias 
+            where match(value) against(?)) 
+     or c.protein_id in 
+          (select protein_id from xref 
+            where match(value) against(?))
+     or c.protein_id in
+          (select protein_id from tdl_info
+            where match(string_value) against(?))
+) order by case 
+  when b.uniprot=? then 1
+  when b.sym=? then 2
+  when b.stringid=? then 3
+  else 1000
+end`, [args.term, args.term, args.term, args.term,
+       args.term, args.term, args.term]));
+        
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+        
+        console.log('>>> searchTargets: '+q);
+        return q;
+    }
     
     getTargets (args) {
         //console.log('>>> getTargets: '+JSON.stringify(args));
