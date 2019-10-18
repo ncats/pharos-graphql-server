@@ -103,7 +103,7 @@ type GeneRIF {
 type Ortholog {
      orid: Int!
      species: String!
-     sym: String!
+     sym: String
      name: String!
      dbid: String
      geneid: Int
@@ -190,20 +190,27 @@ type Expression {
 
 """Target entity"""
 type Target {
+"""Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
+"""UniProt Accession"""
      uniprot: String!
+"""Target name"""
+     name: String!
+"""Gene symbol"""
      sym: String
-     name: String
+"""Summary of gene/protein"""
      description: String
 """Target development leve"""
      tdl: String
 """Target family"""
      fam: String
      seq: String!
+"""Target novelty score"""
      novelty: Float
 
 """Properties and cross references"""
      props(name: String = ""): [Prop]
+     synonyms(name: String = ""): [Prop]
      xrefs(source: String = ""): [Xref]
 
 """Publications associated with this protein"""
@@ -254,17 +261,23 @@ type Target {
      orthologs(skip: Int=0, top: Int=10, filter: Filter=undefined): [Ortholog]
 }
 
-union SearchResult = Target | Disease | PubMed
+union SearchResult = Target | Disease | Ortholog | PubMed
 
 type Query {
      targets(skip: Int = 0, top: Int = 10, filter: Filter = undefined): [Target]
      target(q: TargetInput): Target
+
      diseases(skip: Int = 0, top: Int = 10, filter: Filter = undefined): [Disease]
-     xref(source: String!, value: String!): Xref
-     pubmed(pmid: Int!): PubMed
+
      pubCount(term: String = ""): Int
+     pubmed(pmid: Int!): PubMed
      pubs(skip: Int=0, top: Int=10, term: String=""): [PubMed]
+
+     orthologCounts: [IntProp]
+     orthologs(skip: Int=0, top: Int=10, filter: Filter = undefined): [Ortholog]
+
      search(skip: Int=0, top: Int=10, term: String!): [SearchResult]
+     xref(source: String!, value: String!): Xref
 }
 `;
 
@@ -276,6 +289,16 @@ const tcrdConfig = {
         user: 'tcrd',
         password: '',
         database: 'tcrd600'
+    },
+    pool: {
+        min: 2,
+        max: 10,
+        createTimeoutMillis: 3000,
+        acquireTimeoutMillis: 30000,
+        idleTimeoutMillis: 30000,
+        reapIntervalMillis: 1000,
+        createRetryIntervalMillis: 100,
+        propagateCreateError: false // <- default is true, set to false
     }
 };
 
@@ -291,6 +314,8 @@ const resolvers = {
                 return 'Target';
             if (obj.disid)
                 return 'Disease';
+            if (obj.orid)
+                return 'Ortholog';
             if (obj.pmid)
                 return 'PubMed';
             return null;
@@ -305,8 +330,9 @@ const resolvers = {
             let t = dataSources.tcrd.getTargets(args);
             let d = dataSources.tcrd.getDiseases(args);
             let p = dataSources.tcrd.getPubs(args);
+            let o = dataSources.tcrd.getOrthologs(args);
 
-            return Promise.all([t, d, p]).then(r => {
+            return Promise.all([t, d, p, o]).then(r => {
                 let results = [];
                 for (var i in r) {
                     for (var j in r[i]) {
@@ -384,6 +410,23 @@ const resolvers = {
             }).catch(function(error) {
                 console.error(error);
             });
+        },
+
+        orthologCounts: async (_, args, {dataSources}) => {
+            const q = dataSources.tcrd.getOrthologCounts();
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+        orthologs: async (_, args, {dataSources}) => {
+            const q = dataSources.tcrd.getOrthologs(args);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
         }
     },
     
@@ -402,7 +445,7 @@ const resolvers = {
         },
         
         props: async (target, args, {dataSources}) => {
-            const q = dataSources.tcrd.getProps(target);
+            const q = dataSources.tcrd.getPropsForTarget(target);
             return q.then(rows => {
                 if (args.name !== "" && args.name !== "*") {
                     rows = filter (rows, {itype: args.name});
@@ -424,6 +467,15 @@ const resolvers = {
                     return {'name': r.itype,
                             'value': r.string_value};
                 });
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+
+        synonyms: async (target, args, {dataSources}) => {
+            const q = dataSources.tcrd.getSynonymsForTarget(target);
+            return q.then(rows => {
+                return rows;
             }).catch(function(error) {
                 console.error(error);
             });

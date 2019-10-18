@@ -2,10 +2,17 @@ const { SQLDataSource } = require("datasource-sql");
 
 const MINUTE = 60;
 
+const DESCRIPTION_TYPE =
+      //'UniProt Function';
+      'NCBI Gene Summary';
+
 const TARGET_SQL = `
-a.*,b.*,e.score as novelty, a.id as tcrdid 
+a.*,b.*,e.score as novelty, a.id as tcrdid, 
+b.description as name, f.string_value as description
 from target a, protein b, t2tc c
 left join tinx_novelty e on e.protein_id = c.protein_id
+left join tdl_info f on f.protein_id = c.protein_id 
+and f.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
 `;
 
@@ -69,17 +76,23 @@ and a.id = ?`, [args.tcrdid]));
             let filter = parseFilter (args.filter);
             if (filter.order) {
                 q = this.db.select(this.db.raw(`
-a.*,b.*,e.score as novelty, a.id as tcrdid 
+a.*,b.*,e.score as novelty, a.id as tcrdid, 
+b.description as name, f.string_value as description
 from target a, protein b, t2tc c
 left join tinx_novelty e on e.protein_id = c.protein_id
 left join tdl_info d 
-on c.protein_id = d.protein_id and d.itype = ?`, [filter.order]));
+on c.protein_id = d.protein_id and d.itype = ?
+left join tdl_info f on f.protein_id = c.protein_id 
+and f.itype = '${DESCRIPTION_TYPE}'`, [filter.order]));
             }
             else {
                 q = this.db.select(this.db.raw(`
-a.*,b.*,e.score as novelty, a.id as tcrdid 
+a.*,b.*,e.score as novelty, a.id as tcrdid, 
+b.description as name, f.string_value as description
 from target a, protein b, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id`));
+left join tinx_novelty e on e.protein_id = c.protein_id
+left join tdl_info f on f.protein_id = c.protein_id
+and f.itype = '${DESCRIPTION_TYPE}'`));
             }
             
             for (var i in args.filter.facets) {
@@ -87,23 +100,28 @@ left join tinx_novelty e on e.protein_id = c.protein_id`));
                 q = q.whereIn(f.name, f.values);
             }
 
+            let sort = true;
             if (args.filter.term != undefined && args.filter.term !== '') {
                 q = q.andWhere(this.db.raw(`
 (match(b.uniprot,b.sym,b.stringid) against(?) or 
 match(b.name,b.description) against(?))`, [args.filter.term, args.filter.term]));
+                sort = false;
             }
 
             q = q.andWhere(this.db.raw(`
-a.id = c.target_id and b.id = c.protein_id`))
-                .orderBy(filter.sortColumn, filter.dir)
-                .limit(args.top)
+a.id = c.target_id and b.id = c.protein_id`));
+            if (sort || filter.order) {
+                q = q.orderBy('d.'+filter.sortColumn, filter.dir);
+            }
+
+            q = q.limit(args.top)
                 .offset(args.skip);
         }
         else {
             q = this.db.select(this.db.raw(TARGET_SQL+`
 order by novelty desc limit ? offset ?`, [args.top, args.skip]));
         }
-        //console.log('>>> '+q);
+        console.log('>>> getTargets: '+q);
         
         return q;
     }
@@ -132,7 +150,7 @@ match(name, description, drug_name) against(?)`, [args.filter.term]));
         if (args.skip)
             q = q.offset(args.skip);
         
-        console.log('>>> getDiseases: '+q);
+        //console.log('>>> getDiseases: '+q);
         return q;
     }
 
@@ -173,17 +191,29 @@ xtype as source, value
 from xref where protein_id = ?`, [target.tcrdid]));
     }
 
-    getProps (target) {
+    getPropsForTarget (target) {
         //console.log('>>> getProps: '+target.tcrdid);
         return this.db.select(this.db.raw(`
 a.* from tdl_info a, t2tc b
 where b.target_id = ? and a.protein_id = b.protein_id`, [target.tcrdid]));
     }
 
+    getSynonymsForTarget (target) {
+        return this.db.select(this.db.raw(`
+a.type as name, a.value as value  
+from alias a, t2tc b
+where a.protein_id = b.protein_id
+and b.target_id = ?`, [target.tcrdid]));
+    }
+
     getTargetsForXref (xref) {
         //console.log('>>> getTargetForXref: '+JSON.stringify(xref));
         return this.db.select(this.db.raw(`
-a.*,b.*,a.id as tcrdid from target a, protein b, t2tc c, xref d
+a.*,b.*,a.id as tcrdid, 
+b.description as name, f.string_value as description
+from target a, protein b, t2tc c, xref d
+left join tdl_info f on f.protein_id = d.protein_id 
+and f.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
 and b.id = d.protein_id and d.xtype = ? and d.value = ?
 `, [xref.source, xref.value]));
@@ -312,11 +342,13 @@ and f.itype = ?`, [filter.order]));
                 q = q.whereIn(f.name, f.values);
             }
 
+            let sort = true;
             if (args.filter.term != undefined && args.filter.term !== '') {
                 q = q.andWhere(this.db.raw(`
 (match(e.uniprot,e.sym,e.stringid) against(?) or 
 match(e.name,e.description) against(?))`, [args.filter.term,
                                            args.filter.term]));
+                sort = false;
             }
 
             q = q.andWhere(this.db.raw(`
@@ -324,10 +356,14 @@ a.protein2_id = b2.protein_id
 and a.protein1_id = b1.protein_id
 and d.id = b2.target_id
 and e.id = b2.protein_id
-and b1.target_id = ?`, [target.tcrdid]))
-                .orderBy([{column: 'novelty', order: 'desc'},
-                          {column: filter.sortColumn, order: filter.dir}])
-                .limit(args.top)
+and b1.target_id = ?`, [target.tcrdid]));
+
+            if (sort) {
+                q = q.orderBy([{column: 'novelty', order: 'desc'},
+                               {column: filter.sortColumn, order: filter.dir}]);
+            }
+
+            q = q.limit(args.top)
                 .offset(args.skip);
         }
         else {
@@ -346,15 +382,18 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
     getTargetForPPINeighbor (neighbor) {
         //console.log('>>> getTargetForNeighbor: '+neighbor.nid);
         return this.db.select(this.db.raw(`
-a.*,b.*,a.id as tcrdid, e.score as novelty 
+a.*,b.*,a.id as tcrdid, e.score as novelty, 
+b.description as name, f.string_value as description
 from target a, protein b, ppi d, t2tc c
 left join tinx_novelty e on e.protein_id = c.protein_id
+left join tdl_info f on f.protein_id = c.protein_id 
+and f.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
 and b.id = d.protein2_id and d.id = ?`, [neighbor.nid]));
     }
 
     getPPIPropsForNeighbor (neighbor) {
-        console.log('>>> getPropsForNeighbor: '+neighbor.nid);
+        //console.log('>>> getPropsForNeighbor: '+neighbor.nid);
         return this.db.select(this.db.raw(`
 * from ppi where id = ?`, [neighbor.nid]));
     }
@@ -412,10 +451,12 @@ order by value desc`, [disease.name]));
 
     getTargetsForDisease (disease, args) {
         const DISEASE_SQL = `
-a.*,b.*,e.score as novelty, a.id as tcrdid 
+a.*,b.*,e.score as novelty, a.id as tcrdid,
+b.description as name, g.string_value as description
 from target a, protein b, disease d, t2tc c
 left join tinx_novelty e on e.protein_id = c.protein_id
-`;
+left join tdl_info g on g.protein_id = c.protein_id and
+g.itype = '${DESCRIPTION_TYPE}'`;
         let q;
         if (args.filter) {
             let filter = parseFilter (args.filter);
@@ -432,20 +473,25 @@ and f.itype = ?`, [filter.order]));
                 let f = args.filter.facets[i];
                 q = q.whereIn(f.name, f.values);
             }
-            
+
+            let sort = true;
             if (args.filter.term != undefined && args.filter.term !== '') {
                 q = q.andWhere(this.db.raw(`
 (match(b.uniprot,b.sym,b.stringid) against(?) or 
 match(b.name,b.description) against(?))`, [args.filter.term,
                                            args.filter.term]));
+                sort = false;
             }
 
             q = q.andWhere(this.db.raw(`
 a.id = c.target_id and b.id = c.protein_id
 and d.protein_id = c.protein_id
-and d.name = ?`, [disease.name]))
-                .orderBy(filter.sortColumn, filter.dir)
-                .limit(args.top)
+and d.name = ?`, [disease.name]));
+            if (sort) {
+                q = q.orderBy(filter.sortColumn, filter.dir);
+            }
+            
+            q = q.limit(args.top)
                 .offset(args.skip);
         }
         else {
@@ -519,9 +565,12 @@ order by value desc`, [pubmed.pmid]));
 
     getTargetsForPubMed (pubmed, args) {
         const PUBMED_SQL = `
-a.*,b.*,e.score as novelty, a.id as tcrdid 
+a.*,b.*,e.score as novelty, a.id as tcrdid,
+b.description as name, g.string_value as description
 from target a, protein b, protein2pubmed f, t2tc c
 left join tinx_novelty e on e.protein_id = c.protein_id
+left join tdl_info g on g.protein_id = c.protein_id and 
+g.itype = '${DESCRIPTION_TYPE}'
 `;
         let q;
         if (args.filter) {
@@ -540,19 +589,23 @@ and d.itype = ?`, [filter.order]));
                 q = q.whereIn(f.name, f.values);
             }
 
+            let sort = true;
             if (args.filter.term != undefined && args.filter.term !== '') {
                 q = q.andWhere(this.db.raw(`
 (match(b.uniprot,b.sym,b.stringid) against(?) or 
 match(b.name,b.description) against(?))`, [args.filter.term,
                                            args.filter.term]));
+                sort = false;
             }
 
             q = q.andWhere(this.db.raw(`
 a.id = c.target_id and b.id = c.protein_id
 and f.protein_id = c.protein_id
-and f.pubmed_id = ?`, [pubmed.pmid]))
-                .orderBy(filter.sortColumn, filter.dir)
-                .limit(args.top)
+and f.pubmed_id = ?`, [pubmed.pmid]));
+            if (sort) {
+                q = q.orderBy(filter.sortColumn, filter.dir);
+            }
+            q = q.limit(args.top)
                 .offset(args.skip);
         }
         else {
@@ -586,10 +639,12 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
 
     getTargetsForPathway (pathway, args) {
         const PATHWAY_SQL = `
-a.*,b.*,e.score as novelty, a.id as tcrdid 
+a.*,b.*,e.score as novelty, a.id as tcrdid,
+b.description as name, g.string_value as description
 from target a, protein b, pathway f, t2tc c
 left join tinx_novelty e on e.protein_id = c.protein_id
-`;
+left join tdl_info g on g.protein_id = c.protein_id 
+and g.itype = '${DESCRIPTION_TYPE}'`;
         let q;
         if (args.filter) {
             let filter = parseFilter (args.filter);
@@ -607,19 +662,23 @@ and f.itype = ?`, [filter.order]));
                 q = q.whereIn(f.name, f.values);
             }
 
+            let sort = true;
             if (args.filter.term != undefined && args.filter.term !== '') {
                 q = q.andWhere(this.db.raw(`
 (match(b.uniprot,b.sym,b.stringid) against(?) or 
 match(b.name,b.description) against(?))`, [args.filter.term,
                                            args.filter.term]));
+                sort = false;
             }
 
             q = q.andWhere(this.db.raw(`
 a.id = c.target_id and b.id = c.protein_id
 and f.protein_id = c.protein_id
-and f.pwtype = ? and f.name = ?`, [pathway.type, pathway.name]))
-                .orderBy(filter.sortColumn, filter.dir)
-                .limit(args.top)
+and f.pwtype = ? and f.name = ?`, [pathway.type, pathway.name]));
+            if (sort) {
+                q = q.orderBy(filter.sortColumn, filter.dir);
+            }
+            q = q.limit(args.top)
                 .offset(args.skip);
         }
         else {
@@ -712,20 +771,24 @@ and f.itype = ?`, [filter.order]));
                 q = q.whereIn(f.name, f.values);
             }
 
+            let sort = true;
             if (args.filter.term != undefined && args.filter.term !== '') {
                 q = q.andWhere(this.db.raw(`
 (match(e.uniprot,e.sym,e.stringid) against(?) or 
 match(e.name,e.description) against(?))`, [args.filter.term,
                                            args.filter.term]));
+                sort = false;
             }
             
             q = q.andWhere(this.db.raw(`
 a.pid1 = b1.protein_id and a.pid2 = e.id
 and a.pid2 = b2.protein_id and d.id = b2.target_id
-and b1.target_id = ?`, [target.tcrdid]))
-                .orderBy([{column: 'distance', order: 'asc'},
-                          {column: filter.sortColumn, order: filter.dir}])
-                .limit(args.top)
+and b1.target_id = ?`, [target.tcrdid]));
+            if (sort) {
+                q = q.orderBy([{column: 'distance', order: 'asc'},
+                               {column: filter.sortColumn, order: filter.dir}]);
+            }
+            q = q.limit(args.top)
                 .offset(args.skip);
         }
         else {
@@ -742,9 +805,12 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
 
     getTargetForKeggNeighbor (neighbor) {
         return this.db.select(this.db.raw(`
-a.*,b.*,a.id as tcrdid, e.score as novelty 
+a.*,b.*,a.id as tcrdid, e.score as novelty,
+b.description as name, f.string_value as description
 from target a, protein b, kegg_distance d, t2tc c
 left join tinx_novelty e on e.protein_id = c.protein_id
+left join tdl_info f on f.protein_id = c.protein_id 
+and f.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
 and b.id = d.pid2 and d.id = ?`, [neighbor.nid]));
     }
@@ -789,6 +855,39 @@ and c.target_id = ?`, [target.tcrdid]))
         return q;
     }
 
+    getOrthologCounts () {
+        return this.db.select(this.db.raw(`
+species as name, count(*) as value
+from ortholog 
+group by species
+order by value desc`));
+    }
+
+    getOrthologs (args) {
+        let q = this.db.select(this.db.raw(`
+*, id as orid, db_id as dbid, symbol as sym
+from ortholog`));
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.name, f.values);
+            }
+            
+            if (args.filter.term != undefined && args.filter.term !== '') {
+                q = q.andWhere(this.db.raw(`
+match(symbol,name) against(?)`, [args.filter.term]));
+            }            
+        }
+        
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+        
+        console.log('>>> getOrthologs: '+q);
+        return q;
+    }
+    
     getOrthologCountsForTarget (target) {
         return this.db.select(this.db.raw(`
 species as name, count(*) as value
@@ -799,7 +898,7 @@ order by value desc`, [target.tcrdid]));
     }
     getOrthologsForTarget (target, args) {
         const ORTHOLOG_SQL = `
-a.*,db_id as dbid,a.id as orid, c.score as score
+a.*,db_id as dbid,a.id as orid, a.symbol as sym, c.score as score
 from t2tc b, ortholog a
 left join ortholog_disease c on c.ortholog_id = a.id`;
         let q = this.db.select(this.db.raw(ORTHOLOG_SQL));
@@ -812,7 +911,6 @@ left join ortholog_disease c on c.ortholog_id = a.id`;
             if (args.filter.term != undefined && args.filter.term !== '') {
                 q = q.andWhere(this.db.raw(`
 match(a.symbol,a.name) against(?)`, [args.filter.term]));
-                nosort = true;
             }
         }
         
