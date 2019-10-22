@@ -3,7 +3,7 @@ const express = require('express');
 //const { ApolloServer, gql } = require('apollo-server');
 const { ApolloServer } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
-const { find, filter } = require('lodash');
+const { find, filter, slice } = require('lodash');
 
 const TCRD = require('./TCRD');
 
@@ -25,6 +25,11 @@ type IntProp {
      value: Int!
 }
 
+type FloatProp {
+     name: String!
+     value: Float!
+}
+
 type TemporalCount {
      year: Int!
      count: Int!
@@ -35,23 +40,48 @@ type TemporalScore {
      score: Float!
 }
 
-input Facet {
-     name: String!
+type Facet {
+     facet: String!
+     values (skip: Int=0, top: Int=10, name: String): [IntProp]
+}
+
+input IFilterFacet {
+     facet: String!
      values: [String]
 }
 
-"""Input IntRange: [start, end)"""
-input IntRange {
-     name: String!
-     start: Int!
-     end: Int!
+type FilterFacet {
+     facet: String!
+     values: [String]
 }
 
-input Filter {
+"""Input IRangeFloat: [start, end)"""
+input IRangeInt {
+     name: String!
+     start: Int
+     end: Int
+}
+
+"""Input IRangeFloat: [start, end) when start & end are specified;
+if start is not specified, then < end. Otherwise if end is not specified,
+then the range >= start is assumed."""
+input IRangeFloat {
+     name: String!
+     start: Float
+     end: Float
+}
+
+input IFilter {
      term: String
-     facets: [Facet]
-     irange: [IntRange]
+     facets: [IFilterFacet]
+     irange: [IRangeInt]
+     frange: [IRangeFloat]
      order: String
+}
+
+type Filter {
+     term: String
+     facets: [FilterFacet]
 }
 
 type PantherPath {
@@ -71,7 +101,7 @@ type Pathway {
      type: String!
      name: String!
      targetCounts: [IntProp]
-     targets(skip: Int=0, top: Int=10, filter: Filter=undefined): [Target]
+     targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
 
 input TargetInput {
@@ -89,7 +119,7 @@ type PubMed {
      date: String
      abstract: String
      targetCounts: [IntProp]
-     targets(skip: Int=0, top: Int=10, filter: Filter=undefined): [Target]
+     targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
 
 type GeneRIF {
@@ -135,7 +165,7 @@ type Disease {
      source: String
 
      targetCounts: [IntProp]
-     targets (skip: Int=0, top: Int=10, filter: Filter=undefined): [Target]
+     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
 
 """Target relationships such as PPI"""
@@ -155,12 +185,12 @@ type LocSig {
 }
 
 """LINCS: Library of Integrated Network-Based Cellular Signatures"""
-type Lincs {
+type LINCS {
      lncsid: Int!
      cellid: String!
      zscore: Float
      smiles: String
-     targets (skip: Int=0, top: Int=10, filter: Filter = undefined): [Target]
+     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
 
 type Uberon {
@@ -185,6 +215,34 @@ type Expression {
      btoid: String
      cellid: String
      uberon: Uberon
+     pub: PubMed
+}
+
+"""GWAS catalog data"""
+type GWAS {
+     gwasid: Int!
+     trait: String!
+     snps: [Prop]
+     pvalue: Float
+     pub: PubMed
+}
+
+"""Ligand"""
+type Ligand {
+     ligid: String!
+     name: String
+     isdrug: Boolean
+     synonyms: [Prop]
+     smiles: String
+     props: [Prop]
+     activities(skip: Int=0, top: Int=10, filter: IFilter): [LigandActivity]
+}
+
+type LigandActivity {
+     actid: Int!
+     type: String
+     value: Float
+     ligand: Ligand
      pub: PubMed
 }
 
@@ -223,7 +281,7 @@ type Target {
 
 """Protein-protein interaction"""
      ppiCounts: [IntProp]
-     ppis(skip: Int = 0, top: Int = 10, filter: Filter=undefined): [TargetNeighbor]
+     ppis(skip: Int = 0, top: Int = 10, filter: IFilter): [TargetNeighbor]
 
 """Disease associations"""
      diseaseCounts: [IntProp]
@@ -246,71 +304,69 @@ type Target {
      locsigs: [LocSig]
 
 """LINCS: Library of Integrated Network-Based Cellular Signatures"""
-     lincs (skip: Int=0, top: Int=10, cellid: [String]=[]): [Lincs]
+     lincs (skip: Int=0, top: Int=10, cellid: [String]=[]): [LINCS]
      lincsCounts: [IntProp]
 
 """Target neighbors expressed as distance in KEGG pathway"""
-     kegg(skip: Int=0, top: Int=10, filter: Filter=undefined): [TargetNeighbor]
+     kegg(skip: Int=0, top: Int=10, filter: IFilter): [TargetNeighbor]
 
 """Tissue expression"""
      expressionCounts: [IntProp]
-     expressions(skip: Int=0, top: Int=10, filter: Filter=undefined): [Expression]
+     expressions(skip: Int=0, top: Int=10, filter: IFilter): [Expression]
 
 """Ortholog protein"""
      orthologCounts: [IntProp]
-     orthologs(skip: Int=0, top: Int=10, filter: Filter=undefined): [Ortholog]
+     orthologs(skip: Int=0, top: Int=10, filter: IFilter): [Ortholog]
+
+"""GWAS catalog"""
+     gwasCounts: [IntProp]
+     gwas(skip: Int=0, top: Int=10, filter: IFilter): [GWAS]
+}
+
+type TargetResult {
+     top: Int
+     skip: Int
+     filter: Filter
+     count: Int
+     facets (select: [String], exclude: [String]): [Facet]
+     targets: [Target]
 }
 
 union SearchResult = Target | Disease | Ortholog | PubMed
 
+type Result {
+     targets: [Target]
+     diseases: [Disease]
+     pubs: [PubMed]
+     orthologs: [Ortholog]
+}
+
 type Query {
-     targets(skip: Int = 0, top: Int = 10, filter: Filter = undefined): [Target]
+     targets(skip: Int=0, top: Int=10, filter: IFilter): TargetResult
      target(q: TargetInput): Target
 
-     diseases(skip: Int = 0, top: Int = 10, filter: Filter = undefined): [Disease]
+     diseases(skip: Int = 0, top: Int = 10, filter: IFilter): [Disease]
 
      pubCount(term: String = ""): Int
      pubmed(pmid: Int!): PubMed
      pubs(skip: Int=0, top: Int=10, term: String=""): [PubMed]
 
      orthologCounts: [IntProp]
-     orthologs(skip: Int=0, top: Int=10, filter: Filter = undefined): [Ortholog]
+     orthologs(skip: Int=0, top: Int=10, filter: IFilter): [Ortholog]
 
-     search(skip: Int=0, top: Int=10, term: String!): [SearchResult]
+     search(skip: Int=0, top: Int=10, term: String!): Result
      xref(source: String!, value: String!): Xref
 }
 `;
 
 
-const tcrdConfig = {
-    client: 'mysql',
-    connection: {
-        host: 'tcrd.kmc.io',
-        user: 'tcrd',
-        password: '',
-        database: 'tcrd600'
-    },
-    pool: {
-        min: 2,
-        max: 10,
-        createTimeoutMillis: 3000,
-        acquireTimeoutMillis: 30000,
-        idleTimeoutMillis: 30000,
-        reapIntervalMillis: 1000,
-        createRetryIntervalMillis: 100,
-        propagateCreateError: false // <- default is true, set to false
-    }
-};
-
-const tcrd = new TCRD(tcrdConfig);
-//tcrd.getTarget({tcrd:3}).then(data => console.log(data));
-//tcrd.getTarget({sym:'C8orf34'}).then(data => console.log(data));
-
 const resolvers = {
     SearchResult: {
         __resolveType(obj, context, info) {
             //console.log('++++++ resolving '+obj);
-            if (obj.tcrdid)
+            if (obj.targets)
+                return 'TargetResult';
+            if (obj.tcrd)
                 return 'Target';
             if (obj.disid)
                 return 'Disease';
@@ -333,14 +389,29 @@ const resolvers = {
             let o = dataSources.tcrd.getOrthologs(args);
 
             return Promise.all([t, d, p, o]).then(r => {
-                let results = [];
-                for (var i in r) {
-                    for (var j in r[i]) {
-                        //console.log('~~~~~~ '+r[i][j]);
-                        results.push(r[i][j]);
-                    }
-                }
-                return results;
+                let result = {};
+                
+                let hits = [];
+                for (var i in r[0])
+                    hits.push(r[0][i]);
+                result.targets = hits;
+
+                hits = [];
+                for (var i in r[1])
+                    hits.push(r[1][i]);
+                result.diseases = hits;
+
+                hits = [];
+                for (var i in r[2])
+                    hits.push(r[2][i]);
+                result.pubs = hits;
+
+                hits = [];
+                for (var i in r[3])
+                    hits.push(r[3][i]);
+                result.orthologs = hits;
+
+                return result;
             }).catch(function(error) {
                 console.error(error);
             });
@@ -357,9 +428,39 @@ const resolvers = {
         },
         
         targets: async (_, args, {dataSources}) => {
-            const q = dataSources.tcrd.getTargets(args);
-            return q.then(rows => {
-                return rows;
+            let counts = [
+                dataSources.tcrd.getTargetTDLCounts(args),
+                dataSources.tcrd.getTargetUniProtKeywordCounts(args)
+            ];
+            return Promise.all(counts).then(rows => {
+                let facets = [];
+                facets.push({
+                    facet: 'tdl',
+                    values: rows[0]
+                });
+                let count = 0;
+                rows[0].forEach(x => {
+                    count += x.value;
+                });
+                
+                facets.push({
+                    facet: 'UniProt Keyword',
+                    values: rows[1]
+                });
+
+                return {
+                    top: args.top,
+                    skip: args.skip,
+                    filter: args.filter,
+                    count: count,
+                    facets: facets,
+                    targets: dataSources.tcrd.getTargets(args)
+                        .then(targets => {
+                            return targets;
+                        }).catch(function(error) {
+                            console.error(error);
+                        })
+                };
             }).catch(function(error) {
                 console.error(error);
             });
@@ -673,7 +774,7 @@ const resolvers = {
         },
 
         lincsCounts: async (target, args, {dataSources}) => {
-            const q = dataSources.tcrd.getLincsCountsForTarget(target);
+            const q = dataSources.tcrd.getLINCSCountsForTarget(target);
             return q.then(rows => {
                 return rows;
             }).catch(function(error) {
@@ -681,7 +782,7 @@ const resolvers = {
             });
         },
         lincs: async (target, args, {dataSources}) => {
-            const q = dataSources.tcrd.getLincsForTarget(target, args);
+            const q = dataSources.tcrd.getLINCSForTarget(target, args);
             return q.then(rows => {
                 return rows;
             }).catch(function(error) {
@@ -740,6 +841,39 @@ const resolvers = {
                     }
                     return x;
                 });
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+
+        gwasCounts: async (target, args, {dataSources}) => {
+            const q = dataSources.tcrd.getGWASCountsForTarget(target);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+        gwas: async (target, args, {dataSources}) => {
+            const q = dataSources.tcrd.getGWASForTarget(target, args);
+            return q.then(rows => {
+                rows.forEach(x => {
+                    let snps = x._snps.split(';');
+                    let ctx = x.context.split(';');
+                    if (snps.length == ctx.length) {
+                        let data = [];
+                        for (var i in snps) {
+                            data.push({name: ctx[i], value:snps[i]});
+                        }
+                        x.snps = data;
+                    }
+                    else {
+                        console.error(x.gwasid+': invalid parallel '
+                                      +'arrays in gwas snp!');
+                    }
+                });
+                
+                return rows;
             }).catch(function(error) {
                 console.error(error);
             });
@@ -948,6 +1082,28 @@ const resolvers = {
                 console.error(error);
             });
         }
+    },
+
+    Facet: {
+        values: async (facet, args, _) => {
+            if (args.name)
+                return filter (facet.values, {name: args.name});
+            return slice (facet.values, args.skip, args.top + args.skip);
+        }
+    },
+
+    TargetResult: {
+        facets: async (result, args, _) => {
+            if (args.select) {
+                return filter (result.facets, f => 
+                               find (args.select, x => x == f.facet));
+            }
+            if (args.exclude) {
+                return filter (result.facets, f =>
+                               find (args.exclude, x => x !== f.facet));
+            }
+            return result.facets;
+        }
     }
 };
 
@@ -956,7 +1112,27 @@ const schema = makeExecutableSchema({
     resolvers
 });
 
+const tcrdConfig = {
+    client: 'mysql',
+    connection: {
+        host: 'tcrd.kmc.io',
+        user: 'tcrd',
+        password: '',
+        database: 'tcrd600'
+    },
+    pool: {
+        min: 2,
+        max: 10,
+        createTimeoutMillis: 3000,
+        acquireTimeoutMillis: 30000,
+        idleTimeoutMillis: 30000,
+        reapIntervalMillis: 1000,
+        createRetryIntervalMillis: 100,
+        propagateCreateError: false // <- default is true, set to false
+    }
+};
 
+const tcrd = new TCRD(tcrdConfig);
 const server = new ApolloServer({
     schema: schema,
     introspection: true,

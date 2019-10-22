@@ -1,0 +1,47 @@
+{
+  search(term: "htt") {
+    targets {
+      sym
+      tdl
+      name
+      description
+      tcrdid
+      uniprot
+      fam
+      novelty
+      tdl
+      synonyms(name: "uniprot") {
+        name
+        value
+      }
+      gwasCounts {
+        name
+        value
+      }
+      gwas(
+        filter: { frange: [{ name: "pvalue", end: 1e-10 }], term: "education" }
+      ) {
+        trait
+        pvalue
+        snps {
+          name
+          value
+        }
+      }
+      props {
+        name
+        value
+      }
+      xrefs {
+        source
+        value
+      }
+    }
+
+    pubs {
+      pmid
+      title
+      abstract
+    }
+  }
+}

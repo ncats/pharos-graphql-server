@@ -1,31 +1,37 @@
 # Write your query or mutation here
 {
-  search(term:"Lujan-Fryns") {
-    ...on Target {
+  # search across all entities
+  search(term: "Lujan-Fryns") {
+    targets {
       sym
       tdl
       description
       novelty
     }
-    ...on Disease {
+
+    diseases {
       did
       name
       type
     }
-    ...on PubMed {
+    pubs {
       pmid
       title
     }
   }
+  # lookup a specific publication
   pubmed(pmid: 12477932) {
     title
     targetCounts {
       name
       value
     }
+    # retrieve the first 10 (default) Tchem and Tdark targets
+    # associated with this publication that have the term
+    # "sulfotransferate"
     targets(
       filter: {
-        facets: [{ name: "tdl", values: ["Tchem", "Tdark"] }]
+        facets: [{ facet: "tdl", values: ["Tchem", "Tdark"] }]
         term: "Sulfotransferase"
       }
     ) {
@@ -68,7 +74,7 @@
         filter: {
           term: "cerebellum"
           facets: [
-            { name: "type", values: ["UniProt Tissue", "Consensus", "HPA"] }
+            { facet: "type", values: ["UniProt Tissue", "Consensus", "HPA"] }
           ]
         }
       ) {
@@ -90,7 +96,9 @@
       }
     }
   }
+  # count number of publications with the term "wnt"
   pubCount(term: "wnt")
+  # skip the first 17,070 publications from the query of "wnt"
   pubs(skip: 17070, term: "wnt") {
     pmid
     title
@@ -99,6 +107,9 @@
       value
     }
   }
+  # retrieve the first 5 Tclin and Tchem transporter targets
+  # for which the term "sodium" is found and order the results
+  # based on pubmed score in descending order
   targets(
     top: 5
     skip: 0
@@ -107,125 +118,143 @@
       term: "sodium"
       #term:"SLC6A1"
       facets: [
-        { name: "tdl", values: ["Tclin", "Tchem"] }
-        { name: "fam", values: ["Transporter"] }
+        { facet: "tdl", values: ["Tclin", "Tchem"] }
+        { facet: "fam", values: ["Transporter"] }
       ]
       order: "!JensenLab PubMed Score"
     }
   ) {
-    tcrdid
-    uniprot
-    sym
-    tdl
-    description
-    novelty
-    orthologCounts {
-      name
-      value
+    filter {
+      term
+      facets {
+        facet
+        values
+      }
     }
-    orthologs {
-      orid
-      species
-      name
-      source
-      diseases {
-        score
+    facets {
+      facet
+      values {
+        name
+        value
+      }
+    }
+    count
+    targets {
+      tcrdid
+      uniprot
+      sym
+      tdl
+      description
+      novelty
+      orthologCounts {
+        name
+        value
+      }
+      orthologs {
+        orid
+        species
+        name
+        source
         diseases {
-          did
-          name
-          targets {
-            sym
-            tdl
-            novelty
+          score
+          diseases {
+            did
+            name
+            targets {
+              sym
+              tdl
+              novelty
+            }
           }
         }
       }
-    }
-    diseaseCounts {
-      name
-      value
-    }
-    diseases(skip: 40) {
-      type
-      name
-      zscore
-      conf
-      drug
-      pvalue
-      source
-      targetCounts {
+      diseaseCounts {
         name
         value
       }
-      targets(
+      diseases(skip: 40) {
+        type
+        name
+        zscore
+        conf
+        drug
+        pvalue
+        source
+        targetCounts {
+          name
+          value
+        }
+        targets(
+          filter: {
+            facets: [
+              { facet: "tdl", values: ["Tclin"] }
+              { facet: "fam", values: ["Kinase", "Transporter"] }
+            ]
+          }
+        ) {
+          sym
+          uniprot
+          name
+          tdl
+          fam
+          novelty
+        }
+      }
+      patentCounts {
+        year
+        count
+      }
+      patentScores {
+        year
+        score
+      }
+      pubmedScores {
+        year
+        score
+      }
+      ppiCounts {
+        name
+        value
+      }
+      ppis(
         filter: {
           facets: [
-            { name: "tdl", values: ["Tclin"] }
-            { name: "fam", values: ["Kinase", "Transporter"] }
+            { facet: "type", values: ["Reactome", "BioPlex"] }
+            { facet: "tdl", values: ["Tbio"] }
           ]
         }
       ) {
-        sym
-        uniprot
-        name
-        tdl
-        fam
-        novelty
+        nid
+        type
+        props {
+          name
+          value
+        }
+        target {
+          tcrdid
+          uniprot
+          sym
+          tdl
+          novelty
+        }
       }
-    }
-    patentCounts {
-      year
-      count
-    }
-    patentScores {
-      year
-      score
-    }
-    pubmedScores {
-      year
-      score
-    }
-    ppiCounts {
-      name
-      value
-    }
-    ppis(
-      filter: {
-        facets: [
-          { name: "type", values: ["Reactome", "BioPlex"] }
-          { name: "tdl", values: ["Tbio"] }
-        ]
+      pubCount
+      generifCount
+      generifs(term: "akt") {
+        text
+        pubs {
+          pmid
+          title
+          date
+        }
       }
-    ) {
-      nid
-      type
-      props {
+      props(name: "JensenLab PubMed Score") {
         name
         value
       }
-      target {
-        tcrdid
-        uniprot
-        sym
-        tdl
-        novelty
-      }
-    }
-    pubCount
-    generifCount
-    generifs(term: "akt") {
-      text
-      pubs {
-        pmid
-        title
-        date
-      }
-    }
-    props(name: "JensenLab PubMed Score") {
-      name
-      value
     }
   }
+  # lookup a particular target using the internal tcrd id
   target(
     q: {
       #geneid:116328
@@ -253,7 +282,7 @@
       top: 10
       filter: {
         term: "potassium"
-        facets: [{ name: "tdl", values: ["Tclin"] }]
+        facets: [{ facet: "tdl", values: ["Tclin"] }]
         order: "JensenLab PubMed Score"
       }
     ) {
@@ -289,7 +318,7 @@
       }
       targets(
         filter: {
-          facets: [{ name: "tdl", values: ["Tchem", "Tclin"] }]
+          facets: [{ facet: "tdl", values: ["Tchem", "Tclin"] }]
           term: "calcium receptor glutamate"
         }
       ) {
@@ -354,7 +383,9 @@
       value
     }
   }
+  # lookup an pubmed xref with the associated pmid
   xref(source: "PubMed", value: "12477932") {
+    # and fetch all associated Tclin and kinase targets
     targets(tdl: "Tclin", fam: "Kinase") {
       uniprot
       sym
