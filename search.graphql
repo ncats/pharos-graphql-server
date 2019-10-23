@@ -1,47 +1,90 @@
 {
-  search(term: "htt") {
-    targets {
-      sym
-      tdl
-      name
-      description
-      tcrdid
-      uniprot
-      fam
-      novelty
-      tdl
-      synonyms(name: "uniprot") {
-        name
-        value
+  search(term: "huntington") {
+    targetResult {
+      count
+      filter {
+        term
+        facets {
+          facet
+          values
+        }
       }
-      gwasCounts {
-        name
-        value
-      }
-      gwas(
-        filter: { frange: [{ name: "pvalue", end: 1e-10 }], term: "education" }
-      ) {
-        trait
-        pvalue
-        snps {
+      facets {
+        facet
+        values {
           name
           value
         }
       }
-      props {
+      targets(skip: 20) {
+        sym
+        tdl
         name
-        value
-      }
-      xrefs {
-        source
-        value
+        description
+        tcrdid
+        uniprot
+        fam
+        novelty
+        tdl
+        synonyms(name: "uniprot") {
+          name
+          value
+        }
+        gwasCounts {
+          name
+          value
+        }
+        gwas(
+          filter: {
+            frange: [{ name: "pvalue", end: 1e-10 }]
+            term: "education"
+          }
+        ) {
+          trait
+          pvalue
+          snps {
+            name
+            value
+          }
+        }
+        props {
+          name
+          value
+        }
+        xrefs {
+          source
+          value
+        }
       }
     }
-
-    pubs {
-      pmid
-      title
-      abstract
+    diseaseResult {
+      count
+      facets(exclude: ["Target Development Level"]) {
+        facet
+        values {
+          name
+          value
+        }
+      }
+      diseases(skip: 148) {
+        type
+        name
+      }
+    }
+    pubResult {
+      count
+      facets {
+        facet
+        values {
+          name
+          value
+        }
+      }
+      pubs(skip:6510) {
+        pmid
+        title
+        abstract
+      }
     }
   }
 }

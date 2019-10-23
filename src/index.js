@@ -324,20 +324,30 @@ type Target {
 }
 
 type TargetResult {
-     top: Int
-     skip: Int
      filter: Filter
      count: Int
-     facets (select: [String], exclude: [String]): [Facet]
-     targets: [Target]
+     facets (include: [String], exclude: [String]): [Facet]
+     targets(skip: Int=0, top: Int=10): [Target]
 }
 
-union SearchResult = Target | Disease | Ortholog | PubMed
+type DiseaseResult {
+     filter: Filter
+     count: Int
+     facets (include: [String], exclude: [String]): [Facet]
+     diseases(skip: Int=0, top: Int=10): [Disease]
+}
+
+type PubResult {
+     filter: Filter
+     count: Int
+     facets (include: [String], exclude: [String]): [Facet]
+     pubs(skip: Int=0, top: Int=10): [PubMed]
+}
 
 type Result {
-     targets: [Target]
-     diseases: [Disease]
-     pubs: [PubMed]
+     targetResult: TargetResult
+     diseaseResult: DiseaseResult
+     pubResult: PubResult
      orthologs: [Ortholog]
 }
 
@@ -360,53 +370,130 @@ type Query {
 `;
 
 
+function getTargetResult (args, tcrd) {
+    let counts = [
+        tcrd.getTargetTDLCounts(args),
+        tcrd.getTargetUniProtKeywordCounts(args),
+        tcrd.getTargetFamilyCounts(args)
+    ];
+    return Promise.all(counts).then(rows => {
+        let facets = [];
+        facets.push({
+            facet: 'Target Development Level',
+            values: rows[0]
+        });
+        let count = 0;
+        rows[0].forEach(x => {
+            count += x.value;
+        });
+        
+        facets.push({
+            facet: 'UniProt Keyword',
+            values: rows[1]
+        });
+        
+        facets.push({
+            facet: 'Family',
+            values: rows[2]
+        });
+        
+        return {
+            filter: args.filter,
+            count: count,
+            facets: facets,
+        };
+    });
+}
+
+function getDiseaseResult (args, tcrd) {
+    let counts = [
+        tcrd.getDiseaseDataSourceCounts(args),
+        tcrd.getDiseaseDrugCounts(args),
+        tcrd.getDiseaseTDLCounts(args)
+    ];
+    return Promise.all(counts).then(rows => {
+        let facets = [];
+        facets.push({
+            facet: 'Data Source',
+            values: rows[0]
+        });
+        let count = 0;
+        rows[0].forEach(x => {
+            count += x.value;
+        });
+        
+        facets.push({
+            facet: 'Drug',
+            values: rows[1]
+        });
+        facets.push({
+            facet: 'Target Development Level',
+            values: rows[2]
+        });
+        
+        return {
+            filter: args.filter,
+            count: count,
+            facets: facets
+        };
+    });
+}
+
+function getPubResult (args, tcrd) {
+    let counts = [
+        tcrd.getPubTDLCounts(args)
+    ];
+    return Promise.all(counts).then(rows => {
+        let facets = [];
+        facets.push({
+            facet: 'Target Development Level',
+            values: rows[0]
+        });
+        
+        return {
+            filter: args.filter,
+            count: tcrd.getPubCount(args)
+                .then(rows => {
+                    if (rows) return rows[0].cnt;
+                    return 0;
+                }),
+            facets: facets
+        };
+    });
+}
+
+function filterResultFacets (result, args) {
+    if (args.include) {
+        return filter (result.facets, f => 
+                       find (args.include, x => x == f.facet));
+    }
+    if (args.exclude) {
+        return filter (result.facets, f =>
+                       find (args.exclude, x => x !== f.facet));
+    }
+    return result.facets;
+}
+
 const resolvers = {
-    SearchResult: {
-        __resolveType(obj, context, info) {
-            //console.log('++++++ resolving '+obj);
-            if (obj.targets)
-                return 'TargetResult';
-            if (obj.tcrd)
-                return 'Target';
-            if (obj.disid)
-                return 'Disease';
-            if (obj.orid)
-                return 'Ortholog';
-            if (obj.pmid)
-                return 'PubMed';
-            return null;
-        }
-    },
-    
     Query: {
-        search: async (_, args, {dataSources}) => {
+        search: async function (_, args, {dataSources}) {
             args.filter = {
                 term: args.term
             };
-            let t = dataSources.tcrd.searchTargets(args);
-            let d = dataSources.tcrd.getDiseases(args);
-            let p = dataSources.tcrd.getPubs(args);
+
+            let t = getTargetResult(args, dataSources.tcrd);
+            let d = getDiseaseResult(args, dataSources.tcrd);
+            let p = getPubResult(args, dataSources.tcrd);
             let o = dataSources.tcrd.getOrthologs(args);
 
             return Promise.all([t, d, p, o]).then(r => {
-                let result = {};
+                let result = {
+                    targetResult: r[0],
+                    diseaseResult: r[1],
+                    pubResult: r[2]
+                };
                 
                 let hits = [];
-                for (var i in r[0])
-                    hits.push(r[0][i]);
-                result.targets = hits;
-
-                hits = [];
-                for (var i in r[1])
-                    hits.push(r[1][i]);
-                result.diseases = hits;
-
-                hits = [];
-                for (var i in r[2])
-                    hits.push(r[2][i]);
-                result.pubs = hits;
-
-                hits = [];
                 for (var i in r[3])
                     hits.push(r[3][i]);
                 result.orthologs = hits;
@@ -417,7 +504,7 @@ const resolvers = {
             });
         },
         
-        target: async (_, args, {dataSources}) => {
+        target: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getTarget(args.q);
             return q.then(rows => {
                 if (rows) return rows[0];
@@ -427,55 +514,15 @@ const resolvers = {
             });
         },
         
-        targets: async (_, args, {dataSources}) => {
-            let counts = [
-                dataSources.tcrd.getTargetTDLCounts(args),
-                dataSources.tcrd.getTargetUniProtKeywordCounts(args)
-            ];
-            return Promise.all(counts).then(rows => {
-                let facets = [];
-                facets.push({
-                    facet: 'tdl',
-                    values: rows[0]
-                });
-                let count = 0;
-                rows[0].forEach(x => {
-                    count += x.value;
-                });
-                
-                facets.push({
-                    facet: 'UniProt Keyword',
-                    values: rows[1]
-                });
-
-                return {
-                    top: args.top,
-                    skip: args.skip,
-                    filter: args.filter,
-                    count: count,
-                    facets: facets,
-                    targets: dataSources.tcrd.getTargets(args)
-                        .then(targets => {
-                            return targets;
-                        }).catch(function(error) {
-                            console.error(error);
-                        })
-                };
-            }).catch(function(error) {
-                console.error(error);
-            });
+        targets: async function (_, args, {dataSources}) {
+            return getTargetResult (args, dataSources.tcrd);
         },
 
-        diseases: async (_, args, {dataSources}) => {
-            const q = dataSources.tcrd.getDiseases(args);
-            return q.then(rows => {
-                return rows;
-            }).catch(function(error) {
-                console.error(error);
-            });
+        diseases: async function (_, args, {dataSources}) {
+            return getDiseaseResult (args, dataSources.tcrd);
         },
         
-        xref: async (_, args, {dataSources}) => {
+        xref: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getXref(args);
             return q.then(rows => {
                 if (rows) return rows[0];
@@ -485,7 +532,7 @@ const resolvers = {
             });            
         },
 
-        pubmed: async (_, args, {dataSources}) => {
+        pubmed: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getPub(args.pmid);
             return q.then(rows => {
                 if (rows) return rows[0];
@@ -495,7 +542,7 @@ const resolvers = {
             });
         },
         
-        pubs: async (_, args, {dataSources}) => {
+        pubs: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getPubs(args);
             return q.then(rows => {
                 return rows;
@@ -503,7 +550,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        pubCount: async (_, args, {dataSources}) => {
+        pubCount: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getPubCount(args);
             return q.then(rows => {
                 if (rows) return rows[0].cnt;
@@ -513,7 +560,7 @@ const resolvers = {
             });
         },
 
-        orthologCounts: async (_, args, {dataSources}) => {
+        orthologCounts: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologCounts();
             return q.then(rows => {
                 return rows;
@@ -521,7 +568,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        orthologs: async (_, args, {dataSources}) => {
+        orthologs: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologs(args);
             return q.then(rows => {
                 return rows;
@@ -532,7 +579,7 @@ const resolvers = {
     },
     
     Target: {
-        xrefs: async (target, args, {dataSources}) => {
+        xrefs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getXrefsForTarget(target);
             return q.then(rows => {
                 if (args.source !== "")
@@ -543,7 +590,7 @@ const resolvers = {
             });
         },
         
-        props: async (target, args, {dataSources}) => {
+        props: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPropsForTarget(target);
             return q.then(rows => {
                 if (args.name !== "" && args.name !== "*") {
@@ -571,7 +618,7 @@ const resolvers = {
             });
         },
 
-        synonyms: async (target, args, {dataSources}) => {
+        synonyms: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getSynonymsForTarget(target);
             return q.then(rows => {
                 if (args.name !== "")
@@ -582,7 +629,7 @@ const resolvers = {
             });
         },
 
-        pubCount: async (target, args, {dataSources}) => {
+        pubCount: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPubCountForTarget(target);
             return q.then(rows => {
                 if (rows) return rows[0].cnt;
@@ -592,7 +639,7 @@ const resolvers = {
             });
         },
         
-        pubs: async (target, args, {dataSources}) => {
+        pubs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPubsForTarget(target, args);
             return q.then(rows => {
                 return rows;
@@ -601,7 +648,7 @@ const resolvers = {
             });
         },
 
-        generifCount: async (target, args, {dataSources}) => {
+        generifCount: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getGeneRIFCount(target);
             return q.then(rows => {
                 if (rows) return rows[0].cnt;
@@ -611,7 +658,7 @@ const resolvers = {
             });
         },
 
-        generifs: async (target, args, {dataSources}) => {
+        generifs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getGeneRIFs(target, args);
             return q.then(rows => {
                 return rows;
@@ -620,7 +667,7 @@ const resolvers = {
             });
         },
 
-        ppiCounts: async (target, args, {dataSources}) => {
+        ppiCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPPICountsForTarget(target);
             return q.then(rows => {
                 return rows;
@@ -629,7 +676,7 @@ const resolvers = {
             });
         },
 
-        ppis: async (target, args, {dataSources}) => {
+        ppis: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPPIsForTarget(target, args);
             return q.then(rows => {
                 return rows;
@@ -638,7 +685,7 @@ const resolvers = {
             });
         },
 
-        diseaseCounts: async (target, _, {dataSources}) => {
+        diseaseCounts: async function (target, _, {dataSources}) {
             const q = dataSources.tcrd.getDiseaseCountsForTarget(target);
             return q.then(rows => {
                 return rows;
@@ -647,7 +694,7 @@ const resolvers = {
             });
         },
 
-        diseases: async (target, args, {dataSources}) => {
+        diseases: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getDiseasesForTarget(target, args);
             return q.then(rows => {
                 return rows;
@@ -656,7 +703,7 @@ const resolvers = {
             });
         },
 
-        patentCounts: async (target, args, {dataSources}) => {
+        patentCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPatentCounts(target, args);
             return q.then(rows => {
                 return rows;
@@ -664,7 +711,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        patentScores: async (target, args, {dataSources}) => {
+        patentScores: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPatentScores(target, args);
             return q.then(rows => {
                 return rows;
@@ -672,7 +719,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        pubmedScores: async (target, args, {dataSources}) => {
+        pubmedScores: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPubMedScores(target, args);
             return q.then(rows => {
                 return rows;
@@ -681,7 +728,7 @@ const resolvers = {
             });
         },
 
-        pantherPaths: async (target, args, {dataSources}) => {
+        pantherPaths: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPanther(target);
             return q.then(rows => {
                 let classes = {};
@@ -721,7 +768,7 @@ const resolvers = {
             });
         },
 
-        pantherClasses: async (target, _, {dataSources}) => {
+        pantherClasses: async function (target, _, {dataSources}) {
             const q = dataSources.tcrd.getPanther(target);
             return q.then(rows => {
                 let classes = [];
@@ -747,7 +794,7 @@ const resolvers = {
             });
         },
 
-        pathwayCounts: async (target, args, {dataSources}) => {
+        pathwayCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPathwayCounts(target);
             return q.then(rows => {
                 return rows;
@@ -755,7 +802,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        pathways: async (target, args, {dataSources}) => {
+        pathways: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPathways(target, args);
             return q.then(rows => {
                 return rows;
@@ -764,7 +811,7 @@ const resolvers = {
             });
         },
 
-        locsigs: async (target, args, {dataSources}) => {
+        locsigs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getLocSigsForTarget(target);
             return q.then(rows => {
                 return rows;
@@ -773,7 +820,7 @@ const resolvers = {
             });
         },
 
-        lincsCounts: async (target, args, {dataSources}) => {
+        lincsCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getLINCSCountsForTarget(target);
             return q.then(rows => {
                 return rows;
@@ -781,7 +828,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        lincs: async (target, args, {dataSources}) => {
+        lincs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getLINCSForTarget(target, args);
             return q.then(rows => {
                 return rows;
@@ -790,7 +837,7 @@ const resolvers = {
             });
         },
 
-        kegg: async (target, args, {dataSources}) => {
+        kegg: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getKeggDistancesForTarget(target, args);
             return q.then(rows => {
                 return rows;
@@ -799,7 +846,7 @@ const resolvers = {
             });
         },
 
-        expressionCounts: async (target, args, {dataSources}) => {
+        expressionCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getExpressionCountsForTarget(target);
             return q.then(rows => {
                 return rows;
@@ -807,7 +854,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        expressions: async (target, args, {dataSources}) => {
+        expressions: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getExpressionsForTarget(target, args);
             return q.then(rows => {
                 return rows.map(x => {
@@ -824,7 +871,7 @@ const resolvers = {
             });
         },
 
-        orthologCounts: async (target, args, {dataSources}) => {
+        orthologCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologCountsForTarget(target);
             return q.then(rows => {
                 return rows;
@@ -832,7 +879,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        orthologs: async (target, args, {dataSources}) => {
+        orthologs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologsForTarget(target, args);
             return q.then(rows => {
                 return rows.map(x => {
@@ -846,7 +893,7 @@ const resolvers = {
             });
         },
 
-        gwasCounts: async (target, args, {dataSources}) => {
+        gwasCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getGWASCountsForTarget(target);
             return q.then(rows => {
                 return rows;
@@ -854,7 +901,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        gwas: async (target, args, {dataSources}) => {
+        gwas: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getGWASForTarget(target, args);
             return q.then(rows => {
                 rows.forEach(x => {
@@ -881,7 +928,7 @@ const resolvers = {
     },
 
     PubMed: {
-        targetCounts: async (pubmed, args, {dataSources}) => {
+        targetCounts: async function (pubmed, args, {dataSources}) {
             const q = dataSources.tcrd.getTargetCountsForPubMed(pubmed);
             return q.then(rows => {
                 return rows;
@@ -890,7 +937,7 @@ const resolvers = {
             });
         },
 
-        targets: async (pubmed, args, {dataSources}) => {
+        targets: async function (pubmed, args, {dataSources}) {
             const q = dataSources.tcrd.getTargetsForPubMed(pubmed, args);
             return q.then(rows => {
                 return rows;
@@ -901,7 +948,7 @@ const resolvers = {
     },
     
     Xref: {
-        targets: async (xref, args, {dataSources}) => {
+        targets: async function (xref, args, {dataSources}) {
             const q = dataSources.tcrd.getTargetsForXref(xref);
             return q.then(rows => {
                 if (args.tdl !== "" && args.fam !== "") 
@@ -918,7 +965,7 @@ const resolvers = {
     },
 
     GeneRIF: {
-        pubs: async (generif, args, {dataSources}) => {
+        pubs: async function (generif, args, {dataSources}) {
             const q = dataSources.tcrd.getPubsForGeneRIF(generif);
             return q.then(rows => {
                 return rows;
@@ -929,7 +976,7 @@ const resolvers = {
     },
 
     TargetNeighbor: {
-        props: async (neighbor, args, {dataSources}) => {
+        props: async function (neighbor, args, {dataSources}) {
             let props = [
                 {'name': 'tdl', 'value': neighbor.tdl}
             ];
@@ -966,7 +1013,7 @@ const resolvers = {
             return props;
         },
 
-        target: async (neighbor, args, {dataSources}) => {
+        target: async function (neighbor, args, {dataSources}) {
             let q;
             if (neighbor.type == 'KEGG') {
                 q = dataSources.tcrd.getTargetForKeggNeighbor(neighbor);
@@ -984,7 +1031,7 @@ const resolvers = {
     },
 
     Disease: {
-        targetCounts: async (disease, _, {dataSources}) => {
+        targetCounts: async function (disease, _, {dataSources}) {
             const q = dataSources.tcrd.getTargetCountsForDisease(disease);
             return q.then(rows => {
                 return rows;
@@ -993,7 +1040,7 @@ const resolvers = {
             });
         },
 
-        targets: async (disease, args, {dataSources}) => {
+        targets: async function (disease, args, {dataSources}) {
             const q = dataSources.tcrd.getTargetsForDisease(disease, args);
             return q.then(rows => {
                 return rows;
@@ -1004,7 +1051,7 @@ const resolvers = {
     },
 
     Pathway: {
-        targetCounts: async (pathway, _, {dataSources}) => {
+        targetCounts: async function (pathway, _, {dataSources}) {
             const q = dataSources.tcrd.getTargetCountsForPathway(pathway);
             return q.then(rows => {
                 return rows;
@@ -1013,7 +1060,7 @@ const resolvers = {
             });
         },
 
-        targets: async (pathway, args, {dataSources}) => {
+        targets: async function (pathway, args, {dataSources}) {
             const q = dataSources.tcrd.getTargetsForPathway(pathway, args);
             return q.then(rows => {
                 return rows;
@@ -1024,7 +1071,7 @@ const resolvers = {
     },
 
     LocSig: {
-        pubs: async (locsig, args, {dataSources}) => {
+        pubs: async function (locsig, args, {dataSources}) {
             const q = dataSources.tcrd.getPubsForLocSig(locsig);
             return q.then(rows => {
                 return rows;
@@ -1035,7 +1082,7 @@ const resolvers = {
     },
 
     Expression: {
-        uberon: async (expr, args, {dataSources}) => {
+        uberon: async function (expr, args, {dataSources}) {
             if (expr.uberon_id) {
                 return {
                     uid: expr.uberon_id,
@@ -1046,7 +1093,7 @@ const resolvers = {
             }
             return null;
         },
-        pub: async (expr, args, {dataSources}) => {
+        pub: async function (expr, args, {dataSources}) {
             if (expr.pubmed_id) {
                 return dataSources.tcrd.getPub(expr.pubmed_id)
                     .then(rows => {
@@ -1061,7 +1108,7 @@ const resolvers = {
     },
 
     Ortholog: {
-        diseases: async (ortho, args, {dataSources}) => {
+        diseases: async function (ortho, args, {dataSources}) {
             const q = dataSources.tcrd
                   .getOrthologDiseasesForOrtholog(ortho, args);
             return q.then(rows => {
@@ -1073,7 +1120,7 @@ const resolvers = {
     },
 
     OrthologDisease: {
-        diseases: async (ortho, args, {dataSources}) => {
+        diseases: async function (ortho, args, {dataSources}) {
             const q = dataSources.tcrd
                   .getDiseasesForOrthologDisease(ortho, args);
             return q.then(rows => {
@@ -1085,7 +1132,7 @@ const resolvers = {
     },
 
     Facet: {
-        values: async (facet, args, _) => {
+        values: async function (facet, args, _) {
             if (args.name)
                 return filter (facet.values, {name: args.name});
             return slice (facet.values, args.skip, args.top + args.skip);
@@ -1093,16 +1140,41 @@ const resolvers = {
     },
 
     TargetResult: {
-        facets: async (result, args, _) => {
-            if (args.select) {
-                return filter (result.facets, f => 
-                               find (args.select, x => x == f.facet));
-            }
-            if (args.exclude) {
-                return filter (result.facets, f =>
-                               find (args.exclude, x => x !== f.facet));
-            }
-            return result.facets;
+        facets: async (result, args, _) => filterResultFacets (result, args),
+        targets: async function (result, args, {dataSources}) {
+            args.filter = result.filter;
+            return dataSources.tcrd.getTargets(args)
+                .then(targets => {
+                    return targets;
+                }).catch(function(error) {
+                    console.error(error);
+                });            
+        }
+    },
+
+    DiseaseResult: {
+        facets: async (result, args, _) => filterResultFacets (result, args),
+        diseases: async function (result, args, {dataSources}) {
+            args.filter = result.filter;
+            return dataSources.tcrd.getDiseases(args)
+                .then(diseases => {
+                    return diseases;
+                }).catch(function(error) {
+                    console.error(error);
+                });
+        }
+    },
+
+    PubResult: {
+        facets: async (result, args, _) => filterResultFacets (result, args),
+        pubs: async function (result, args, {dataSources}) {
+            args.term = result.filter.term;
+            return dataSources.tcrd.getPubs(args)
+                .then(pubs => {
+                    return pubs;
+                }).catch(function(error) {
+                    console.error(error);
+                });
         }
     }
 };

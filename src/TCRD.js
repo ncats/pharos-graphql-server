@@ -181,6 +181,48 @@ left join xref d on d.protein_id = c.protein_id and xtype = ?`,
         return q;        
     }
 
+    getTargetFamilyCounts (args) {
+        let q = this.db.select(this.db.raw(`
+case a.fam 
+when 'IC' then 'Ion Channel' 
+when 'TF; Epigenetic' then 'TF-Epigenetic' 
+when 'TF' then 'Transcription Factor' 
+when 'NR' then 'Nuclear Receptor' 
+else if(a.fam is null,'Other',a.fam) end as name,count(*) as value
+from target a, protein b, t2tc c`));
+
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
+     or c.protein_id in 
+          (select protein_id from alias 
+            where match(value) against(? in boolean mode)) 
+     or c.protein_id in 
+          (select protein_id from xref 
+            where match(value,xtra) against(? in boolean mode))
+     or c.protein_id in
+          (select protein_id from tdl_info
+            where match(string_value) against(? in boolean mode)))
+`, [t, t, t, t]));
+            }
+        }
+        
+        q = q.andWhere(this.db.raw(
+            `a.id = c.target_id and b.id = c.protein_id`))
+            .groupBy('name')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getTargetFamilyCounts: '+q);
+        return q;        
+    }
+    
     getTargets (args) {
         //console.log('>>> getTargets: '+JSON.stringify(args));
         let q = undefined;
@@ -213,10 +255,20 @@ and f.itype = '${DESCRIPTION_TYPE}'`));
             }
 
             let sort = true;
-            if (args.filter.term != undefined && args.filter.term !== '') {
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
                 q = q.andWhere(this.db.raw(`
-(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode) or 
-match(b.name,b.description) against(? in boolean mode))`, [args.filter.term, args.filter.term]));
+(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
+     or c.protein_id in 
+          (select protein_id from alias 
+            where match(value) against(? in boolean mode)) 
+     or c.protein_id in 
+          (select protein_id from xref 
+            where match(value,xtra) against(? in boolean mode))
+     or c.protein_id in
+          (select protein_id from tdl_info
+            where match(string_value) against(? in boolean mode)))
+`, [t, t, t, t]));
                 sort = false;
             }
 
@@ -238,6 +290,81 @@ order by novelty desc limit ? offset ?`, [args.top, args.skip]));
         return q;
     }
 
+    getDiseaseDataSourceCounts (args) {
+        let q = this.db.select(this.db.raw(`
+dtype as name, count(*) as value
+from disease`));
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+match(name, description, drug_name) against(? in boolean mode)`, [t]));
+            }
+        }
+        
+        q = q.groupBy('name')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getDiseaseDataSourceCounts: '+q);
+        return q;        
+    }
+    
+    getDiseaseTDLCounts (args) {
+        let q = this.db.select(this.db.raw(`
+a.tdl as name, count(*) as value
+from target a, protein b, t2tc c, disease d`));
+        
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+match(d.name, d.description, d.drug_name) against(? in boolean mode)`, [t]));
+            }
+        }
+        q = q.andWhere(this.db.raw(`
+a.id = c.target_id and b.id = c.protein_id
+and d.protein_id = c.protein_id`))
+            .groupBy('a.tdl')
+            .orderBy('value', 'desc');
+        console.log('>>> getDiseaseTDLCounts: '+q);
+        return q;
+    }
+
+    getDiseaseDrugCounts (args) {
+        let q = this.db.select(this.db.raw(`
+drug_name as name, count(*) as value
+from disease`));
+        
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+match(name, description, drug_name) against(? in boolean mode)`, [t]));
+            }
+        }
+        q = q.andWhere(this.db.raw(`drug_name is not null`))
+            .groupBy('name')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getDiseaseDrugCounts: '+q);
+        return q;        
+    }
+    
     getDiseases (args) {
         let q = this.db.select(this.db.raw(`
 *,id as disid, dtype as type, drug_name as drug
@@ -250,9 +377,10 @@ from disease`));
                 q = q.whereIn(f.facet, f.values);
             }
 
-            if (args.filter.term != undefined && args.filter.term !== '') {
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
                 q = q.andWhere(this.db.raw(`
-match(name, description, drug_name) against(? in boolean mode)`, [args.filter.term]));
+match(name, description, drug_name) against(? in boolean mode)`, [t]));
             }
         }
 
@@ -280,6 +408,34 @@ where match(title,abstract) against(? in boolean mode)`, [args.term]));
         }
         return this.db.select(this.db.raw(`
 count(*) as cnt from pubmed`));
+    }
+
+    getPubTDLCounts (args) {
+        let q = this.db.select(this.db.raw(`
+a.tdl as name, count(*) as value
+from target a, protein b, protein2pubmed c, pubmed d, t2tc e`));
+        
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+match(d.title, d.abstract) against(? in boolean mode)`, [t]));
+            }
+        }
+        q = q.andWhere(this.db.raw(`
+a.id = e.target_id and b.id = e.protein_id
+and c.protein_id = e.protein_id
+and c.pubmed_id = d.id`))
+            .groupBy('a.tdl')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getPubTDLCounts: '+q);
+        return q;
     }
     
     getPubs (args) {
