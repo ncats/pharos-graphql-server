@@ -222,6 +222,122 @@ from target a, protein b, t2tc c`));
         console.log('>>> getTargetFamilyCounts: '+q);
         return q;        
     }
+
+    getTargetOrthologCounts (args) {
+        let q = this.db.select(this.db.raw(`
+a.species as name, count(*) as value
+from ortholog a, protein b`));
+
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
+     or b.id in 
+          (select protein_id from alias 
+            where match(value) against(? in boolean mode)) 
+     or b.id in 
+          (select protein_id from xref 
+            where match(value,xtra) against(? in boolean mode))
+     or b.id in
+          (select protein_id from tdl_info
+            where match(string_value) against(? in boolean mode)))
+`, [t, t, t, t]));
+            }
+        }
+        
+        q = q.andWhere(this.db.raw(`a.protein_id = b.id`))
+            .groupBy('a.species')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getTargetOrthologCounts: '+q);
+        return q;        
+    }
+
+    getTargetDiseaseCounts (args, type) {
+        let q = this.db.select(this.db.raw(`
+a.name as name, count(*) as value
+from disease a, protein b`));
+
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
+     or b.id in 
+          (select protein_id from alias 
+            where match(value) against(? in boolean mode)) 
+     or b.id in 
+          (select protein_id from xref 
+            where match(value,xtra) against(? in boolean mode))
+     or b.id in
+          (select protein_id from tdl_info
+            where match(string_value) against(? in boolean mode)))
+`, [t, t, t, t]));
+            }
+        }
+        
+        q = q.andWhere(this.db.raw(`a.protein_id = b.id`));
+        if (type) {
+            q = q.andWhere(this.db.raw(`a.dtype = ?`, [type]));
+        }
+        q = q.groupBy('a.name')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getTargetDiseaseCounts: '+q);
+        return q;
+    }
+
+    getTargetIMPCPhenotypeCounts (args, species) {
+        let q = this.db.select(this.db.raw(`
+d.term_name as name, count(*) as value
+from ortholog a, protein b, nhprotein c, phenotype d`));
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
+     or b.id in 
+          (select protein_id from alias 
+            where match(value) against(? in boolean mode)) 
+     or b.id in 
+          (select protein_id from xref 
+            where match(value,xtra) against(? in boolean mode))
+     or b.id in
+          (select protein_id from tdl_info
+            where match(string_value) against(? in boolean mode)))
+`, [t, t, t, t]));
+            }
+        }
+        q = q.andWhere(this.db.raw(`
+a.geneid = c.geneid
+and a.taxid = c.taxid
+and c.id = d.nhprotein_id 
+and a.protein_id = b.id and d.ptype = ?`, ['IMPC']));
+        if (species) {
+            q = q.andWhere(this.db.raw(`a.species = ?`, species));
+        }
+        q = q.groupBy('d.term_name')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getTargetIMPCPhenotypeCounts: '+q);
+        return q;
+    }
     
     getTargets (args) {
         //console.log('>>> getTargets: '+JSON.stringify(args));
@@ -1123,6 +1239,57 @@ and c.target_id = ?`, [target.tcrdid]))
         return q;
     }
 
+    getOrthologSpeciesCounts (args) {
+        let q = this.db.select(this.db.raw(`
+species as name, count(*) as value
+from ortholog`));
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+            
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+match(symbol,name) against(? in boolean mode)`, [t]));
+            }
+        }
+        
+        q = q.groupBy('name')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getOrthologSpeciesCounts: '+q);
+        return q;
+    }
+
+    getOrthologTDLCounts (args) {
+        let q = this.db.select(this.db.raw(`
+a.tdl as name, count(*) as value
+from target a, ortholog b, t2tc c
+`));
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                q = q.whereIn(f.facet, f.values);
+            }
+            
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+match(b.symbol, b.name) against(? in boolean mode)`, [t]));
+            }
+        }
+
+        q = q.andWhere(this.db.raw(`a.id = c.target_id
+and b.protein_id = c.protein_id`))
+            .groupBy('a.tdl')
+            .orderBy('value', 'desc');
+
+        console.log('>>> getOrthologTDLCounts: '+q);
+        return q;
+    }
+    
     getOrthologCounts () {
         return this.db.select(this.db.raw(`
 species as name, count(*) as value

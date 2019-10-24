@@ -9,9 +9,9 @@
           values
         }
       }
-      facets {
+      facets (include:[".*Phenotype"]){
         facet
-        values {
+        values(name:".*decrease.*") {
           name
           value
         }

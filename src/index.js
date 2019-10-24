@@ -344,11 +344,18 @@ type PubResult {
      pubs(skip: Int=0, top: Int=10): [PubMed]
 }
 
+type OrthologResult {
+     filter: Filter
+     count: Int
+     facets (include: [String], exclude: [String]): [Facet]
+     orthologs(skip: Int=0, top: Int=10): [Ortholog]
+}
+
 type Result {
      targetResult: TargetResult
      diseaseResult: DiseaseResult
      pubResult: PubResult
-     orthologs: [Ortholog]
+     orthologResult: OrthologResult
 }
 
 type Query {
@@ -364,7 +371,7 @@ type Query {
      orthologCounts: [IntProp]
      orthologs(skip: Int=0, top: Int=10, filter: IFilter): [Ortholog]
 
-     search(skip: Int=0, top: Int=10, term: String!): Result
+     search(term: String!): Result
      xref(source: String!, value: String!): Xref
 }
 `;
@@ -374,7 +381,12 @@ function getTargetResult (args, tcrd) {
     let counts = [
         tcrd.getTargetTDLCounts(args),
         tcrd.getTargetUniProtKeywordCounts(args),
-        tcrd.getTargetFamilyCounts(args)
+        tcrd.getTargetFamilyCounts(args),
+        tcrd.getTargetDiseaseCounts(args, 'DrugCentral Indication'),
+        tcrd.getTargetDiseaseCounts(args, 'Monarch'),
+        tcrd.getTargetDiseaseCounts(args, 'UniProt Disease'),
+        tcrd.getTargetOrthologCounts(args),
+        tcrd.getTargetIMPCPhenotypeCounts(args)
     ];
     return Promise.all(counts).then(rows => {
         let facets = [];
@@ -395,6 +407,31 @@ function getTargetResult (args, tcrd) {
         facets.push({
             facet: 'Family',
             values: rows[2]
+        });
+
+        facets.push({
+            facet: 'Indication',
+            values: rows[3]
+        });
+
+        facets.push({
+            facet: 'Monarch Disease',
+            values: rows[4]
+        });
+
+        facets.push({
+            facet: 'UniProt Disease',
+            values: rows[5]
+        });
+        
+        facets.push({
+            facet: 'Ortholog',
+            values: rows[6]
+        });
+
+        facets.push({
+            facet: 'IMPC Phenotype',
+            values: rows[7]
         });
         
         return {
@@ -462,16 +499,61 @@ function getPubResult (args, tcrd) {
     });
 }
 
+function getOrthologResult (args, tcrd) {
+    let counts = [
+        tcrd.getOrthologSpeciesCounts(args),
+        tcrd.getOrthologTDLCounts(args)
+    ];
+    return Promise.all(counts).then(rows => {
+        let facets = [];
+        facets.push({
+            facet: 'Species',
+            values: rows[0]
+        });
+        let count = 0;
+        rows[0].forEach(x => {
+            count += x.value;
+        });
+
+        facets.push({
+            facet: 'Target Development Level',
+            values: rows[1]
+        });
+        
+        return {
+            filter: args.filter,
+            count: count,
+            facets: facets
+        };
+    });
+}
+
 function filterResultFacets (result, args) {
+    let facets = result.facets;
     if (args.include) {
-        return filter (result.facets, f => 
-                       find (args.include, x => x == f.facet));
+        facets = filter (facets, f => 
+                         find (args.include, x => {
+                             var matched = x == f.facet;
+                             if (!matched) {
+                                 var re = new RegExp(x);
+                                 matched = re.test(f.facet);
+                             }
+                             return matched;
+                         }));
     }
+    
     if (args.exclude) {
-        return filter (result.facets, f =>
-                       find (args.exclude, x => x !== f.facet));
+        facets = filter (facets, f =>
+                         find (args.exclude, x => {
+                             var matched = x == f.facet;
+                             if (!matched) {
+                                 var re = new RegExp(x);
+                                 matched = re.test(f.facet);
+                             }
+                             return !matched;
+                         }));
     }
-    return result.facets;
+    return facets;
 }
 
 const resolvers = {
@@ -484,21 +566,15 @@ const resolvers = {
             let t = getTargetResult(args, dataSources.tcrd);
             let d = getDiseaseResult(args, dataSources.tcrd);
             let p = getPubResult(args, dataSources.tcrd);
-            let o = dataSources.tcrd.getOrthologs(args);
+            let o = getOrthologResult(args, dataSources.tcrd);
 
             return Promise.all([t, d, p, o]).then(r => {
-                let result = {
+                return {
                     targetResult: r[0],
                     diseaseResult: r[1],
-                    pubResult: r[2]
+                    pubResult: r[2],
+                    orthologResult: r[3]
                 };
-                
-                let hits = [];
-                for (var i in r[3])
-                    hits.push(r[3][i]);
-                result.orthologs = hits;
-
-                return result;
             }).catch(function(error) {
                 console.error(error);
             });
@@ -621,8 +697,16 @@ const resolvers = {
         synonyms: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getSynonymsForTarget(target);
             return q.then(rows => {
-                if (args.name !== "")
-                    return filter (rows, {name: args.name});
+                if (args.name !== "") {
+                    return filter (rows, x => {
+                        var matched = x.name == args.name;
+                        if (!matched) {
+                            var re = new RegExp (args.name);
+                            matched = re.test(x.name);
+                        }
+                        return matched;
+                    });
+                }
                 return rows;
             }).catch(function(error) {
                 console.error(error);
@@ -1133,9 +1217,18 @@ const resolvers = {
 
     Facet: {
         values: async function (facet, args, _) {
-            if (args.name)
-                return filter (facet.values, {name: args.name});
-            return slice (facet.values, args.skip, args.top + args.skip);
+            let values = facet.values;
+            if (args.name) {
+                values = filter (values, x => {
+                    var matched = x.name == args.name;
+                    if (!matched) {
+                        var re = new RegExp(args.name);
+                        matched = re.test(x.name);
+                    }
+                    return matched;
+                });
+            }
+            return slice (values, args.skip, args.top + args.skip);
         }
     },
 
@@ -1172,6 +1265,19 @@ const resolvers = {
             return dataSources.tcrd.getPubs(args)
                 .then(pubs => {
                     return pubs;
+                }).catch(function(error) {
+                    console.error(error);
+                });
+        }
+    },
+
+    OrthologResult: {
+        facets: async (result, args, _) => filterResultFacets (result, args),
+        orthologs: async function (result, args, {dataSources}) {
+            args.term = result.filter.term;
+            return dataSources.tcrd.getOrthologs(args)
+                .then(orthologs => {
+                    return orthologs;
                 }).catch(function(error) {
                     console.error(error);
                 });
