@@ -1,0 +1,151 @@
+{
+  targets(
+    top: 5
+    skip: 0
+    filter: {
+      #term:"P50993"
+      term: "sodium"
+      #term:"SLC6A1"
+      facets: [
+        { facet: "tdl", values: ["Tclin", "Tchem"] }
+        { facet: "fam", values: ["Transporter"] }
+      ]
+      order: "!JensenLab PubMed Score"
+    }
+  ) {
+    count
+    filter {
+      facets {
+        facet
+        values
+      }
+      term
+    }
+    facets {
+      facet
+      values {
+        name
+        value
+      }
+    }
+    targets {
+      tcrdid
+      uniprot
+      sym
+      tdl
+      name
+      description
+      novelty
+      synonyms {
+        name
+        value
+      }
+      orthologCounts {
+        name
+        value
+      }
+      orthologs {
+        orid
+        species
+        name
+        source
+        diseases {
+          score
+          diseases {
+            did
+            name
+            targets {
+              sym
+              tdl
+              novelty
+            }
+          }
+        }
+      }
+      diseaseCounts {
+        name
+        value
+      }
+      diseases(skip: 40) {
+        type
+        name
+        zscore
+        conf
+        drug
+        pvalue
+        source
+        targetCounts {
+          name
+          value
+        }
+        targets(
+          filter: {
+            facets: [
+              { facet: "tdl", values: ["Tclin"] }
+              { facet: "fam", values: ["Kinase", "Transporter"] }
+            ]
+          }
+        ) {
+          sym
+          uniprot
+          name
+          tdl
+          fam
+          novelty
+        }
+      }
+      patentCounts {
+        year
+        count
+      }
+      patentScores {
+        year
+        score
+      }
+      pubmedScores {
+        year
+        score
+      }
+      ppiCounts {
+        name
+        value
+      }
+      ppis(
+        filter: {
+          facets: [
+            { facet: "type", values: ["Reactome", "BioPlex"] }
+            { facet: "tdl", values: ["Tbio"] }
+          ]
+        }
+      ) {
+        nid
+        type
+        props {
+          name
+          value
+        }
+        target {
+          tcrdid
+          uniprot
+          sym
+          tdl
+          novelty
+        }
+      }
+      pubCount
+      generifCount
+      generifs(term: "akt") {
+        text
+        pubs {
+          pmid
+          title
+          date
+        }
+      }
+      props(name: "JensenLab PubMed Score") {
+        name
+        value
+      }
+    }
+  }
+}

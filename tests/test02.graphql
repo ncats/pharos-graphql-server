@@ -1,0 +1,72 @@
+{
+  search(term: "GNB*") {
+    targetResult {
+      count
+      facets {
+        facet
+        values {
+          name
+          value
+        }
+      }
+      targets {
+        sym
+        tdl
+        name
+        description
+        novelty
+        diseases {
+          name
+          did
+        }
+      }
+    }
+    orthologResult {
+      count
+      facets {
+        facet
+        values {
+          name
+          value
+        }
+      }
+      orthologs {
+        species
+        name
+        sym
+        diseases {
+          score
+          diseases {
+            did
+            type
+            name
+          }
+        }
+      }
+    }
+    diseaseResult {
+      count
+      facets {
+        facet
+        values {
+          name
+          value
+        }
+      }
+      diseases {
+        did
+        name
+        type
+      }
+    }
+    pubResult {
+      count
+      pubs(skip: 550) {
+        pmid
+        title
+        abstract
+      }
+    }
+  }
+}
+

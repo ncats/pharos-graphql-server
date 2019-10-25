@@ -1,0 +1,20 @@
+{
+   pubs(skip: 17070, term: "wnt") {
+    count
+    facets {
+      facet
+      values {
+        name
+        value
+      }
+    }
+    pubs {
+      pmid
+      title
+      targetCounts {
+        name
+        value
+      }
+    }
+  }
+}

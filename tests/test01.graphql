@@ -2,21 +2,44 @@
 {
   # search across all entities
   search(term: "Lujan-Fryns") {
-    targets {
-      sym
-      tdl
-      description
-      novelty
+    targetResult {
+      count
+      facets {
+        facet
+        values {
+          name
+          value
+        }
+      }
+      targets {
+        sym
+        tdl
+        description
+        novelty
+      }
     }
 
-    diseases {
-      did
-      name
-      type
+    diseaseResult {
+      count
+      facets {
+        facet
+        values {
+          name
+          value
+        }
+      }
+      diseases {
+        did
+        name
+        type
+      }
     }
-    pubs {
-      pmid
-      title
+    pubResult {
+      count
+      pubs {
+        pmid
+        title
+      }
     }
   }
   # lookup a specific publication
@@ -100,11 +123,21 @@
   pubCount(term: "wnt")
   # skip the first 17,070 publications from the query of "wnt"
   pubs(skip: 17070, term: "wnt") {
-    pmid
-    title
-    targetCounts {
-      name
-      value
+    count
+    facets {
+      facet
+      values {
+        name
+        value
+      }
+    }
+    pubs {
+      pmid
+      title
+      targetCounts {
+        name
+        value
+      }
     }
   }
   # retrieve the first 5 Tclin and Tchem transporter targets

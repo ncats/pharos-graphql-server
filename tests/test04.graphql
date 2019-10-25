@@ -1,0 +1,76 @@
+{
+  pubmed(pmid: 12477932) {
+    title
+    targetCounts {
+      name
+      value
+    }
+    targets(
+      filter: {
+        facets: [{ facet: "tdl", values: ["Tchem", "Tdark"] }]
+        term: "Sulfotransferase"
+      }
+    ) {
+      tcrdid
+      sym
+      uniprot
+      description
+      tdl
+      novelty
+      orthologCounts {
+        name
+        value
+      }
+      orthologs {
+        species
+        name
+        source
+        diseases {
+          score
+          diseases {
+            did
+            name
+            type
+          }
+        }
+      }
+      locsigs {
+        locid
+        location
+        signal
+        pubs {
+          pmid
+          title
+        }
+      }
+      expressionCounts {
+        name
+        value
+      }
+      expressions(
+        filter: {
+          term: "cerebellum"
+          facets: [
+            { facet: "type", values: ["UniProt Tissue", "Consensus", "HPA"] }
+          ]
+        }
+      ) {
+        expid
+        type
+        tissue
+        value
+        conf
+        uberon {
+          uid
+          name
+          def
+        }
+        pub {
+          pmid
+          title
+          date
+        }
+      }
+    }
+  }
+}

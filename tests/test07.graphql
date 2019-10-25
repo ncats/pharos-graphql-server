@@ -1,0 +1,34 @@
+{
+  targets(filter:{
+    term:"interferon*"
+  }){
+    filter{
+      term
+      facets {
+        facet
+        values
+      }
+    }
+    count
+    facet_group1: facets(exclude:["UniProt Keyword"]) {
+      facet
+      values {
+        name
+        value
+      }
+    }
+    facet_group2: facets(include:["UniProt Keyword"]){
+      facet
+      values(skip:20) {
+        name
+        value
+      }
+    }
+    targets {
+      sym
+      tdl
+      name
+      novelty
+    }
+  }
+}

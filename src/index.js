@@ -361,15 +361,14 @@ type Result {
 type Query {
      targets(skip: Int=0, top: Int=10, filter: IFilter): TargetResult
      target(q: TargetInput): Target
-
-     diseases(skip: Int = 0, top: Int = 10, filter: IFilter): [Disease]
+     diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
 
      pubCount(term: String = ""): Int
      pubmed(pmid: Int!): PubMed
-     pubs(skip: Int=0, top: Int=10, term: String=""): [PubMed]
+     pubs(skip: Int=0, top: Int=10, term: String!): PubResult
 
      orthologCounts: [IntProp]
-     orthologs(skip: Int=0, top: Int=10, filter: IFilter): [Ortholog]
+     orthologs(skip: Int=0, top: Int=10, filter: IFilter): OrthologResult
 
      search(term: String!): Result
      xref(source: String!, value: String!): Xref
@@ -386,7 +385,11 @@ function getTargetResult (args, tcrd) {
         tcrd.getTargetDiseaseCounts(args, 'Monarch'),
         tcrd.getTargetDiseaseCounts(args, 'UniProt Disease'),
         tcrd.getTargetOrthologCounts(args),
-        tcrd.getTargetIMPCPhenotypeCounts(args)
+        tcrd.getTargetIMPCPhenotypeCounts(args),
+        tcrd.getTargetMGIPhenotypeCounts(args),
+        tcrd.getTargetGOCounts(args, 'P'),
+        tcrd.getTargetGOCounts(args, 'C'),
+        tcrd.getTargetGOCounts(args, 'F')
     ];
     return Promise.all(counts).then(rows => {
         let facets = [];
@@ -432,6 +435,26 @@ function getTargetResult (args, tcrd) {
         facets.push({
             facet: 'IMPC Phenotype',
             values: rows[7]
+        });
+
+        facets.push({
+            facet: 'JAX/MGI Phenotype',
+            values: rows[8]
+        });
+
+        facets.push({
+            facet: 'GO Process',
+            values: rows[9]
+        });
+
+        facets.push({
+            facet: 'GO Component',
+            values: rows[10]
+        });
+
+        facets.push({
+            facet: 'GO Function',
+            values: rows[11]
         });
         
         return {
@@ -619,12 +642,10 @@ const resolvers = {
         },
         
         pubs: async function (_, args, {dataSources}) {
-            const q = dataSources.tcrd.getPubs(args);
-            return q.then(rows => {
-                return rows;
-            }).catch(function(error) {
-                console.error(error);
-            });
+            args.filter = {
+                term: args.term
+            };
+            return getPubResult (args, dataSources.tcrd);
         },
         pubCount: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getPubCount(args);
@@ -645,12 +666,7 @@ const resolvers = {
             });
         },
         orthologs: async function (_, args, {dataSources}) {
-            const q = dataSources.tcrd.getOrthologs(args);
-            return q.then(rows => {
-                return rows;
-            }).catch(function(error) {
-                console.error(error);
-            });
+            return getOrthologResult (args, dataSources.tcrd);
         }
     },
     

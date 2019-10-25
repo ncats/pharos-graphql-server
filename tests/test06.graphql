@@ -1,0 +1,27 @@
+{
+  target(
+    q: {
+      #geneid:116328
+      #tcrdid:15380
+      tcrdid: 6260
+    }
+  ) {
+ tcrdid
+    name
+    ppiCounts{
+      name
+      value
+    }
+    ppis(filter:{
+      facets:[
+        {facet:"type"
+        values:["bioplex"]}
+      ]
+    }) {
+      type
+      target {
+        sym
+      }
+    }
+  }
+}

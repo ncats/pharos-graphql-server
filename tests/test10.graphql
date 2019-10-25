@@ -1,0 +1,25 @@
+{
+   targets (filter: {
+    facets:[
+      {facet:"UniProt Keyword"
+        values:["WD repeat"]
+      }
+    ]
+  }){
+    count
+    facets{
+      facet
+      values{
+        name
+        value
+      }
+    }
+    targets{
+      sym
+      uniprot
+      fam
+      name
+      novelty
+    }
+  }
+}
