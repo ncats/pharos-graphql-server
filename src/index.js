@@ -378,84 +378,46 @@ type Query {
 
 function getTargetResult (args, tcrd) {
     let counts = [
-        tcrd.getTargetTDLCounts(args),
-        tcrd.getTargetUniProtKeywordCounts(args),
-        tcrd.getTargetFamilyCounts(args),
-        tcrd.getTargetDiseaseCounts(args, 'DrugCentral Indication'),
-        tcrd.getTargetDiseaseCounts(args, 'Monarch'),
-        tcrd.getTargetDiseaseCounts(args, 'UniProt Disease'),
-        tcrd.getTargetOrthologCounts(args),
-        tcrd.getTargetIMPCPhenotypeCounts(args),
-        tcrd.getTargetMGIPhenotypeCounts(args),
-        tcrd.getTargetGOCounts(args, 'P'),
-        tcrd.getTargetGOCounts(args, 'C'),
-        tcrd.getTargetGOCounts(args, 'F')
+        {facet: 'Target Development Level',
+         values: tcrd.getTargetTDLCounts(args)},
+        {facet: 'UniProt Keyword',
+         values: tcrd.getTargetUniProtKeywordCounts(args)},
+        {facet:'Family',
+         values: tcrd.getTargetFamilyCounts(args)},
+        {facet: 'Indication',
+         values: tcrd.getTargetDiseaseCounts(args, 'DrugCentral Indication')},
+        {facet: 'Monarch Disease',
+         values: tcrd.getTargetDiseaseCounts(args, 'Monarch')},
+        {facet: 'UniProt Disease',
+         values: tcrd.getTargetDiseaseCounts(args, 'UniProt Disease')},
+        {facet: 'Ortholog',
+         values: tcrd.getTargetOrthologCounts(args)},
+        {facet: 'IMPC Phenotype',
+         values: tcrd.getTargetIMPCPhenotypeCounts(args)},
+        {facet: 'JAX/MGI Phenotype',
+         values: tcrd.getTargetMGIPhenotypeCounts(args)},
+        {facet: 'GO Process',
+         values: tcrd.getTargetGOCounts(args, 'P')},
+        {facet: 'GO Component',
+         values: tcrd.getTargetGOCounts(args, 'C')},
+        {facet: 'GO Function',
+         values: tcrd.getTargetGOCounts(args, 'F')},
+        {facet: 'GWAS',
+         values: tcrd.getTargetGWASCounts(args)}
     ];
-    return Promise.all(counts).then(rows => {
-        let facets = [];
-        facets.push({
-            facet: 'Target Development Level',
-            values: rows[0]
-        });
+    return Promise.all(counts.map(x => x.values)).then(rows => {
         let count = 0;
         rows[0].forEach(x => {
             count += x.value;
         });
         
-        facets.push({
-            facet: 'UniProt Keyword',
-            values: rows[1]
-        });
-        
-        facets.push({
-            facet: 'Family',
-            values: rows[2]
-        });
-
-        facets.push({
-            facet: 'Indication',
-            values: rows[3]
-        });
-
-        facets.push({
-            facet: 'Monarch Disease',
-            values: rows[4]
-        });
-
-        facets.push({
-            facet: 'UniProt Disease',
-            values: rows[5]
-        });
-        
-        facets.push({
-            facet: 'Ortholog',
-            values: rows[6]
-        });
-
-        facets.push({
-            facet: 'IMPC Phenotype',
-            values: rows[7]
-        });
-
-        facets.push({
-            facet: 'JAX/MGI Phenotype',
-            values: rows[8]
-        });
-
-        facets.push({
-            facet: 'GO Process',
-            values: rows[9]
-        });
-
-        facets.push({
-            facet: 'GO Component',
-            values: rows[10]
-        });
-
-        facets.push({
-            facet: 'GO Function',
-            values: rows[11]
-        });
+        let facets = [];
+        for (var i in rows) {
+            facets.push({
+                facet: counts[i].facet,
+                values: rows[i]
+            });
+        }
         
         return {
             filter: args.filter,

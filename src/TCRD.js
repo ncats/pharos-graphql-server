@@ -48,40 +48,128 @@ function parseFilter (filter) {
             'dir': dir};
 }
 
+function facetMapping (facet) {
+    switch (facet) {
+    case 'Target Development Level': return 'tdl';
+    case 'Family': return 'fam';
+    case 'Keyword': return 'UniProt Keyword';
+    case 'Indication': return 'DrugCentral Indication';
+    case 'Monarch Disease': return 'Monarch';
+    case 'IMPC Phenotype': return 'IMPC';
+    case 'JAX/MGI':
+    case 'JAX/MGI Phenotype':
+        return 'JAX/MGI Human Ortholog Phenotype';
+    }
+    return facet;
+}
+
 class TCRD extends SQLDataSource {
+    getTargetGOFacetSubquery (values, prefix) {
+        let q = this.db.select(this.db.raw(`protein_id from goa`))
+            .whereIn('go_term', values.map(x => {
+                if (!x.startsWith(prefix))
+                    return prefix+x;
+                return x;
+            }));
+        return q;
+    }
+    
     getTargetFacetSubQueries (facets) {
         let subqueries = []
         for (var i in facets) {
             let f = facets[i];
-            switch (f.facet) {
+            let fn = facetMapping (f.facet);
+            switch (fn) {
             case 'tdl':
-            case 'Target Development Level':
                 { let q = this.db.select(this.db.raw(`
 protein_id from target a, t2tc b`))
-                    .whereIn('tdl', f.values)
-                    .andWhere(this.db.raw(`a.id = b.target_id`));
+                      .whereIn('tdl', f.values)
+                      .andWhere(this.db.raw(`a.id = b.target_id`));
                   subqueries.push(q);
                 }
                 break;
 
             case 'fam':
-            case 'Family':
                 { let q = this.db.select(this.db.raw(`
-protein_id from target a, t2tc b`))
-                    .whereIn('fam', f.values)
-                    .andWhere(this.db.raw(`a.id = b.target_id`));
+protein_id from target a, t2tc b`));
+                  let fam = [];
+                  let hasNull = false;
+                  
+                  f.values.forEach(v => {
+                      switch (v) {
+                      case 'Ion Channel': v = 'IC'; break;
+                      case 'TF-Epigenetic': v= 'TF; Epigenetic'; break;
+                      case 'Transcription Factor': v = 'TF'; break;
+                      case 'Nuclear Receptor': v = 'NR'; break;
+                      case 'Other': case 'Non-IDG': v = null; break;
+                      }
+                      if (v != null)
+                          fam.push(v);
+                      else
+                          hasNull = true;
+                  });
+
+                  if (hasNull) {
+                      q = q.where(sub =>
+                                  sub.whereIn('fam', fam).orWhereNull('fam'));
+                  }
+                  else {
+                      q = q.whereIn('fam', fam);
+                  }
+
+                  q = q.andWhere(this.db.raw(`a.id = b.target_id`));
                   subqueries.push(q);
                 }
                 break;
 
             case 'UniProt Keyword':
-                { let q = this.db.select(this.db.raw(`
-protein_id from xref a, protein b`))
+                { let q = this.db.select(this.db.raw(`protein_id from xref`))
                       .whereIn('xtra', f.values)
-                      .andWhere(this.db.raw(`
-a.protein_id = b.id and xtype = ?`, [f.facet]));
+                      .andWhere(this.db.raw(`xtype = ?`, [fn]));
                   subqueries.push(q);
                 }
+                break;
+
+            case 'UniProt Disease':
+            case 'Monarch':
+            case 'DrugCentral Indication':
+                { let q = this.db.select(this.db.raw(`protein_id from disease`))
+                      .whereIn('name', f.values)
+                      .andWhere(this.db.raw(`dtype = ?`, [fn]));
+                  subqueries.push(q);
+                }
+                break;
+
+            case 'Ortholog':
+                { let q =
+                      this.db.select(this.db.raw(`protein_id from ortholog`))
+                      .whereIn('species', f.values);
+                  subqueries.push(q);
+                }
+                break;
+
+            case 'JAX/MGI Human Ortholog Phenotype':
+            case 'IMPC':
+                { let q = this.db.select(this.db.raw(`
+distinct a.protein_id from ortholog a, nhprotein c, phenotype d`))
+                      .whereIn('term_name', f.values)
+                      .andWhere(this.db.raw(`
+a.geneid = c.geneid and a.taxid = c.taxid
+and c.id = d.nhprotein_id and d.ptype = ?`, [fn]));
+                  subqueries.push(q);
+                }
+                break;
+
+            case 'GO Component':
+                subqueries.push(this.getTargetGOFacetSubquery(f.values, 'C:'));
+                break;
+
+            case 'GO Process':
+                subqueries.push(this.getTargetGOFacetSubquery(f.values, 'P:'));
+                break;
+
+            case 'GO Function':
+                subqueries.push(this.getTargetGOFacetSubquery(f.values, 'F:'));
                 break;
             }
         }
@@ -339,7 +427,7 @@ from disease a, protein b`));
 
     getTargetIMPCPhenotypeCounts (args, species) {
         let q = this.db.select(this.db.raw(`
-d.term_name as name, count(*) as value
+d.term_name as name, count(distinct b.id) as value
 from ortholog a, protein b, nhprotein c, phenotype d`));
         if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
@@ -380,7 +468,7 @@ and a.protein_id = b.id and d.ptype = ?`, ['IMPC']));
 
     getTargetMGIPhenotypeCounts (args) {
         let q = this.db.select(this.db.raw(`
-term_name as name, count(*) as value
+term_name as name, count(distinct b.id) as value
 from phenotype a, protein b`));
         if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
@@ -415,7 +503,7 @@ and a.ptype = ?`, ['JAX/MGI Human Ortholog Phenotype']))
 
     getTargetGOCounts (args, prefix) {
         let q = this.db.select(this.db.raw(`
-go_term as name, count(*) as value
+substr(go_term,3) as name, count(distinct b.id) as value
 from goa a, protein b`));
         
         if (args.filter) {
@@ -449,6 +537,41 @@ from goa a, protein b`));
             .orderBy('value', 'desc');
 
         console.log('>>> getTargetGOCounts: '+q);
+        return q;
+    }
+
+    getTargetGWASCounts (args) {
+        let q = this.db.select(this.db.raw(`
+disease_trait as name, count(*) as value
+from gwas a, protein b`));
+        if (args.filter) {
+            let sub = this.getTargetFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('b.id', subq);
+            });
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
+     or b.id in 
+          (select protein_id from alias 
+            where match(value) against(? in boolean mode)) 
+     or b.id in 
+          (select protein_id from xref 
+            where match(value,xtra) against(? in boolean mode))
+     or b.id in
+          (select protein_id from tdl_info
+            where match(string_value) against(? in boolean mode)))
+`, [t, t, t, t]));
+            }
+        }
+        
+        q = q.andWhere(this.db.raw(`a.protein_id = b.id`))
+            .groupBy('disease_trait')
+            .orderBy('value', 'desc');
+
+        console.log('>>> getTargetGWASCounts: '+q);
         return q;
     }
     
