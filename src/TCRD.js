@@ -574,6 +574,44 @@ from gwas a, protein b`));
         console.log('>>> getTargetGWASCounts: '+q);
         return q;
     }
+
+    getTargetExpressionCounts (args, type) {
+        let q = this.db.select(this.db.raw(`
+tissue as name, count(distinct protein_id) as value
+from expression a, protein b`));
+        
+        if (args.filter) {
+            let sub = this.getTargetFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('b.id', subq);
+            });
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
+     or a.protein_id in 
+          (select protein_id from alias 
+            where match(value) against(? in boolean mode)) 
+     or a.protein_id in 
+          (select protein_id from xref 
+            where match(value,xtra) against(? in boolean mode))
+     or a.protein_id in
+          (select protein_id from tdl_info
+            where match(string_value) against(? in boolean mode)))
+`, [t, t, t, t]));
+            }
+        }
+        
+        q = q.andWhere(this.db.raw(`a.protein_id = b.id`));
+        if (type)
+            q = q.andWhere(this.db.raw(`etype = ?`, [type]));
+        q = q.groupBy('tissue')
+            .orderBy('value', 'desc');
+        
+        console.log('>>> getTargetExpressionCounts: '+q);
+        return q;        
+    }
     
     getTargets (args) {
         //console.log('>>> getTargets: '+JSON.stringify(args));

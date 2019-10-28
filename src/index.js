@@ -359,8 +359,11 @@ type Result {
 }
 
 type Query {
-     targets(skip: Int=0, top: Int=10, filter: IFilter): TargetResult
+     targetFacets: [String!]
+     targets(skip: Int=0, top: Int=10, 
+             facets: [String!], filter: IFilter): TargetResult
      target(q: TargetInput): Target
+
      diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
 
      pubCount(term: String = ""): Int
@@ -370,42 +373,120 @@ type Query {
      orthologCounts: [IntProp]
      orthologs(skip: Int=0, top: Int=10, filter: IFilter): OrthologResult
 
-     search(term: String!): Result
+     search(term: String!, facets: [String!]): Result
      xref(source: String!, value: String!): Xref
 }
 `;
 
+function getTargetFacets (args, tcrd, all) {
+    const TARGET_FACETS = [
+        ['Target Development Level', tcrd.getTargetTDLCounts(args)],
+        ['tdl', tcrd.getTargetTDLCounts(args)],        
+        ['UniProt Keyword', tcrd.getTargetUniProtKeywordCounts(args)],
+        ['Keyword', tcrd.getTargetUniProtKeywordCounts(args)],
+        ['Family', tcrd.getTargetFamilyCounts(args)],
+        ['fam', tcrd.getTargetFamilyCounts(args)],
+        ['Indication',
+         tcrd.getTargetDiseaseCounts(args, 'DrugCentral Indication')],
+        ['Monarch Disease', tcrd.getTargetDiseaseCounts(args, 'Monarch')],
+        ['UniProt Disease',
+         tcrd.getTargetDiseaseCounts(args, 'UniProt Disease')],
+        ['Ortholog', tcrd.getTargetOrthologCounts(args)],
+        ['IMPC Phenotype', tcrd.getTargetIMPCPhenotypeCounts(args)],
+        ['JAX/MGI Phenotype', tcrd.getTargetMGIPhenotypeCounts(args)],
+        ['GO Process', tcrd.getTargetGOCounts(args, 'P')],
+        ['GO Component', tcrd.getTargetGOCounts(args, 'C')],
+        ['GO Function', tcrd.getTargetGOCounts(args, 'F')],
+        ['GWAS', tcrd.getTargetGWASCounts(args)],
+        ['Expression: CCLE', tcrd.getTargetExpressionCounts(args, 'CCLE')],
+        ['Expression: HCA RNA',
+         tcrd.getTargetExpressionCounts(args, 'HCA RNA')],
+        ['Expression: HPM Protein',
+         tcrd.getTargetExpressionCounts(args, 'HPM Protein')],
+        ['Expression: HPA', tcrd.getTargetExpressionCounts(args, 'HPA')],
+        ['Expression: JensenLab Experiment HPA',
+         tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment HPA')],
+        ['Expression: HPM Gene',
+         tcrd.getTargetExpressionCounts(args, 'HPM Gene')],
+        ['Expression: JensenLab Experiment HPA-RNA',
+         tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment HPA-RNA')],
+        ['Expression: JensenLab Experiment GNF',
+         tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment GNF')],
+        ['Expression: Consensus',
+         tcrd.getTargetExpressionCounts(args, 'Consensus')],
+        ['Expression: JensenLab Experiment Exon array',
+         tcrd.getTargetExpressionCounts
+         (args, 'JensenLab Experiment Exon array')],
+        ['Expression: JensenLab Experiment RNA-seq',
+         tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment RNA-seq')],
+        ['Expression: JensenLab Experiment UniGene',
+         tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment UniGene')],
+        ['Expression: UniProt Tissue',
+         tcrd.getTargetExpressionCounts(args, 'UniProt Tissue')],
+        ['Expression: JensenLab Knowledge UniProtKB-RC',
+         tcrd.getTargetExpressionCounts
+         (args, 'JensenLab Knowledge UniProtKB-RC')],
+        ['Expression: JensenLab Text Mining',
+         tcrd.getTargetExpressionCounts(args, 'JensenLab Text Mining')],
+        ['Expression: JensenLab Experiment Cardiac proteome',
+         tcrd.getTargetExpressionCounts
+         (args, 'JensenLab Experiment Cardiac proteome')],
+        ['Expression: Cell Surface Protein Atlas',
+         tcrd.getTargetExpressionCounts(args, 'Cell Surface Protein Atlas')]
+    ];
+
+    let facets = new Map (TARGET_FACETS);
+    if (args.facets) {
+        let subset = new Map ();
+        facets.forEach((value, key) => {
+            if (find (args.facets, x => {
+                var matched = x == key;
+                if (!matched) {
+                    var re = new RegExp(x);
+                    matched = re.test(key);
+                    //console.log('**** '+x+ ' ~ '+key+' => '+matched);
+                }
+                return matched;
+            })) {
+                subset.set(key, value);
+            }
+        });
+        
+        // make sure facets specified in filter are also included
+        if (args.filter && args.filter.facets) {
+            for (var i in args.filter.facets) {
+                var f = args.filter.facets[i];
+                subset.set(f.facet, facets.get(f.facet));
+            }
+        }
+        facets = subset;
+    }
+    else if (!all) {
+        const deffacets = [
+            'Target Development Level',
+            'Family',
+            'IMPC Phenotype',
+            'GWAS',
+            'Expression: Consensus',
+            'Ortholog',
+            'UniProt Disease'
+        ];
+        let subset = new Map ();
+        deffacets.forEach(x => {
+            subset.set(x, facets.get(x));
+        });
+        facets = subset;
+    }
+    
+    return facets;
+}
 
 function getTargetResult (args, tcrd) {
-    let counts = [
-        {facet: 'Target Development Level',
-         values: tcrd.getTargetTDLCounts(args)},
-        {facet: 'UniProt Keyword',
-         values: tcrd.getTargetUniProtKeywordCounts(args)},
-        {facet:'Family',
-         values: tcrd.getTargetFamilyCounts(args)},
-        {facet: 'Indication',
-         values: tcrd.getTargetDiseaseCounts(args, 'DrugCentral Indication')},
-        {facet: 'Monarch Disease',
-         values: tcrd.getTargetDiseaseCounts(args, 'Monarch')},
-        {facet: 'UniProt Disease',
-         values: tcrd.getTargetDiseaseCounts(args, 'UniProt Disease')},
-        {facet: 'Ortholog',
-         values: tcrd.getTargetOrthologCounts(args)},
-        {facet: 'IMPC Phenotype',
-         values: tcrd.getTargetIMPCPhenotypeCounts(args)},
-        {facet: 'JAX/MGI Phenotype',
-         values: tcrd.getTargetMGIPhenotypeCounts(args)},
-        {facet: 'GO Process',
-         values: tcrd.getTargetGOCounts(args, 'P')},
-        {facet: 'GO Component',
-         values: tcrd.getTargetGOCounts(args, 'C')},
-        {facet: 'GO Function',
-         values: tcrd.getTargetGOCounts(args, 'F')},
-        {facet: 'GWAS',
-         values: tcrd.getTargetGWASCounts(args)}
-    ];
-    return Promise.all(counts.map(x => x.values)).then(rows => {
+    const facets = getTargetFacets (args, tcrd);
+    const fkeys = Array.from(facets.keys());
+    
+    //console.log('!!!! targetResult: args='+JSON.stringify(args)+' keys='+fkeys);
+    return Promise.all(Array.from(facets.values())).then(rows => {
         let count = 0;
         rows[0].forEach(x => {
             count += x.value;
@@ -414,7 +495,7 @@ function getTargetResult (args, tcrd) {
         let facets = [];
         for (var i in rows) {
             facets.push({
-                facet: counts[i].facet,
+                facet: fkeys[i],
                 values: rows[i]
             });
         }
@@ -563,6 +644,10 @@ const resolvers = {
             }).catch(function(error) {
                 console.error(error);
             });
+        },
+
+        targetFacets: async function (_, args, {dataSources}) {
+            return getTargetFacets(args, dataSources.tcrd, true).keys();
         },
         
         target: async function (_, args, {dataSources}) {
