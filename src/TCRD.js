@@ -48,7 +48,7 @@ function parseFilter (filter) {
             'dir': dir};
 }
 
-function facetMapping (facet) {
+function targetFacetMapping (facet) {
     switch (facet) {
     case 'Target Development Level': return 'tdl';
     case 'Family': return 'fam';
@@ -59,6 +59,21 @@ function facetMapping (facet) {
     case 'JAX/MGI':
     case 'JAX/MGI Phenotype':
         return 'JAX/MGI Human Ortholog Phenotype';
+    default:
+        if (facet.startsWith('Expression:'))
+            return 'Expression';
+    }
+    return facet;
+}
+
+function diseaseFacetMapping (facet) {
+    switch (facet) {
+    case 'type':
+    case 'Data Source':
+        return 'dtype';
+        
+    case 'Target Development Level':
+        return 'tdl';
     }
     return facet;
 }
@@ -78,7 +93,7 @@ class TCRD extends SQLDataSource {
         let subqueries = []
         for (var i in facets) {
             let f = facets[i];
-            let fn = facetMapping (f.facet);
+            let fn = targetFacetMapping (f.facet);
             switch (fn) {
             case 'tdl':
                 { let q = this.db.select(this.db.raw(`
@@ -133,7 +148,8 @@ protein_id from target a, t2tc b`));
             case 'UniProt Disease':
             case 'Monarch':
             case 'DrugCentral Indication':
-                { let q = this.db.select(this.db.raw(`protein_id from disease`))
+                { let q = this.db.select(this.db.raw(`
+distinct protein_id from disease`))
                       .whereIn('name', f.values)
                       .andWhere(this.db.raw(`dtype = ?`, [fn]));
                   subqueries.push(q);
@@ -142,7 +158,8 @@ protein_id from target a, t2tc b`));
 
             case 'Ortholog':
                 { let q =
-                      this.db.select(this.db.raw(`protein_id from ortholog`))
+                      this.db.select(this.db.raw(`
+distinct protein_id from ortholog`))
                       .whereIn('species', f.values);
                   subqueries.push(q);
                 }
@@ -171,8 +188,45 @@ and c.id = d.nhprotein_id and d.ptype = ?`, [fn]));
             case 'GO Function':
                 subqueries.push(this.getTargetGOFacetSubquery(f.values, 'F:'));
                 break;
+
+            case 'Expression':
+                { let type = f.facet.substring(11).trim();
+                  let q = this.db.select(this.db.raw(`
+distinct protein_id from expression`))
+                      .whereIn('tissue', f.values)
+                      .andWhere(this.db.raw(`etype = ?`, type));
+                  subqueries.push(q);
+                }
+                break;
             }
         }
+        return subqueries;
+    }
+
+    getDiseaseFacetSubQueries (facets) {
+        let subqueries = [];
+        facets.forEach(f => {
+            let fn = diseaseFacetMapping (f.facet);
+            switch (fn) {
+            case 'dtype':
+                { let q = this.db.select(this.db.raw(`
+id from disease`))
+                      .whereIn('dtype', f.values);
+                  subqueries.push(q);
+                }
+                break;
+
+            case 'tdl':
+                { let q = this.db.select(this.db.raw(`
+distinct a.id from disease a, target b, t2tc c`))
+                      .whereIn('b.tdl', f.values)
+                      .andWhere(this.db.raw(`a.protein_id = c.protein_id
+and b.id = c.target_id`));
+                  subqueries.push(q);
+                }
+                break;
+            }
+        });
         return subqueries;
     }
     
@@ -228,7 +282,7 @@ end`, [args.term, args.term, args.term, args.term,
         if (args.skip)
             q = q.offset(args.skip);
         
-        console.log('>>> searchTargets: '+q);
+        //console.log('>>> searchTargets: '+q);
         return q;
     }
 
@@ -265,7 +319,7 @@ from target a, protein b, t2tc c`));
             .groupBy('name')
             .orderBy('value', 'desc');
         
-        console.log('>>> getTargetTDLCounts: '+q);
+        //console.log('>>> getTargetTDLCounts: '+q);
         return q;
     }
 
@@ -304,7 +358,7 @@ left join xref d on d.protein_id = c.protein_id and xtype = ?`,
             .groupBy('name')
             .orderBy('value', 'desc');
         
-        console.log('>>> getTargetUniProtKeywordCounts: '+q);
+        //console.log('>>> getTargetUniProtKeywordCounts: '+q);
         return q;        
     }
 
@@ -346,7 +400,7 @@ from target a, protein b, t2tc c`));
             .groupBy('name')
             .orderBy('value', 'desc');
         
-        console.log('>>> getTargetFamilyCounts: '+q);
+        //console.log('>>> getTargetFamilyCounts: '+q);
         return q;        
     }
 
@@ -382,7 +436,7 @@ from ortholog a, protein b`));
             .groupBy('a.species')
             .orderBy('value', 'desc');
         
-        console.log('>>> getTargetOrthologCounts: '+q);
+        //console.log('>>> getTargetOrthologCounts: '+q);
         return q;        
     }
 
@@ -421,14 +475,17 @@ from disease a, protein b`));
         q = q.groupBy('a.name')
             .orderBy('value', 'desc');
         
-        console.log('>>> getTargetDiseaseCounts: '+q);
+        //console.log('>>> getTargetDiseaseCounts: '+q);
         return q;
     }
 
     getTargetIMPCPhenotypeCounts (args, species) {
+        // MAKE SURE THE TABLE phenotype HAS AN INDEX ON nhprotein_id COLUMN
+        // AND NAMED THE INDEX AS phenotype_nhid_idx
         let q = this.db.select(this.db.raw(`
 d.term_name as name, count(distinct b.id) as value
-from ortholog a, protein b, nhprotein c, phenotype d`));
+from ortholog a, protein b, nhprotein c, phenotype d 
+use index(phenotype_nhid_idx)`));
         if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
@@ -462,7 +519,7 @@ and a.protein_id = b.id and d.ptype = ?`, ['IMPC']));
         q = q.groupBy('d.term_name')
             .orderBy('value', 'desc');
         
-        console.log('>>> getTargetIMPCPhenotypeCounts: '+q);
+        //console.log('>>> getTargetIMPCPhenotypeCounts: '+q);
         return q;
     }
 
@@ -497,7 +554,7 @@ and a.ptype = ?`, ['JAX/MGI Human Ortholog Phenotype']))
             .groupBy('term_name')
             .orderBy('value', 'desc');
         
-        console.log('>>> getTargetMGIPhenotypeCounts: '+q);
+        //console.log('>>> getTargetMGIPhenotypeCounts: '+q);
         return q;
     }
 
@@ -536,7 +593,7 @@ from goa a, protein b`));
         q = q.groupBy('go_term')
             .orderBy('value', 'desc');
 
-        console.log('>>> getTargetGOCounts: '+q);
+        //console.log('>>> getTargetGOCounts: '+q);
         return q;
     }
 
@@ -571,14 +628,16 @@ from gwas a, protein b`));
             .groupBy('disease_trait')
             .orderBy('value', 'desc');
 
-        console.log('>>> getTargetGWASCounts: '+q);
+        //console.log('>>> getTargetGWASCounts: '+q);
         return q;
     }
 
     getTargetExpressionCounts (args, type) {
+        // MAKE SURE THE TABLE expression HAS AN INDEX ON protein_id COLUMN
+        // AND NAMED THE INDEX AS expression_pid_idx
         let q = this.db.select(this.db.raw(`
 tissue as name, count(distinct protein_id) as value
-from expression a, protein b`));
+from expression a use index (expression_pid_idx), protein b`));
         
         if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
@@ -678,20 +737,21 @@ a.id = c.target_id and b.id = c.protein_id`));
             q = this.db.select(this.db.raw(TARGET_SQL+`
 order by novelty desc limit ? offset ?`, [args.top, args.skip]));
         }
-        console.log('>>> getTargets: '+q);
+        //console.log('>>> getTargets: '+q);
         
         return q;
     }
 
+    
     getDiseaseDataSourceCounts (args) {
         let q = this.db.select(this.db.raw(`
-dtype as name, count(*) as value
+dtype as name, count(distinct name) as value
 from disease`));
         if (args.filter) {
-            for (var i in args.filter.facets) {
-                let f = args.filter.facets[i];
-                q = q.whereIn(f.facet, f.values);
-            }
+            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('id', subq);
+            });
 
             let t = args.filter.term;
             if (t != undefined && t !== '') {
@@ -700,49 +760,49 @@ match(name, description, drug_name) against(? in boolean mode)`, [t]));
             }
         }
         
-        q = q.groupBy('name')
+        q = q.groupBy('dtype')
             .orderBy('value', 'desc');
         
-        console.log('>>> getDiseaseDataSourceCounts: '+q);
+        //console.log('>>> getDiseaseDataSourceCounts: '+q);
         return q;        
     }
     
     getDiseaseTDLCounts (args) {
         let q = this.db.select(this.db.raw(`
-a.tdl as name, count(*) as value
-from target a, protein b, t2tc c, disease d`));
+a.tdl as name, count(distinct c.name) as value
+from target a, t2tc b, disease c`));
         
         if (args.filter) {
-            for (var i in args.filter.facets) {
-                let f = args.filter.facets[i];
-                q = q.whereIn(f.facet, f.values);
-            }
-
+            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('c.id', subq);
+            });
+            
             let t = args.filter.term;
             if (t != undefined && t !== '') {
                 q = q.andWhere(this.db.raw(`
-match(d.name, d.description, d.drug_name) against(? in boolean mode)`, [t]));
+match(c.name, c.description, c.drug_name) against(? in boolean mode)`, [t]));
             }
         }
         q = q.andWhere(this.db.raw(`
-a.id = c.target_id and b.id = c.protein_id
-and d.protein_id = c.protein_id`))
+a.id = b.target_id and b.protein_id = c.protein_id`))
             .groupBy('a.tdl')
             .orderBy('value', 'desc');
+        
         console.log('>>> getDiseaseTDLCounts: '+q);
         return q;
     }
 
     getDiseaseDrugCounts (args) {
         let q = this.db.select(this.db.raw(`
-drug_name as name, count(*) as value
+drug_name as name, count(distinct name) as value
 from disease`));
         
         if (args.filter) {
-            for (var i in args.filter.facets) {
-                let f = args.filter.facets[i];
-                q = q.whereIn(f.facet, f.values);
-            }
+            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('id', subq);
+            });
 
             let t = args.filter.term;
             if (t != undefined && t !== '') {
@@ -754,21 +814,49 @@ match(name, description, drug_name) against(? in boolean mode)`, [t]));
             .groupBy('name')
             .orderBy('value', 'desc');
         
-        console.log('>>> getDiseaseDrugCounts: '+q);
+        //console.log('>>> getDiseaseDrugCounts: '+q);
         return q;        
     }
-    
+
     getDiseases (args) {
         let q = this.db.select(this.db.raw(`
-*,id as disid, dtype as type, drug_name as drug
+name,count(*) as associationCount
+from disease`));
+        
+        if (args.filter) {
+            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('id', subq);
+            });
+
+            let t = args.filter.term;
+            if (t != undefined && t != '') {
+                q = q.andWhere(this.db.raw(`
+match(name, description, drug_name) against(? in boolean mode)`, [t]));
+            }
+        }
+        
+        q = q.groupBy('name')
+            .orderBy('associationCount', 'desc');
+        if (args.top)
+            q = q.limit(args.top);
+        
+        if (args.skip)
+            q = q.offset(args.skip);
+
+        console.log('>>> getDiseases: '+q);
+        return q;
+    }
+    
+    getDiseaseAssociations (args, constraints) {
+        let q = this.db.select(this.db.raw(`
+*,id as disassid, dtype as type, drug_name as drug
 from disease`));
         if (args.filter) {
-            for (var i in args.filter.facets) {
-                let f = args.filter.facets[i];
-                if ('type' == f.facet)
-                    f.facet = 'dtype';
-                q = q.whereIn(f.facet, f.values);
-            }
+            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('id', subq);
+            });
 
             let t = args.filter.term;
             if (t != undefined && t !== '') {
@@ -777,14 +865,24 @@ match(name, description, drug_name) against(? in boolean mode)`, [t]));
             }
         }
 
+        if (constraints)
+            q = constraints(q);
+
         if (args.top)
             q = q.limit(args.top);
         
         if (args.skip)
             q = q.offset(args.skip);
         
-        //console.log('>>> getDiseases: '+q);
+        console.log('>>> getDiseaseAssociations: '+q);
         return q;
+    }
+
+    getDiseaseAssociationsForDisease (disease, args) {
+        console.log('~~~~ disease: '+JSON.stringify(disease));
+        return this.getDiseaseAssociations(args, q => {
+            return q.andWhere(this.db.raw(`name = ?`, [disease.name]));
+        });
     }
 
     getPub (pmid) {
@@ -827,7 +925,7 @@ and c.pubmed_id = d.id`))
             .groupBy('a.tdl')
             .orderBy('value', 'desc');
         
-        console.log('>>> getPubTDLCounts: '+q);
+        //console.log('>>> getPubTDLCounts: '+q);
         return q;
     }
     
@@ -1036,7 +1134,7 @@ and e.id = b2.protein_id
 and b1.target_id = ? order by c.score desc
 limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
         }
-        console.log('>>> getPPIsForTarget: '+q);
+        //console.log('>>> getPPIsForTarget: '+q);
         return q;
     }
 
@@ -1059,32 +1157,37 @@ and b.id = d.protein2_id and d.id = ?`, [neighbor.nid]));
 * from ppi where id = ?`, [neighbor.nid]));
     }
 
-    getDiseaseCountsForTarget (target) {
-        return this.db.select(this.db.raw(`
-dtype as name, count(*) as value
-from disease a, t2tc b
-where a.protein_id = b.protein_id
-and b.target_id = ?
-group by dtype 
-order by value desc`, [target.tcrdid]));
-    }
-
     getDiseasesForTarget (target, args) {
-        if (args.type.length > 0) {
-            return this.db.select(this.db.raw(`
-a.*,a.id as disid, a.dtype as type, drug_name as drug
-from disease a, t2tc b`)).whereIn('dtype', args.type)
-                .andWhere(this.db.raw(`
-a.protein_id = b.protein_id
-and b.target_id = ? order by zscore desc
-limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
+        let q = this.db.select(this.db.raw(`
+a.name,count(*) as associationCount
+from disease a, t2tc b`));
+
+        let sort = true;
+        if (args.filter) {
+            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('id', subq);
+            });
+
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+match(a.name, a.description, a.drug_name) against(? in boolean mode)`, [t]));
+                sort = false;
+            }
         }
-        return this.db.select(this.db.raw(`
-a.*,a.id as disid, a.dtype as type,drug_name as drug
-from disease a, t2tc b
-where a.protein_id = b.protein_id
-and b.target_id = ? order by zscore desc
-limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
+
+        q = q.andWhere(this.db.raw(`a.protein_id = b.protein_id
+and b.target_id = ?`, [target.tcrdid]));
+        if (sort)
+            q = q.orderBy('a.score', 'desc');
+        
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+
+        return q;
     }
 
     getOrthologDiseasesForOrtholog (ortho, args) {
@@ -1101,7 +1204,7 @@ where a.did = b.did
 and b.id = ? order by zscore desc`, [ortho.ordid]));
     }
 
-    getTargetCountsForDisease (disease) {
+    getTargetCountsForDiseaseAssociation (disease) {
         return this.db.select(this.db.raw(`
 tdl as name, count(*) as value 
 from target a, t2tc b, disease c
@@ -1110,7 +1213,7 @@ and c.name = ? group by tdl
 order by value desc`, [disease.name]));
     }
 
-    getTargetsForDisease (disease, args) {
+    getTargetsForDiseaseAssociation (disease, args) {
         const DISEASE_SQL = `
 a.*,b.*,e.score as novelty, a.id as tcrdid,
 b.description as name, g.string_value as description
@@ -1162,7 +1265,7 @@ and d.protein_id = c.protein_id
 and d.name = ? order by e.score desc
 limit ? offset ?`, [disease.name, args.top, args.skip]));
         }
-        console.log('>>> getTargetsForDisease: '+q);
+        //console.log('>>> getTargetsForDisease: '+q);
         return q;
     }
 
@@ -1277,7 +1380,7 @@ and f.pubmed_id = ?
 order by novelty desc
 limit ? offset ?`, [pubmed.pmid, args.top, args.skip]));
         }
-        console.log('>>> getTargetsForPubMed: '+q);
+        //console.log('>>> getTargetsForPubMed: '+q);
         return q;
     }
     
@@ -1351,7 +1454,7 @@ order by novelty desc
 limit ? offset ?`, [pathway.type, pathway.name, args.top, args.skip]));
         }
 
-        console.log('>>> getTargetsForPathway: '+q);
+        //console.log('>>> getTargetsForPathway: '+q);
         return q;
     }
 
@@ -1512,7 +1615,7 @@ and c.target_id = ?`, [target.tcrdid]))
             .limit(args.top)
             .offset(args.skip);
 
-        console.log('>>> getExpressionForTarget: '+q);
+        //console.log('>>> getExpressionForTarget: '+q);
         return q;
     }
 
@@ -1536,7 +1639,7 @@ match(symbol,name) against(? in boolean mode)`, [t]));
         q = q.groupBy('name')
             .orderBy('value', 'desc');
         
-        console.log('>>> getOrthologSpeciesCounts: '+q);
+        //console.log('>>> getOrthologSpeciesCounts: '+q);
         return q;
     }
 
@@ -1563,7 +1666,7 @@ and b.protein_id = c.protein_id`))
             .groupBy('a.tdl')
             .orderBy('value', 'desc');
 
-        console.log('>>> getOrthologTDLCounts: '+q);
+        //console.log('>>> getOrthologTDLCounts: '+q);
         return q;
     }
     
@@ -1596,7 +1699,7 @@ match(symbol,name) against(? in boolean mode)`, [args.filter.term]));
         if (args.skip)
             q = q.offset(args.skip);
         
-        console.log('>>> getOrthologs: '+q);
+        //console.log('>>> getOrthologs: '+q);
         return q;
     }
     
@@ -1635,7 +1738,7 @@ and b.target_id = ?`, [target.tcrdid]));
         if (args.skip)
             q = q.offset(args.skip);
         
-        console.log('>>> getOrthologCountsForTarget: '+q);
+        //console.log('>>> getOrthologCountsForTarget: '+q);
         return q;
     }
 
@@ -1699,7 +1802,7 @@ and b.target_id = ?`, [target.tcrdid]));
         if (args.skip)
             q = q.offset(args.skip);
 
-        console.log('>>> getGWASForTarget: '+q);
+        //console.log('>>> getGWASForTarget: '+q);
         return q;
     }
 }

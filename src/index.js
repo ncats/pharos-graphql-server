@@ -149,7 +149,13 @@ type OrthologDisease {
 
 """Disease entity"""
 type Disease {
-     disid: Int!
+     name: String!
+     associationCount: Int!
+     associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
+}
+
+type DiseaseAssociation {
+     disassid: Int!
      type: String!
      name: String!
      did: String
@@ -1178,8 +1184,22 @@ const resolvers = {
     },
 
     Disease: {
+        associations: async function (disease, args, {dataSources}) {
+            args.filter = disease.filter;
+            const q = dataSources.tcrd
+                  .getDiseaseAssociationsForDisease(disease, args);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        }
+    },
+    
+    DiseaseAssociation: {
         targetCounts: async function (disease, _, {dataSources}) {
-            const q = dataSources.tcrd.getTargetCountsForDisease(disease);
+            const q = dataSources.tcrd
+                  .getTargetCountsForDiseaseAssociation(disease);
             return q.then(rows => {
                 return rows;
             }).catch(function(error) {
@@ -1188,7 +1208,8 @@ const resolvers = {
         },
 
         targets: async function (disease, args, {dataSources}) {
-            const q = dataSources.tcrd.getTargetsForDisease(disease, args);
+            const q = dataSources.tcrd
+                  .getTargetsForDiseaseAssociation(disease, args);
             return q.then(rows => {
                 return rows;
             }).catch(function(error) {
@@ -1314,6 +1335,9 @@ const resolvers = {
             args.filter = result.filter;
             return dataSources.tcrd.getDiseases(args)
                 .then(diseases => {
+                    diseases.forEach(x => {
+                        x.filter = result.filter;
+                    });
                     return diseases;
                 }).catch(function(error) {
                     console.error(error);
