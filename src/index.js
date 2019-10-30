@@ -117,6 +117,7 @@ type PubMed {
      title: String
      journal: String
      date: String
+     year: Int
      abstract: String
      targetCounts: [IntProp]
      targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
@@ -295,7 +296,7 @@ type Target {
 
 """Patent information"""
      patentCounts: [TemporalCount]
-     patentScores: [TemporalScore]
+     pubTatorScores: [TemporalScore]
      pubmedScores: [TemporalScore]
 
 """Panther protein ontology"""
@@ -687,7 +688,11 @@ const resolvers = {
         pubmed: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getPub(args.pmid);
             return q.then(rows => {
-                if (rows) return rows[0];
+                if (rows) {
+                    let p = rows[0];
+                    p.year = parseInt(p.date);
+                    return p;
+                }
                 return rows;
             }).catch(function(error) {
                 console.error(error);
@@ -865,8 +870,8 @@ const resolvers = {
                 console.error(error);
             });
         },
-        patentScores: async function (target, args, {dataSources}) {
-            const q = dataSources.tcrd.getPatentScores(target, args);
+        pubTatorScores: async function (target, args, {dataSources}) {
+            const q = dataSources.tcrd.getPubTatorScores(target, args);
             return q.then(rows => {
                 return rows;
             }).catch(function(error) {

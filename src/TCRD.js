@@ -1291,7 +1291,7 @@ limit ? offset ?`, [disease.name, args.top, args.skip]));
 where a.protein_id = b.protein_id
 and b.target_id = ? order by year`, [target.tcrdid]));
     }
-    getPatentScores (target, args) {
+    getPubTatorScores (target, args) {
         return this.db.select(this.db.raw(`
 * from ptscore a, t2tc b
 where a.protein_id = b.protein_id
