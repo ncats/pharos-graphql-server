@@ -491,7 +491,7 @@ function getTargetResult (args, tcrd) {
     const facets = getTargetFacets (args, tcrd);
     const fkeys = Array.from(facets.keys());
     
-    //console.log('!!!! targetResult: args='+JSON.stringify(args)+' keys='+fkeys);
+    console.log('!!!! targetResult: args='+JSON.stringify(args)+' keys='+fkeys);
     return Promise.all(Array.from(facets.values())).then(rows => {
         let count = 0;
         rows[0].forEach(x => {
@@ -850,7 +850,8 @@ const resolvers = {
         diseases: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getDiseasesForTarget(target, args);
             return q.then(rows => {
-                return rows;
+                return filter (rows, r => r.name != null
+                               && r.associationCount > 0);
             }).catch(function(error) {
                 console.error(error);
             });

@@ -442,7 +442,7 @@ from ortholog a, protein b`));
 
     getTargetDiseaseCounts (args, type) {
         let q = this.db.select(this.db.raw(`
-a.name as name, count(*) as value
+a.name as name, count(distinct b.id) as value
 from disease a, protein b`));
 
         if (args.filter) {
@@ -480,18 +480,20 @@ from disease a, protein b`));
     }
 
     getTargetIMPCPhenotypeCounts (args, species) {
-        // MAKE SURE THE TABLE phenotype HAS AN INDEX ON nhprotein_id COLUMN
-        // AND NAMED THE INDEX AS phenotype_nhid_idx
-        let q = this.db.select(this.db.raw(`
+        let q;
+        if (args.filter) {
+            // MAKE SURE THE TABLE phenotype HAS AN INDEX ON nhprotein_id COLUMN
+            // AND NAMED THE INDEX AS phenotype_nhid_idx
+            q = this.db.select(this.db.raw(`
 d.term_name as name, count(distinct b.id) as value
 from ortholog a, protein b, nhprotein c, phenotype d 
 use index(phenotype_nhid_idx)`));
-        if (args.filter) {
+            
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
             });
-
+            
             let t = args.filter.term;
             if (t != undefined && t !== '') {
                 q = q.andWhere(this.db.raw(`
@@ -507,19 +509,24 @@ use index(phenotype_nhid_idx)`));
             where match(string_value) against(? in boolean mode)))
 `, [t, t, t, t]));
             }
-        }
-        q = q.andWhere(this.db.raw(`
+            
+            q = q.andWhere(this.db.raw(`
 a.geneid = c.geneid
 and a.taxid = c.taxid
 and c.id = d.nhprotein_id 
 and a.protein_id = b.id and d.ptype = ?`, ['IMPC']));
-        if (species) {
-            q = q.andWhere(this.db.raw(`a.species = ?`, species));
+            if (species) {
+                q = q.andWhere(this.db.raw(`a.species = ?`, species));
+            }
+            q = q.groupBy('d.term_name')
+                .orderBy('value', 'desc');
         }
-        q = q.groupBy('d.term_name')
-            .orderBy('value', 'desc');
+        else {
+            q = this.db.select(this.db.raw(`
+name, value from facet_impc`));
+        }
         
-        //console.log('>>> getTargetIMPCPhenotypeCounts: '+q);
+        console.log('>>> getTargetIMPCPhenotypeCounts: '+q);
         return q;
     }
 
@@ -633,18 +640,19 @@ from gwas a, protein b`));
     }
 
     getTargetExpressionCounts (args, type) {
-        // MAKE SURE THE TABLE expression HAS AN INDEX ON protein_id COLUMN
-        // AND NAMED THE INDEX AS expression_pid_idx
-        let q = this.db.select(this.db.raw(`
+        let q;
+        if (args.filter) {
+            // MAKE SURE THE TABLE expression HAS AN INDEX ON protein_id COLUMN
+            // AND NAMED THE INDEX AS expression_pid_idx
+            q = this.db.select(this.db.raw(`
 tissue as name, count(distinct protein_id) as value
 from expression a use index (expression_pid_idx), protein b`));
-        
-        if (args.filter) {
+            
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
             });
-
+            
             let t = args.filter.term;
             if (t != undefined && t !== '') {
                 q = q.andWhere(this.db.raw(`
@@ -660,13 +668,20 @@ from expression a use index (expression_pid_idx), protein b`));
             where match(string_value) against(? in boolean mode)))
 `, [t, t, t, t]));
             }
+            
+            q = q.andWhere(this.db.raw(`a.protein_id = b.id`));
+            if (type)
+                q = q.andWhere(this.db.raw(`etype = ?`, [type]));
+            q = q.groupBy('tissue')
+                .orderBy('value', 'desc');
         }
-        
-        q = q.andWhere(this.db.raw(`a.protein_id = b.id`));
-        if (type)
-            q = q.andWhere(this.db.raw(`etype = ?`, [type]));
-        q = q.groupBy('tissue')
-            .orderBy('value', 'desc');
+        else {
+            q = this.db.select(this.db.raw(`
+name, value from facet_expression`));
+            if (type)
+                q = q.andWhere(this.db.raw(`etype=?`, [type]));
+            q = q.orderBy('value', 'desc');
+        }
         
         console.log('>>> getTargetExpressionCounts: '+q);
         return q;        
@@ -737,7 +752,7 @@ a.id = c.target_id and b.id = c.protein_id`));
             q = this.db.select(this.db.raw(TARGET_SQL+`
 order by novelty desc limit ? offset ?`, [args.top, args.skip]));
         }
-        //console.log('>>> getTargets: '+q);
+        console.log('>>> getTargets: '+q);
         
         return q;
     }
@@ -1159,7 +1174,7 @@ and b.id = d.protein2_id and d.id = ?`, [neighbor.nid]));
 
     getDiseasesForTarget (target, args) {
         let q = this.db.select(this.db.raw(`
-a.name,count(*) as associationCount
+a.name,count(distinct a.name) as associationCount
 from disease a, t2tc b`));
 
         let sort = true;
@@ -1187,6 +1202,7 @@ and b.target_id = ?`, [target.tcrdid]));
         if (args.skip)
             q = q.offset(args.skip);
 
+        console.log('>>> getDiseasesForTarget: '+q);
         return q;
     }
 
