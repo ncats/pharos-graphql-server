@@ -510,7 +510,7 @@ function getTargetResult (args, tcrd) {
         return {
             filter: args.filter,
             count: count,
-            facets: facets,
+            facets: facets
         };
     });
 }
@@ -852,11 +852,14 @@ const resolvers = {
             });
         },
 
-        diseases: async function (target, args, {dataSources}) {
+        diseases: async function (target, args, {dataSources}, info) {
+            //console.log('##### info: '+JSON.stringify(info));
             const q = dataSources.tcrd.getDiseasesForTarget(target, args);
             return q.then(rows => {
-                return filter (rows, r => r.name != null
-                               && r.associationCount > 0);
+                let diseases = filter (rows, r => r.name != null
+                                       && r.associationCount > 0);
+                diseases.forEach(x => x.parent = target);
+                return diseases;
             }).catch(function(error) {
                 console.error(error);
             });
@@ -1099,6 +1102,9 @@ const resolvers = {
         targets: async function (pubmed, args, {dataSources}) {
             const q = dataSources.tcrd.getTargetsForPubMed(pubmed, args);
             return q.then(rows => {
+                rows.forEach(x => {
+                    x.parent = pubmed;
+                });
                 return rows;
             }).catch(function(error) {
                 console.error(error);
@@ -1191,6 +1197,7 @@ const resolvers = {
 
     Disease: {
         associations: async function (disease, args, {dataSources}) {
+            //console.log('~~~~ disease "'+disease.name+'" (parent) = '+disease.parent);
             args.filter = disease.filter;
             const q = dataSources.tcrd
                   .getDiseaseAssociationsForDisease(disease, args);
@@ -1217,6 +1224,9 @@ const resolvers = {
             const q = dataSources.tcrd
                   .getTargetsForDiseaseAssociation(disease, args);
             return q.then(rows => {
+                rows.forEach(x => {
+                    x.parent = disease;
+                });
                 return rows;
             }).catch(function(error) {
                 console.error(error);
