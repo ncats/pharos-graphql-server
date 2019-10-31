@@ -42,6 +42,7 @@ type TemporalScore {
 
 type Facet {
      facet: String!
+     count: Int
      values (skip: Int=0, top: Int=10, name: String): [IntProp]
 }
 
@@ -234,6 +235,14 @@ type GWAS {
      pub: PubMed
 }
 
+"""Harmonizome"""
+type Harmonizome {
+     type: String!
+     count: Int!
+     cdf: Float!
+     target: Target!
+}
+
 """Ligand"""
 type Ligand {
      ligid: String!
@@ -328,6 +337,9 @@ type Target {
 """GWAS catalog"""
      gwasCounts: [IntProp]
      gwas(skip: Int=0, top: Int=10, filter: IFilter): [GWAS]
+
+"""Harmonizome data"""
+     harmonizome(skip: Int=0, top: Int): [Harmonizome]
 }
 
 type TargetResult {
@@ -503,6 +515,7 @@ function getTargetResult (args, tcrd) {
         for (var i in rows) {
             facets.push({
                 facet: fkeys[i],
+                count: rows[i].length,
                 values: rows[i]
             });
         }
@@ -525,6 +538,7 @@ function getDiseaseResult (args, tcrd) {
         let facets = [];
         facets.push({
             facet: 'Data Source',
+            count: rows[0].length,
             values: rows[0]
         });
         let count = 0;
@@ -534,10 +548,12 @@ function getDiseaseResult (args, tcrd) {
         
         facets.push({
             facet: 'Drug',
+            count: rows[1].length,
             values: rows[1]
         });
         facets.push({
             facet: 'Target Development Level',
+            count: rows[2].length,
             values: rows[2]
         });
         
@@ -557,6 +573,7 @@ function getPubResult (args, tcrd) {
         let facets = [];
         facets.push({
             facet: 'Target Development Level',
+            count: rows[0].length,
             values: rows[0]
         });
         
@@ -581,6 +598,7 @@ function getOrthologResult (args, tcrd) {
         let facets = [];
         facets.push({
             facet: 'Species',
+            count: rows[0].length,
             values: rows[0]
         });
         let count = 0;
@@ -590,6 +608,7 @@ function getOrthologResult (args, tcrd) {
 
         facets.push({
             facet: 'Target Development Level',
+            count: rows[1].length,
             values: rows[1]
         });
         
@@ -1082,6 +1101,18 @@ const resolvers = {
                     }
                 });
                 
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+
+        harmonizome: async function (target, args, {dataSources}) {
+            const q = dataSources.tcrd.getHarmonizomeForTarget(target, args);
+            return q.then(rows => {
+                rows.forEach(x => {
+                    x.target = target;
+                });
                 return rows;
             }).catch(function(error) {
                 console.error(error);

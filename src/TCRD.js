@@ -1228,6 +1228,19 @@ and b.target_id = ?`, [target.tcrdid]))
         return q;
     }
 
+    getHarmonizomeForTarget (target, args) {
+        let q = this.db.select(this.db.raw(`
+type, attr_count as count, attr_cdf as cdf
+from hgram_cdf a, t2tc b
+where a.protein_id = b.protein_id
+and b.target_id = ?`, [target.tcrdid]));
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+        return q;
+    }
+
     getOrthologDiseasesForOrtholog (ortho, args) {
         return this.db.select(this.db.raw(`
 *,id as ordid from ortholog_disease 
