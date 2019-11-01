@@ -1230,7 +1230,7 @@ and b.target_id = ?`, [target.tcrdid]))
 
     getHarmonizomeForTarget (target, args) {
         let q = this.db.select(this.db.raw(`
-type, attr_count as count, attr_cdf as cdf
+type as _type, attr_count as count, attr_cdf as cdf
 from hgram_cdf a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ?`, [target.tcrdid]));
@@ -1238,6 +1238,41 @@ and b.target_id = ?`, [target.tcrdid]));
             q = q.limit(args.top);
         if (args.skip)
             q = q.offset(args.skip);
+        return q;
+    }
+
+    getGeneAttributeTypeForHarmonizome (hz, args) {
+        let q = this.db.select(this.db.raw(`
+*, resource_group as category, 
+attribute_group as 'group', attribute_type as type
+from gene_attribute_type
+where name = ?`, [hz._type]));
+        return q;
+    }
+
+    getPubsForGeneAttributeType (gat, args) {
+        let q;
+        if (gat.pubmed_ids) {
+            q = this.db.select(this.db.raw(`
+id as pmid, title, journal, date, abstract
+from pubmed`)).whereIn('id', gat.pubmed_ids.split('|'));
+        }
+        else {
+            q = this.db.select(this.db.raw(`
+pubmed_ids from gene_attribute_type where id = ?`, [gat.id]))
+                .then(rows => {
+                    let pubs = [];
+                    for (var i in rows) {
+                        let toks = rows[i].pubmed_ids.split('|');
+                        for (var j in toks) {
+                            pubs.push(parseInt(toks[j]));
+                        }
+                    }
+                    return this.db.select(this.db.raw(`
+id as pmid, title, journal, date, abstract
+from pubmed`)).whereIn('id', pubs);
+                });
+        }
         return q;
     }
 

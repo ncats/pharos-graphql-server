@@ -237,10 +237,23 @@ type GWAS {
 
 """Harmonizome"""
 type Harmonizome {
-     type: String!
+     gat: GeneAttributeType!
      count: Int!
      cdf: Float!
      target: Target!
+}
+
+"""Gene attribute type associated with harmonizome entry"""
+type GeneAttributeType {
+     name: String!
+     association: String
+     description: String
+"""resource_group in table gene_attribute_type"""
+     category: String
+     group: String
+     type: String
+     pubs: [PubMed]
+     url: String
 }
 
 """Ligand"""
@@ -1415,6 +1428,30 @@ const resolvers = {
                 }).catch(function(error) {
                     console.error(error);
                 });
+        }
+    },
+
+    Harmonizome: {
+        gat: async function (hz, args, {dataSources}) {
+            let q = dataSources.tcrd
+                .getGeneAttributeTypeForHarmonizome(hz, args);
+            return q.then(rows => {
+                if (rows) return rows[0];
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        }
+    },
+
+    GeneAttributeType: {
+        pubs: async function (gat, args, {dataSources}) {
+            let q = dataSources.tcrd.getPubsForGeneAttributeType(gat, args);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
         }
     }
 };
