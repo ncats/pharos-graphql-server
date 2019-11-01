@@ -237,14 +237,23 @@ type GWAS {
 
 """Harmonizome"""
 type Harmonizome {
+     target: Target!
+     count: Int
+     attrs: [GeneAttribute]
+"""which must be one of 'type', 'group', or 'category'"""
+     summary (which: String="type"): [FloatProp]
+}
+
+type GeneAttribute {
+     gaid: Int!
      gat: GeneAttributeType!
      count: Int!
      cdf: Float!
-     target: Target!
 }
 
 """Gene attribute type associated with harmonizome entry"""
 type GeneAttributeType {
+     gatid: Int!
      name: String!
      association: String
      description: String
@@ -352,7 +361,7 @@ type Target {
      gwas(skip: Int=0, top: Int=10, filter: IFilter): [GWAS]
 
 """Harmonizome data"""
-     harmonizome(skip: Int=0, top: Int): [Harmonizome]
+     harmonizome: Harmonizome
 }
 
 type TargetResult {
@@ -1121,15 +1130,7 @@ const resolvers = {
         },
 
         harmonizome: async function (target, args, {dataSources}) {
-            const q = dataSources.tcrd.getHarmonizomeForTarget(target, args);
-            return q.then(rows => {
-                rows.forEach(x => {
-                    x.target = target;
-                });
-                return rows;
-            }).catch(function(error) {
-                console.error(error);
-            });
+            return {target: target};
         }
     },
 
@@ -1432,9 +1433,42 @@ const resolvers = {
     },
 
     Harmonizome: {
-        gat: async function (hz, args, {dataSources}) {
-            let q = dataSources.tcrd
-                .getGeneAttributeTypeForHarmonizome(hz, args);
+        count: async function (hz, args, {dataSources}) {
+            const q = dataSources.tcrd
+                  .getGeneAttributeCountForTarget(hz.target, args);
+            return q.then(rows => {
+                if (rows) return rows[0].cnt;
+                return 0;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+        
+        attrs: async function (hz, args, {dataSources}) {
+            const q = dataSources.tcrd
+                  .getGeneAttributesForTarget(hz.target, args);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        },
+        
+        summary: async function (hz, args, {dataSources}) {
+            const q = dataSources.tcrd
+                  .getGeneAttributeSummaryForTarget(hz.target, args);
+            return q.then(rows => {
+                return rows;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        }
+    },
+
+    GeneAttribute: {
+        gat: async function (ga, args, {dataSources}) {
+            const q = dataSources.tcrd
+                  .getGeneAttributeTypeForGeneAttribute(ga, args);
             return q.then(rows => {
                 if (rows) return rows[0];
                 return rows;

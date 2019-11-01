@@ -1228,25 +1228,52 @@ and b.target_id = ?`, [target.tcrdid]))
         return q;
     }
 
-    getHarmonizomeForTarget (target, args) {
+    getGeneAttributesForTarget (target, args) {
         let q = this.db.select(this.db.raw(`
-type as _type, attr_count as count, attr_cdf as cdf
+id as gaid, type as _type, attr_count as count, attr_cdf as cdf
 from hgram_cdf a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ?`, [target.tcrdid]));
-        if (args.top)
-            q = q.limit(args.top);
-        if (args.skip)
-            q = q.offset(args.skip);
         return q;
     }
 
-    getGeneAttributeTypeForHarmonizome (hz, args) {
+    getGeneAttributeTypeForGeneAttribute (ga, args) {
         let q = this.db.select(this.db.raw(`
-*, resource_group as category, 
+*, id as gatid, resource_group as category, 
 attribute_group as 'group', attribute_type as type
 from gene_attribute_type
-where name = ?`, [hz._type]));
+where name = ?`, [ga._type]));
+        return q;
+    }
+
+    getGeneAttributeCountForTarget (target, args) {
+        let q = this.db.select(this.db.raw(`count(*) as cnt
+from hgram_cdf a, t2tc b
+where a.protein_id = b.protein_id
+and b.target_id = ?`, [target.tcrdid]));
+        return q;
+    }
+    
+    getGeneAttributeSummaryForTarget (target, args) {
+        let p;
+        switch (args.which) {
+        case 'group':
+            p = 'attribute_group';
+            break;
+        case 'category':
+            p = 'resource_group';
+            break;
+        default:
+            p = 'attribute_type';
+        }
+        
+        let q = this.db.select(this.db.raw(p+` as name,
+avg(a.attr_cdf) as value
+from hgram_cdf a, gene_attribute_type b, t2tc c
+where a.protein_id = c.protein_id
+and c.target_id = ?
+and a.type = b.name
+group by `+p+` order by value desc`, [target.tcrdid]));
         return q;
     }
 
