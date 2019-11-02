@@ -1273,8 +1273,21 @@ from hgram_cdf a, gene_attribute_type b, t2tc c
 where a.protein_id = c.protein_id
 and c.target_id = ?
 and a.type = b.name
-group by `+p+` order by value desc`, [target.tcrdid]));
+group by `+p+` order by name`, [target.tcrdid]));
         return q;
+    }
+
+    getGeneAttributeTypes () {
+        return this.db.select(this.db.raw(`distinct attribute_type 
+from gene_attribute_type order by attribute_type`));
+    }
+    getGeneAttributeGroups () {
+        return this.db.select(this.db.raw(`distinct attribute_group 
+from gene_attribute_type order by attribute_group`));
+    }
+    getGeneAttributeCategories () {
+        return this.db.select(this.db.raw(`distinct resource_group 
+from gene_attribute_type order by resource_group`));
     }
 
     getPubsForGeneAttributeType (gat, args) {

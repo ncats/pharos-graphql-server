@@ -1458,7 +1458,35 @@ const resolvers = {
             const q = dataSources.tcrd
                   .getGeneAttributeSummaryForTarget(hz.target, args);
             return q.then(rows => {
-                return rows;
+                let map;
+                switch (args.which) {
+                case 'group':
+                    map = dataSources.gaGroups;
+                    break;
+                case 'category':
+                    map = dataSources.gaCategories;
+                    break;
+                default:
+                    map = dataSources.gaTypes;
+                }
+
+                let values = new Map ();
+                rows.forEach(r => {
+                    values.set(r.name, r.value);
+                });
+
+                let stats = [];
+                map.forEach(r => {
+                    let v = values.get(r);
+                    if (v) {
+                    }
+                    else {
+                        v = 0;
+                    }
+                    stats.push({name: r, value: v});
+                });
+
+                return stats;
             }).catch(function(error) {
                 console.error(error);
             });
@@ -1516,12 +1544,50 @@ const tcrdConfig = {
 };
 
 const tcrd = new TCRD(tcrdConfig);
+const gaTypes = [];
+const gaGroups = [];
+const gaCategories = [];
+
+tcrd.getGeneAttributeTypes()
+      .then(rows => {
+          console.log('~~~~~~ Gene Attribute Types');
+          rows.forEach(r => {
+              console.log('...'+r.attribute_type);
+              gaTypes.push(r.attribute_type);
+          });
+      }).catch(function(error) {
+          console.error(error);
+      });
+tcrd.getGeneAttributeGroups()
+      .then(rows => {
+          console.log('~~~~~~ Gene Attribute Groups');
+          rows.forEach(r => {
+              console.log('...'+r.attribute_group);
+              gaGroups.push(r.attribute_group);
+          });
+      }).catch(function(error) {
+          console.error(error);
+      });
+tcrd.getGeneAttributeCategories()
+      .then(rows => {
+          console.log('~~~~~~ Gene Attribute Categories');
+          rows.forEach(r => {
+              console.log('...'+r.resource_group);
+              gaCategories.push(r.resource_group);
+          });
+      }).catch(function(error) {
+          console.error(error);
+      });
+
 const server = new ApolloServer({
     schema: schema,
     introspection: true,
     playground: true,
     dataSources: () => ({
-        tcrd: tcrd
+        tcrd: tcrd,
+        gaTypes: gaTypes,
+        gaGroups: gaGroups,
+        gaCategories: gaCategories
     })
 });
 
