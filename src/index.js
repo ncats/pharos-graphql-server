@@ -226,6 +226,20 @@ type Expression {
      pub: PubMed
 }
 
+type GO {
+     goid: String!
+"""type: 'C' - component, 'F' - function, 'P' - process"""
+     type: String!
+     term: String!
+     evidence: String
+     goeco: String
+}
+
+type MIM {
+     mimid: Int!
+     term: String!
+}
+
 """GWAS catalog data"""
 type GWAS {
      gwasid: Int!
@@ -359,6 +373,14 @@ type Target {
 """GWAS catalog"""
      gwasCounts: [IntProp]
      gwas(skip: Int=0, top: Int=10, filter: IFilter): [GWAS]
+
+"""GO terms"""
+     goCounts: [IntProp]
+     go(skip: Int=0, top: Int=20, filter: IFilter): [GO]
+
+"""MIM terms"""
+     mimCount: Int
+     mim: [MIM]
 
 """Harmonizome data"""
      harmonizome: Harmonizome
@@ -1127,6 +1149,41 @@ const resolvers = {
             }).catch(function(error) {
                 console.error(error);
             });
+        },
+
+        goCounts: async function (target, _, {dataSources}) {
+            return dataSources.tcrd.getGOCountsForTarget(target)
+                .then(rows => {
+                    return rows;
+                }).catch(function(error) {
+                    console.error(error);
+                });
+        },
+        go: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.getGOTermsForTarget(target, args)
+                .then(rows => {
+                    return rows;
+                }).catch(function(error){
+                    console.error(error);
+                });
+        },
+
+        mimCount: async function (target, _, {dataSources}) {
+            const q= dataSources.tcrd.getMIMCountForTarget(target);
+            return q.then(rows => {
+                if (rows) return rows[0].cnt;
+                return 0;
+            }).catch(function(error){
+                console.error(error);
+            });
+        },
+        mim: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.getMIMForTarget(target, args)
+                .then(rows => {
+                    return rows;
+                }).catch(function(error) {
+                    console.error(error);
+                });
         },
 
         harmonizome: async function (target, args, {dataSources}) {

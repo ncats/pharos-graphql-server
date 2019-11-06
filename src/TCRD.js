@@ -438,7 +438,7 @@ from ortholog a, protein b`));
             .groupBy('a.species')
             .orderBy('value', 'desc');
         
-        //console.log('>>> getTargetOrthologCounts: '+q);
+        console.log('>>> getTargetOrthologCounts: '+q);
         return q;        
     }
 
@@ -525,7 +525,7 @@ and a.protein_id = b.id and d.ptype = ?`, ['IMPC']));
         }
         else {
             q = this.db.select(this.db.raw(`
-name, value from facet_impc`));
+name, value from ncats_facet_impc`));
         }
         
         console.log('>>> getTargetIMPCPhenotypeCounts: '+q);
@@ -606,6 +606,64 @@ from goa a, protein b`));
         return q;
     }
 
+    getGOCountsForTarget (target) {
+        return this.db.select(this.db.raw(`
+substr(go_term,1,1) as name, count(*) as value 
+from goa a, t2tc b where a.protein_id = b.protein_id
+and b.target_id = ?
+group by substr(go_term, 1, 1)
+order by value desc`, [target.tcrdid]));
+    }
+
+    getGOTermsForTarget (target, args) {
+        let q = this.db.select(this.db.raw(`
+*,go_id as goid, substr(go_term,1,1) as type, substring(go_term,3) as term
+from goa a, t2tc b
+`));
+        if (args.filter) {
+            let sub = this.getTargetFacetSubQueries(args.filter.facets);
+            sub.forEach(subq => {
+                q = q.whereIn('b.protein_id', subq);
+            });
+            
+            let t = args.filter.term;
+            if (t != undefined && t !== '') {
+                q = q.andWhere(this.db.raw(`
+match(a.go_term) against(? in boolean mode)`, [t]));
+            }
+        }
+
+        q = q.andWhere(this.db.raw(`a.protein_id = b.protein_id
+and b.target_id = ?`, [target.tcrdid]))
+            .groupBy('a.go_term');
+        
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+
+        console.log('>>> getGOTermsForTarget: '+q);
+        return q;
+    }
+
+    getMIMCountForTarget (target) {
+        return this.db.select(this.db.raw(`count(*) as cnt
+from xref a, t2tc b
+where a.protein_id = b.protein_id
+and a.xtype = ?
+and b.target_id = ?`, ['MIM', target.tcrdid]));
+    }
+
+    getMIMForTarget (target, args) {
+        return this.db.select(this.db.raw(`
+a.mim as mimid, a.title as term
+from omim a, xref b, t2tc c
+where a.mim = b.value 
+and b.protein_id = c.protein_id
+and b.xtype = ?
+and c.target_id = ?`, ['MIM', target.tcrdid]));
+    }
+
     getTargetGWASCounts (args) {
         let q = this.db.select(this.db.raw(`
 disease_trait as name, count(*) as value
@@ -644,11 +702,12 @@ from gwas a, protein b`));
     getTargetExpressionCounts (args, type) {
         let q;
         if (args.filter) {
-            // MAKE SURE THE TABLE expression HAS AN INDEX ON protein_id COLUMN
-            // AND NAMED THE INDEX AS expression_pid_idx
+            // MAKE SURE THE TABLE expression HAS AN INDEX ON COLUMNS
+            // (protein_id, etype, and tissue)
+            // AND NAMED THE INDEX AS expression_facet_idx
             q = this.db.select(this.db.raw(`
 tissue as name, count(distinct protein_id) as value
-from expression a use index (expression_pid_idx), protein b`));
+from expression a use index (expression_facet_idx), protein b`));
             
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
@@ -679,7 +738,7 @@ from expression a use index (expression_pid_idx), protein b`));
         }
         else {
             q = this.db.select(this.db.raw(`
-name, value from facet_expression`));
+name, value from ncats_facet_expression`));
             if (type)
                 q = q.andWhere(this.db.raw(`etype=?`, [type]));
             q = q.orderBy('value', 'desc');
