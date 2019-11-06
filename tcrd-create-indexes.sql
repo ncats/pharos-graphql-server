@@ -1,6 +1,6 @@
 alter table `target`
 add index target_tdl_idx(tdl)
-add index target_fam_idx(fam)
+,add index target_fam_idx(fam)
 ;
 
 alter table `alias`
@@ -15,6 +15,15 @@ alter table expression
 add index expression_facet_idx(protein_id,etype,tissue(255))
 ;
 
+alter table drug_activity
+add lychi_h4 varchar(15)
+,add index drug_lychi_idx(lychi_h4)
+;
+
+alter table cmpd_activity
+add lychi_h4 varchar(15)
+,add index cmpd_lychi_idx(lychi_h4)
+;
 
 create table ncats_facet_impc as
 select  d.term_name as name, count(distinct b.id) as value

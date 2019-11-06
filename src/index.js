@@ -281,12 +281,11 @@ type GeneAttributeType {
 
 """Ligand"""
 type Ligand {
-     ligid: String!
+     lychi: String
      name: String
      isdrug: Boolean
      synonyms: [Prop]
      smiles: String
-     props: [Prop]
      activities(skip: Int=0, top: Int=10, filter: IFilter): [LigandActivity]
 }
 
@@ -294,8 +293,12 @@ type LigandActivity {
      actid: Int!
      type: String
      value: Float
-     ligand: Ligand
-     pub: PubMed
+"""mode of action; e.g., INHIBITOR"""
+     moa: String
+     reference: String
+     ligand: Ligand!
+     target: Target!
+     pubs: [PubMed]
 }
 
 """Target entity"""
@@ -384,6 +387,10 @@ type Target {
 
 """Harmonizome data"""
      harmonizome: Harmonizome
+
+"""Ligand activity data"""
+     ligandCounts: [IntProp]
+     ligands(skip: Int=0, top: Int=20, filter: IFilter): [Ligand]
 }
 
 type TargetResult {
@@ -1188,6 +1195,39 @@ const resolvers = {
 
         harmonizome: async function (target, args, {dataSources}) {
             return {target: target};
+        },
+
+        ligandCounts: async function (target, args, {dataSources}) {
+            return Promise.all([
+                dataSources.tcrd.getLigandCountForTarget(target),
+                dataSources.tcrd.getDrugCountForTarget(target)
+            ]).then(rows => {
+                let ligcnt = 0;
+                rows[0].forEach(r => {
+                    ligcnt += r.cnt;
+                });
+                let drugcnt = 0;
+                rows[1].forEach(r => {
+                    drugcnt += r.cnt;
+                });
+                return [{
+                    name: "ligand",
+                    value: ligcnt
+                },{
+                    name: "drug",
+                    value: drugcnt
+                }];
+            }).catch(function(error){
+                console.error(error);
+            });
+        },
+        ligands: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.getLigandsForTarget(target, args)
+                .then(rows => {
+                    return rows;
+                }).catch(function(error) {
+                    console.error(error);
+                });
         }
     },
 
@@ -1469,6 +1509,9 @@ const resolvers = {
             args.term = result.filter.term;
             return dataSources.tcrd.getPubs(args)
                 .then(pubs => {
+                    pubs.forEach(p => {
+                        p.year = parseInt(p.date);
+                    });
                     return pubs;
                 }).catch(function(error) {
                     console.error(error);

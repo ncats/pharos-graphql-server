@@ -1993,6 +1993,54 @@ and b.target_id = ?`, [target.tcrdid]));
         //console.log('>>> getGWASForTarget: '+q);
         return q;
     }
+
+    getLigandCountForTarget (target) {
+        // don't count drug
+        return this.db.select(this.db.raw(`
+count(distinct lychi_h4) as cnt 
+from cmpd_activity a
+where target_id = ?
+and lychi_h4 is not null
+and not exists (select 1 from drug_activity b 
+where a.lychi_h4 = b.lychi_h4 
+and a.target_id = b.target_id)
+union select count(distinct cmpd_id_in_src) as cnt
+from cmpd_activity where target_id = ?
+and lychi_h4 is null`, [target.tcrdid, target.tcrdid]));
+    }
+
+    getDrugCountForTarget (target) {
+        return this.db.select(this.db.raw(`
+count(distinct lychi_h4) as cnt
+from drug_activity
+where target_id = ?
+and lychi_h4 is not null union
+select count(distinct drug) as cnt
+from drug_activity
+where target_id = ?
+and lychi_h4 is null`, [target.tcrdid, target.tcrdid]));
+    }
+
+    getLigandsForTarget (target, args) {
+        let q = this.db.select(this.db.raw(`
+distinct lychi_h4 as lychi, cmpd_id_in_src as name 
+from cmpd_activity
+where lychi_h4 is not null
+and target_id = ?
+union select distinct lychi_h4 as lychi, cmpd_id_in_src as name
+from cmpd_activity
+where lychi_h4 is null
+and target_id = ?`, [target.tcrdid, target.tcrdid]));
+        if (args.filter) {
+        }
+        
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+        
+        return q;
+    }
 }
 
 module.exports = TCRD;
