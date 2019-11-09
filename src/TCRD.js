@@ -805,6 +805,16 @@ a.id = c.target_id and b.id = c.protein_id`));
                     prefix = 'd.';
                 q = q.orderBy(prefix+filter.sortColumn, filter.dir);
             }
+            else {
+                q = q.orderByRaw(this.db.raw(`
+case 
+  when b.uniprot=? then 1
+  when b.sym=? then 2
+  when b.stringid=? then 3
+  when match(b.name,b.description) against(? in boolean mode) then 4
+  else 1000
+end`, [t,t,t,t]));
+            }
 
             q = q.limit(args.top)
                 .offset(args.skip);
@@ -2023,23 +2033,33 @@ and lychi_h4 is null`, [target.tcrdid, target.tcrdid]));
 
     getLigandsForTarget (target, args) {
         let q = this.db.select(this.db.raw(`
-distinct lychi_h4 as lychi, cmpd_id_in_src as name 
+distinct lychi_h4 as label
 from cmpd_activity
 where lychi_h4 is not null
 and target_id = ?
-union select distinct lychi_h4 as lychi, cmpd_id_in_src as name
+union select distinct cmpd_id_in_src as label
 from cmpd_activity
 where lychi_h4 is null
 and target_id = ?`, [target.tcrdid, target.tcrdid]));
-        if (args.filter) {
-        }
-        
-        if (args.top)
-            q = q.limit(args.top);
-        if (args.skip)
-            q = q.offset(args.skip);
-        
+        console.log('~~~~~~~~~ getLigandsForTarget: '+q);
         return q;
+    }
+    
+    getDrugsForTarget (target, args) {
+        let q = this.db.select(this.db.raw(`
+distinct lychi_h4 as label
+from drug_activity
+where lychi_h4 is not null
+and target_id = ?
+union select distinct drug as label
+from drug_activity
+where lychi_h4 is null
+and target_id = ?`, [target.tcrdid, target.tcrdid]));
+        console.log('~~~~~~~~~ getDrugsForTarget: '+q);        
+        return q;
+    }
+
+    getDrugs (labels) {
     }
 }
 

@@ -4,8 +4,12 @@ const express = require('express');
 const { ApolloServer } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
 const { find, filter, slice } = require('lodash');
-
 const TCRD = require('./TCRD');
+
+
+const DBHOST =
+      'tcrd-cluster.cluster-custom-ceyknq0yekb3.us-east-1.rds.amazonaws.com';
+const DBNAME = 'tcrd610';
 
 const typeDefs = `
 
@@ -1222,12 +1226,22 @@ const resolvers = {
             });
         },
         ligands: async function (target, args, {dataSources}) {
-            return dataSources.tcrd.getLigandsForTarget(target, args)
-                .then(rows => {
-                    return rows;
-                }).catch(function(error) {
-                    console.error(error);
+            Promise.all([
+                dataSources.tcrd.getLigandsForTarget(target, args),
+                dataSources.tcrd.getDrugsForTarget(target, args)
+            ]).then(rows => {
+                let ligands = [];
+                rows.forEach(r => {
+                    r.forEach(rr => {
+                        ligands.push(rr.label);
+                    });
                 });
+                return slice (ligands, args.skip, args.top + args.skip);
+            }).then(ligands => {
+                
+            }).catch(function(error) {
+                console.error(error);
+            });
         }
     },
 
@@ -1626,10 +1640,10 @@ const schema = makeExecutableSchema({
 const tcrdConfig = {
     client: 'mysql',
     connection: {
-        host: 'tcrd.kmc.io',
+        host: DBHOST,
         user: 'tcrd',
         password: '',
-        database: 'tcrd600'
+        database: DBNAME
     },
     pool: {
         min: 2,
