@@ -1,0 +1,19 @@
+{
+  orthologCounts{
+    name
+    value
+  }
+  orthologs{
+    facets{
+      facet
+      values {
+        name
+        value
+      }
+    }
+    orthologs(skip:3){
+      species
+      name
+    }
+  }
+}

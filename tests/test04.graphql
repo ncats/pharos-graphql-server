@@ -28,9 +28,12 @@
         diseases {
           score
           diseases {
-            did
             name
-            type
+            associationCount
+            associations{
+              did
+              type
+            }
           }
         }
       }

@@ -1,15 +1,18 @@
+//
+// Edit as appropriate
+//
+const DBHOST = 'tcrd.ncats.io';
+const DBNAME = 'tcrd610';
 
+////////////////////////////////////////////////////////////////////////////////
+// DON'T EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING!
+////////////////////////////////////////////////////////////////////////////////
 const express = require('express');
-//const { ApolloServer, gql } = require('apollo-server');
 const { ApolloServer } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
 const { find, filter, slice } = require('lodash');
 const TCRD = require('./TCRD');
 
-
-const DBHOST =
-      'tcrd-cluster.cluster-custom-ceyknq0yekb3.us-east-1.rds.amazonaws.com';
-const DBNAME = 'tcrd610';
 
 const typeDefs = `
 
@@ -1520,7 +1523,8 @@ const resolvers = {
     PubResult: {
         facets: async (result, args, _) => filterResultFacets (result, args),
         pubs: async function (result, args, {dataSources}) {
-            args.term = result.filter.term;
+            if (result.filter)
+                args.term = result.filter.term;
             return dataSources.tcrd.getPubs(args)
                 .then(pubs => {
                     pubs.forEach(p => {
@@ -1536,7 +1540,8 @@ const resolvers = {
     OrthologResult: {
         facets: async (result, args, _) => filterResultFacets (result, args),
         orthologs: async function (result, args, {dataSources}) {
-            args.term = result.filter.term;
+            if (result.filter)
+                args.term = result.filter.term;
             return dataSources.tcrd.getOrthologs(args)
                 .then(orthologs => {
                     return orthologs;

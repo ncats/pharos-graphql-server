@@ -12,6 +12,7 @@ add fulltext index uberon_text_idx(`name`,`def`,`comment`)
 
 alter table `tinx_novelty`
 add index tinx_novelty_idx2(`score`)
+,add index tinx_novelty_idx3(protein_id,score desc)
 ;
 
 alter table `tinx_disease`
@@ -143,7 +144,7 @@ add lychi_h4 varchar(15)
 ,add index drug_lychi_idx(lychi_h4)
 ;
 
-alter table cmpd_activity`
+alter table cmpd_activity
 add lychi_h4 varchar(15)
 ,add index cmpd_lychi_idx(lychi_h4)
 ;

@@ -29,9 +29,13 @@
         }
       }
       diseases {
-        did
         name
-        type
+        associationCount
+        associations {
+          did
+          name
+          type
+        }
       }
     }
     pubResult {
@@ -39,6 +43,8 @@
       pubs {
         pmid
         title
+        year
+        date
       }
     }
   }
@@ -75,7 +81,6 @@
         diseases {
           score
           diseases {
-            did
             name
           }
         }
@@ -87,6 +92,7 @@
         pubs {
           pmid
           title
+          year
         }
       }
       expressionCounts {
@@ -115,6 +121,7 @@
           pmid
           title
           date
+          year
         }
       }
     }
@@ -134,6 +141,7 @@
     pubs {
       pmid
       title
+      year
       targetCounts {
         name
         value
@@ -191,12 +199,16 @@
         diseases {
           score
           diseases {
-            did
             name
-            targets {
-              sym
-              tdl
-              novelty
+            associationCount
+            associations {
+              disassid
+              did
+              targets {
+                sym
+                tdl
+                novelty
+              }
             }
           }
         }
@@ -206,38 +218,42 @@
         value
       }
       diseases(skip: 40) {
-        type
         name
-        zscore
-        conf
-        drug
-        pvalue
-        source
-        targetCounts {
+        associationCount
+        associations {
+          type
           name
-          value
-        }
-        targets(
-          filter: {
-            facets: [
-              { facet: "tdl", values: ["Tclin"] }
-              { facet: "fam", values: ["Kinase", "Transporter"] }
-            ]
+          zscore
+          conf
+          drug
+          pvalue
+          source
+          targetCounts {
+            name
+            value
           }
-        ) {
-          sym
-          uniprot
-          name
-          tdl
-          fam
-          novelty
+          targets(
+            filter: {
+              facets: [
+                { facet: "tdl", values: ["Tclin"] }
+                { facet: "fam", values: ["Kinase", "Transporter"] }
+              ]
+            }
+          ) {
+            sym
+            uniprot
+            name
+            tdl
+            fam
+            novelty
+          }
         }
       }
       patentCounts {
         year
         count
       }
-      patentScores {
+      pubTatorScores {
         year
         score
       }
@@ -279,6 +295,7 @@
           pmid
           title
           date
+          year
         }
       }
       props(name: "JensenLab PubMed Score") {
@@ -292,7 +309,7 @@
     q: {
       #geneid:116328
       #tcrdid:15380
-      tcrdid: 19373
+      tcrdid: 17782
     }
   ) {
     tcrdid
@@ -388,7 +405,7 @@
       year
       count
     }
-    patentScores {
+    pubTatorScores {
       year
       score
     }
@@ -399,6 +416,7 @@
     pubs {
       pmid
       date
+      year
       title
       journal
       abstract

@@ -1,5 +1,5 @@
 {
-pubmed(pmid: 12477932) {
+  pubmed(pmid: 12477932) {
     title
     targetCounts {
       name
@@ -31,8 +31,11 @@ pubmed(pmid: 12477932) {
         diseases {
           score
           diseases {
-            did
             name
+            associations {
+              did
+              type
+            }
           }
         }
       }

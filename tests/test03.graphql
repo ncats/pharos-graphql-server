@@ -1,5 +1,6 @@
 {
-  search(term: "huntington") {
+  search(term: "huntingtin" 
+    facets:["GO.*", "JAX.*", "tdl", "fam", "GWAS"]) {
     targetResult {
       count
       filter {
@@ -16,7 +17,7 @@
           value
         }
       }
-      targets(skip: 20) {
+      targets {
         sym
         tdl
         name
@@ -67,8 +68,12 @@
         }
       }
       diseases(skip: 148) {
-        type
         name
+        associationCount
+        associations {
+        type
+        did
+        }
       }
     }
     pubResult {

@@ -4,6 +4,7 @@
       count
       facets {
         facet
+        count
         values {
           name
           value
@@ -17,7 +18,11 @@
         novelty
         diseases {
           name
-          did
+          associationCount
+          associations {
+            did
+            type
+          }
         }
       }
     }
@@ -37,9 +42,12 @@
         diseases {
           score
           diseases {
-            did
-            type
             name
+            associationCount
+            associations {
+              did
+              type
+            }
           }
         }
       }
@@ -48,15 +56,20 @@
       count
       facets {
         facet
+        count
         values {
           name
           value
         }
       }
       diseases {
-        did
         name
-        type
+        associationCount
+        associations {
+          disassid
+          did
+          type
+        }
       }
     }
     pubResult {
@@ -69,4 +82,3 @@
     }
   }
 }
-

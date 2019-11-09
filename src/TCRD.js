@@ -7,10 +7,11 @@ const DESCRIPTION_TYPE =
       'NCBI Gene Summary';
 
 const TARGET_SQL = `
-a.*,b.*,e.score as novelty, a.id as tcrdid, 
+a.*,b.uniprot,b.seq,b.sym,e.score as novelty, a.id as tcrdid, 
 b.description as name, f.string_value as description
 from target a, protein b, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
 left join tdl_info f on f.protein_id = c.protein_id 
 and f.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
@@ -254,10 +255,11 @@ and a.id = ?`, [args.tcrdid]));
 
     searchTargets (args) {
         let q = this.db.select(this.db.raw(`
-a.*,b.*,e.score as novelty, a.id as tcrdid, 
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid, 
 b.description as name, d.string_value as description
 from target a, protein b, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index (tinx_novelty_idx3) 
+on e.protein_id = c.protein_id
 left join tdl_info d on d.protein_id = c.protein_id
 and d.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
@@ -755,10 +757,11 @@ name, value from ncats_facet_expression`));
             let filter = parseFilter (args.filter);
             if (filter.order) {
                 q = this.db.select(this.db.raw(`
-a.*,b.*,e.score as novelty, a.id as tcrdid, 
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid, 
 b.description as name, f.string_value as description
 from target a, protein b, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
 left join tdl_info d 
 on c.protein_id = d.protein_id and d.itype = ?
 left join tdl_info f on f.protein_id = c.protein_id 
@@ -766,10 +769,11 @@ and f.itype = '${DESCRIPTION_TYPE}'`, [filter.order]));
             }
             else {
                 q = this.db.select(this.db.raw(`
-a.*,b.*,e.score as novelty, a.id as tcrdid, 
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid, 
 b.description as name, f.string_value as description
 from target a, protein b, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
 left join tdl_info f on f.protein_id = c.protein_id
 and f.itype = '${DESCRIPTION_TYPE}'`));
             }
@@ -1074,7 +1078,7 @@ and b.target_id = ?`, [target.tcrdid]));
     getTargetsForXref (xref) {
         //console.log('>>> getTargetForXref: '+JSON.stringify(xref));
         return this.db.select(this.db.raw(`
-a.*,b.*,a.id as tcrdid, 
+a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid, 
 b.description as name, f.string_value as description
 from target a, protein b, t2tc c, xref d
 left join tdl_info f on f.protein_id = d.protein_id 
@@ -1186,7 +1190,8 @@ a.id as nid, ppitype as type,
 p_int, p_ni, p_wrong, evidence, interaction_type, a.score as score,
 c.score as novelty, d.tdl as tdl, d.fam as fam, e.sym as sym
 from ppi a, target d, protein e, t2tc b1, t2tc b2
-left join tinx_novelty c on c.protein_id = b2.protein_id
+left join tinx_novelty c use index(tinx_novelty_idx3)
+on c.protein_id = b2.protein_id
 `;
         let q;
         if (args.filter) {
@@ -1247,10 +1252,11 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
     getTargetForPPINeighbor (neighbor) {
         //console.log('>>> getTargetForNeighbor: '+neighbor.nid);
         return this.db.select(this.db.raw(`
-a.*,b.*,a.id as tcrdid, e.score as novelty, 
+a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid, e.score as novelty, 
 b.description as name, f.string_value as description
 from target a, protein b, ppi d, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
 left join tdl_info f on f.protein_id = c.protein_id 
 and f.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
@@ -1412,10 +1418,11 @@ order by value desc`, [disease.name]));
 
     getTargetsForDiseaseAssociation (disease, args) {
         const DISEASE_SQL = `
-a.*,b.*,e.score as novelty, a.id as tcrdid,
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,
 b.description as name, g.string_value as description
 from target a, protein b, disease d, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
 left join tdl_info g on g.protein_id = c.protein_id and
 g.itype = '${DESCRIPTION_TYPE}'`;
         let q;
@@ -1526,10 +1533,11 @@ order by value desc`, [pubmed.pmid]));
 
     getTargetsForPubMed (pubmed, args) {
         const PUBMED_SQL = `
-a.*,b.*,e.score as novelty, a.id as tcrdid,
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,
 b.description as name, g.string_value as description
 from target a, protein b, protein2pubmed f, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
 left join tdl_info g on g.protein_id = c.protein_id and 
 g.itype = '${DESCRIPTION_TYPE}'
 `;
@@ -1601,10 +1609,11 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
 
     getTargetsForPathway (pathway, args) {
         const PATHWAY_SQL = `
-a.*,b.*,e.score as novelty, a.id as tcrdid,
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,
 b.description as name, g.string_value as description
 from target a, protein b, pathway f, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
 left join tdl_info g on g.protein_id = c.protein_id 
 and g.itype = '${DESCRIPTION_TYPE}'`;
         let q;
@@ -1714,7 +1723,7 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
 a.id as nid, 'KEGG' as type, distance, 
 c.score as novelty, d.tdl as tdl, d.fam as fam, e.sym as sym
 from t2tc b1, t2tc b2, target d, protein e, kegg_distance a
-left join tinx_novelty c on c.protein_id = a.pid2
+left join tinx_novelty c use index(tinx_novelty_idx3) on c.protein_id = a.pid2
 `;
         let q;
         if (args.filter) {
@@ -1767,10 +1776,11 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
 
     getTargetForKeggNeighbor (neighbor) {
         return this.db.select(this.db.raw(`
-a.*,b.*,a.id as tcrdid, e.score as novelty,
+a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid, e.score as novelty,
 b.description as name, f.string_value as description
 from target a, protein b, kegg_distance d, t2tc c
-left join tinx_novelty e on e.protein_id = c.protein_id
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
 left join tdl_info f on f.protein_id = c.protein_id 
 and f.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id

@@ -52,13 +52,16 @@
         diseases {
           score
           diseases {
-            did
             name
+            associationCount
+            associations{
+            did
             targets {
               sym
               tdl
               novelty
             }
+          }
           }
         }
       }
@@ -67,85 +70,89 @@
         value
       }
       diseases(skip: 40) {
-        type
         name
-        zscore
-        conf
-        drug
-        pvalue
-        source
-        targetCounts {
+        associationCount
+        associations {
+          type
+          did
+          zscore
+          conf
+          drug
+          pvalue
+          source
+          targetCounts {
+            name
+            value
+          }
+          targets(
+            filter: {
+              facets: [
+                { facet: "tdl", values: ["Tclin"] }
+                { facet: "fam", values: ["Kinase", "Transporter"] }
+              ]
+            }
+          ) {
+            sym
+            uniprot
+            name
+            tdl
+            fam
+            novelty
+          }
+        }
+      }
+        patentCounts {
+          year
+          count
+        }
+        pubTatorScores {
+          year
+          score
+        }
+        pubmedScores {
+          year
+          score
+        }
+        ppiCounts {
           name
           value
         }
-        targets(
+        ppis(
           filter: {
             facets: [
-              { facet: "tdl", values: ["Tclin"] }
-              { facet: "fam", values: ["Kinase", "Transporter"] }
+              { facet: "type", values: ["Reactome", "BioPlex"] }
+              { facet: "tdl", values: ["Tbio"] }
             ]
           }
         ) {
-          sym
-          uniprot
-          name
-          tdl
-          fam
-          novelty
+          nid
+          type
+          props {
+            name
+            value
+          }
+          target {
+            tcrdid
+            uniprot
+            sym
+            tdl
+            novelty
+          }
         }
-      }
-      patentCounts {
-        year
-        count
-      }
-      patentScores {
-        year
-        score
-      }
-      pubmedScores {
-        year
-        score
-      }
-      ppiCounts {
-        name
-        value
-      }
-      ppis(
-        filter: {
-          facets: [
-            { facet: "type", values: ["Reactome", "BioPlex"] }
-            { facet: "tdl", values: ["Tbio"] }
-          ]
+        pubCount
+        generifCount
+        generifs(term: "akt") {
+          text
+          pubs {
+            pmid
+            title
+            date
+          }
         }
-      ) {
-        nid
-        type
-        props {
+        props(name: "JensenLab PubMed Score") {
           name
           value
         }
-        target {
-          tcrdid
-          uniprot
-          sym
-          tdl
-          novelty
-        }
-      }
-      pubCount
-      generifCount
-      generifs(term: "akt") {
-        text
-        pubs {
-          pmid
-          title
-          date
-        }
-      }
-      props(name: "JensenLab PubMed Score") {
-        name
-        value
       }
     }
-  }
 }
