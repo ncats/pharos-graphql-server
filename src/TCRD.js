@@ -199,6 +199,14 @@ distinct protein_id from expression`))
                   subqueries.push(q);
                 }
                 break;
+
+            case 'GWAS':
+                { let q = this.db.select(this.db.raw(`
+distinct protein_id from gwas`))
+                      .whereIn('disease_trait', f.values);
+                  subqueries.push(q);
+                }
+                break;
             }
         }
         return subqueries;
@@ -277,7 +285,9 @@ and (match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
   when b.uniprot=? then 1
   when b.sym=? then 2
   when b.stringid=? then 3
-  else 1000
+  when b.description = ? then 10
+  when match(b.name,b.description) against(? in boolean mode) then 20
+  else 100000
 end`, [args.term, args.term, args.term, args.term,
        args.term, args.term, args.term]));
         
@@ -668,7 +678,7 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
 
     getTargetGWASCounts (args) {
         let q = this.db.select(this.db.raw(`
-disease_trait as name, count(*) as value
+disease_trait as name, count(distinct b.id) as value
 from gwas a, protein b`));
         if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
@@ -779,6 +789,7 @@ and f.itype = '${DESCRIPTION_TYPE}'`));
             }
             
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
+            console.log('!!!!!!!!! subqueries: '+sub);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
             });
@@ -815,9 +826,10 @@ case
   when b.uniprot=? then 1
   when b.sym=? then 2
   when b.stringid=? then 3
-  when match(b.name,b.description) against(? in boolean mode) then 4
-  else 1000
-end`, [t,t,t,t]));
+  when b.description = ? then 10
+  when match(b.name,b.description) against(? in boolean mode) then 20
+  else if(e.score is null, 100000, 100 + 1/e.score)
+end`, [t,t,t,t,t]));
             }
 
             q = q.limit(args.top)
@@ -1952,7 +1964,7 @@ and b.target_id = ?`, [target.tcrdid]));
 
     getGWASCountsForTarget (target) {
         return this.db.select(this.db.raw(`
-disease_trait as name, count(*) as value
+disease_trait as name, count(distinct b.protein_id) as value
 from gwas a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ? group by disease_trait
@@ -2041,7 +2053,7 @@ where target_id = ?
 and lychi_h4 is null`, [target.tcrdid, target.tcrdid]));
     }
 
-    getLigandsForTarget (target, args) {
+    getLigandLabelsForTarget (target, args) {
         let q = this.db.select(this.db.raw(`
 distinct lychi_h4 as label
 from cmpd_activity
@@ -2055,7 +2067,7 @@ and target_id = ?`, [target.tcrdid, target.tcrdid]));
         return q;
     }
     
-    getDrugsForTarget (target, args) {
+    getDrugLabelsForTarget (target, args) {
         let q = this.db.select(this.db.raw(`
 distinct lychi_h4 as label
 from drug_activity

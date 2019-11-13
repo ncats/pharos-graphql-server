@@ -149,7 +149,8 @@ add lychi_h4 varchar(15)
 ,add index cmpd_lychi_idx(lychi_h4)
 ;
 
-create table ncats_facet_impc as
+create table ncats_facet_impc (name varchar(255), value int);
+insert ncats_facet_impc
 select  d.term_name as name, count(distinct b.id) as value
 from ortholog a, protein b, nhprotein c, phenotype d
 where  a.geneid = c.geneid
@@ -161,7 +162,8 @@ group by `d`.`term_name`
 order by `value` desc
 ;
 
-create table ncats_facet_expression as
+create table ncats_facet_expression (etype varchar(255), name text, value int);
+insert ncats_facet_expression
 select etype,tissue as name,count(*) as value
 from expression a use index (expression_idx8), protein b
 where a.protein_id = b.id
