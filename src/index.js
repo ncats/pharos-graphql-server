@@ -288,8 +288,9 @@ type GeneAttributeType {
 
 """Ligand"""
 type Ligand {
-     lychi: String
+     ligid: String
      name: String
+     description: String
      isdrug: Boolean
      synonyms: [Prop]
      smiles: String
@@ -397,7 +398,8 @@ type Target {
 
 """Ligand activity data"""
      ligandCounts: [IntProp]
-     ligands(skip: Int=0, top: Int=20, filter: IFilter): [Ligand]
+     ligands(skip: Int=0, top: Int=20, isdrug: Boolean = false, 
+             filter: IFilter): [Ligand]
 }
 
 type TargetResult {
@@ -1229,19 +1231,95 @@ const resolvers = {
             });
         },
         ligands: async function (target, args, {dataSources}) {
-            Promise.all([
-                dataSources.tcrd.getLigandsForTarget(target, args),
-                dataSources.tcrd.getDrugsForTarget(target, args)
+            return Promise.all([
+                dataSources.tcrd.getLigandLabelsForTarget(target, args),
+                dataSources.tcrd.getDrugLabelsForTarget(target, args)
             ]).then(rows => {
-                let ligands = [];
+                let unique = new Map();
                 rows.forEach(r => {
                     r.forEach(rr => {
-                        ligands.push(rr.label);
+                        let cnt = unique.get(rr.label);
+                        if (cnt)
+                            cnt += rr.cnt;
+                        else
+                            cnt = rr.cnt;
+                        unique.set(rr.label, cnt);
                     });
                 });
+
+                let ligands = Array.from(unique.keys());
                 return slice (ligands, args.skip, args.top + args.skip);
             }).then(ligands => {
-                
+                return Promise.all([
+                    dataSources.tcrd.getLigands(target, ligands),
+                    dataSources.tcrd.getDrugs(target, ligands)
+                ]).then(rows => {
+                    const ligs = new Map();
+
+                    if (args.isdrug == false) {
+                        rows[0].forEach(r => {
+                            let l = {};
+                            if (r.lychi_h4)
+                                l.ligid = r.lychi_h4;
+                            else
+                                l.ligid = r.cmpd_id_in_src;
+                            
+                            l.name = r.cmpd_name_in_src;
+                            l.isdrug = false;
+                            l.synonyms = [
+                                { name: r.catype,
+                                  value: r.cmpd_id_in_src}
+                            ];
+                            l.smiles = r.smiles;
+                            if (r.cmpd_pubchem_cid) {
+                                l.synonyms.push(
+                                    { name: 'PubChem',
+                                      value: r.cmpd_pubchem_cid}
+                                );
+                            }
+                            ligs.set(l.ligid, l);
+                        });
+                    }
+
+                    rows[1].forEach(r => {
+                        let l = {};
+                        if (r.lychi_h4)
+                            l.ligid = r.lychi_h4;
+                        else
+                            l.ligid = r.drug;
+                        
+                        l.name = r.drug;
+                        l.isdrug = true;
+                        l.smiles = r.smiles;
+                        l.description = r.nlm_drug_info;
+                        
+                        l.synonyms = [];
+                        if (r.cmpd_pubchem_cid) {
+                            l.synonyms.push(
+                                { name: 'PubChem',
+                                  value: r.cmpd_pubchem_cid}
+                            );
+                        }
+                        if (r.dcid) {
+                            l.synonyms.push(
+                                { name: 'DrugCentral',
+                                  value: r.dcid}
+                            );
+                        }
+                        if (r.reference) {
+                            l.synonyms.push(
+                                { name: r.source,
+                                  value: r.reference});
+                        }
+                        ligs.set(l.ligid, l);
+                    });
+                    
+                    return Array.from(ligs.values()).sort((a,b) => {
+                        if (a.isdrug && !b.isdrug) return -1;
+                        if (!a.isdrug && b.isdrug) return 1;
+                        return a.name.localeCompare(b.name);
+                    });
+                });
             }).catch(function(error) {
                 console.error(error);
             });

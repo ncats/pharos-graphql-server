@@ -2055,33 +2055,60 @@ and lychi_h4 is null`, [target.tcrdid, target.tcrdid]));
 
     getLigandLabelsForTarget (target, args) {
         let q = this.db.select(this.db.raw(`
-distinct lychi_h4 as label
-from cmpd_activity
-where lychi_h4 is not null
-and target_id = ?
-union select distinct cmpd_id_in_src as label
-from cmpd_activity
-where lychi_h4 is null
-and target_id = ?`, [target.tcrdid, target.tcrdid]));
-        console.log('~~~~~~~~~ getLigandsForTarget: '+q);
+lychi_h4 as label,count(*) as cnt 
+from cmpd_activity where lychi_h4 is not null and target_id = ? 
+group by lychi_h4 
+union 
+select cmpd_id_in_src as label,count(*) as cnt 
+from cmpd_activity where lychi_h4 is null and target_id = ? 
+group by cmpd_id_in_src
+order by cnt desc`, [target.tcrdid, target.tcrdid]));
+        //console.log('~~~~~~~~~ getLigandsForTarget: '+q);
         return q;
     }
     
     getDrugLabelsForTarget (target, args) {
         let q = this.db.select(this.db.raw(`
-distinct lychi_h4 as label
+lychi_h4 as label,count(*) as cnt
 from drug_activity
 where lychi_h4 is not null
 and target_id = ?
-union select distinct drug as label
+group by lychi_h4
+union select drug as label, count(*) as cnt
 from drug_activity
 where lychi_h4 is null
-and target_id = ?`, [target.tcrdid, target.tcrdid]));
-        console.log('~~~~~~~~~ getDrugsForTarget: '+q);        
+and target_id = ?
+group by drug
+order by cnt desc`, [target.tcrdid, target.tcrdid]));
+        //console.log('~~~~~~~~~ getDrugsForTarget: '+q);        
         return q;
     }
 
-    getDrugs (labels) {
+    getLigands (target, labels) {
+        let q = this.db.select(this.db.raw(`
+catype,cmpd_id_in_src,cmpd_name_in_src,cmpd_pubchem_cid,smiles,lychi_h4
+from cmpd_activity`))
+            .whereIn('lychi_h4', labels)
+            .orWhereIn('cmpd_id_in_src', labels);
+        if (target) {
+            q = q.andWhere(this.db.raw(`target_id = ?`, [target.tcrdid]));
+        }
+
+        //console.log('^^^^^^^^^^^^^^ getLigands: '+q);
+        return q;
+    }
+
+    getDrugs (target, labels) {
+        let q = this.db.select(this.db.raw(`
+drug, cmpd_chemblid, nlm_drug_info, cmpd_pubchem_cid, dcid,smiles,lychi_h4
+from drug_activity`))
+            .whereIn('lychi_h4', labels)
+            .orWhereIn('drug', labels);
+        if (target) {
+            q = q.andWhere(this.db.raw(`target_id = ?`, [target.tcrdid]));
+        }
+        
+        return q;
     }
 }
 
