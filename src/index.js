@@ -294,11 +294,12 @@ type Ligand {
      isdrug: Boolean
      synonyms: [Prop]
      smiles: String
-     activities(skip: Int=0, top: Int=10, filter: IFilter): [LigandActivity]
+     activities (all: Boolean = true): [LigandActivity]
 }
 
 type LigandActivity {
      actid: Int!
+"""activity type; e.g., IC50"""
      type: String
      value: Float
 """mode of action; e.g., INHIBITOR"""
@@ -1263,7 +1264,8 @@ const resolvers = {
                                 l.ligid = r.lychi_h4;
                             else
                                 l.ligid = r.cmpd_id_in_src;
-                            
+
+                            l.parent = target;
                             l.name = r.cmpd_name_in_src;
                             l.isdrug = false;
                             l.synonyms = [
@@ -1292,6 +1294,7 @@ const resolvers = {
                         l.isdrug = true;
                         l.smiles = r.smiles;
                         l.description = r.nlm_drug_info;
+                        l.parent = target;
                         
                         l.synonyms = [];
                         if (r.cmpd_pubchem_cid) {
@@ -1711,6 +1714,44 @@ const resolvers = {
             }).catch(function(error) {
                 console.error(error);
             });
+        }
+    },
+
+    Ligand: {
+        activities: async function (ligand, args, {dataSources}) {
+            return Promise.all([
+                dataSources.tcrd.getDrugActivities(ligand, args),
+                dataSources.tcrd.getLigandActivities(ligand, args)
+            ]).then(rows => {
+                let ligact = [];
+                rows.forEach(r => {
+                    r.forEach(rr => {
+                        let act = {
+                            actid: rr.id,
+                            type: rr.act_type,
+                            value: rr.act_value,
+                            moa: rr.action_type,
+                            target_id: rr.target_id,
+                            parent: ligand
+                        };
+                        ligact.push(act);
+                    });
+                });
+                return ligact;
+            }).catch(function(error) {
+                console.error(error);
+            });
+        }
+    },
+
+    LigandActivity: {
+        target: async function (ligact, args, {dataSources}) {
+            return dataSources.tcrd.getTarget({ tcrdid: ligact.target_id})
+                .then(rows => {
+                    return rows[0];
+                }).catch(function(error) {
+                    console.error(error);
+                });
         }
     }
 };

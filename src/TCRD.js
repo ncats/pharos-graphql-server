@@ -2110,6 +2110,30 @@ from drug_activity`))
         
         return q;
     }
+
+    getLigandActivities (ligand, args) {
+        let q = this.db.select(this.db.raw(`
+id, act_value,act_type,target_id from cmpd_activity`));
+        if (args.all == false && ligand.parent) {
+            q = q.andWhere(this.db.raw(`target_id = ?`,
+                                       [ligand.parent.tcrdid]));
+        }
+        q = q.andWhere(this.db.raw(`
+lychi_h4 = ? or cmpd_id_in_src = ?`, [ligand.ligid, ligand.ligid]));
+        return q;
+    }
+
+    getDrugActivities (ligand, args) {
+        let q = this.db.select(this.db.raw(`
+id, act_value, act_type, action_type, target_id from drug_activity`));
+        if (args.all == false && ligand.parent) {
+            q = q.andWhere(this.db.raw(`target_id = ?`,
+                                       [ligand.parent.tcrdid]));
+        }
+        q = q.andWhere(this.db.raw(`
+lychi_h4 = ? or drug = ?`, [ligand.ligid, ligand.ligid]));
+        return q;        
+    }
 }
 
 module.exports = TCRD;
