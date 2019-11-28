@@ -112,7 +112,7 @@ type Pathway {
      targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
 
-input TargetInput {
+input ITarget {
      tcrdid: Int
      uniprot: String
      geneid: Int
@@ -442,7 +442,7 @@ type Query {
      targetFacets: [String!]
      targets(skip: Int=0, top: Int=10, 
              facets: [String!], filter: IFilter): TargetResult
-     target(q: TargetInput): Target
+     target(q: ITarget): Target
 
      diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
 
@@ -454,6 +454,7 @@ type Query {
      orthologs(skip: Int=0, top: Int=10, filter: IFilter): OrthologResult
 
      search(term: String!, facets: [String!]): Result
+     batch(targets: [String], ligands: [String], diseases:[String]): Result
      xref(source: String!, value: String!): Xref
 }
 `;
@@ -549,7 +550,8 @@ function getTargetFacets (args, tcrd, all) {
             'GWAS',
             'Expression: Consensus',
             'Ortholog',
-            'UniProt Disease'
+            'UniProt Disease',
+            'Keyword'
         ];
         let subset = new Map ();
         deffacets.forEach(x => {
@@ -562,6 +564,7 @@ function getTargetFacets (args, tcrd, all) {
 }
 
 function getTargetResult (args, tcrd) {
+    args.batch = args.targets;
     const facets = getTargetFacets (args, tcrd);
     const fkeys = Array.from(facets.keys());
     
@@ -583,6 +586,7 @@ function getTargetResult (args, tcrd) {
         
         return {
             filter: args.filter,
+            batch: args.targets,
             count: count,
             facets: facets
         };
@@ -805,6 +809,21 @@ const resolvers = {
         },
         orthologs: async function (_, args, {dataSources}) {
             return getOrthologResult (args, dataSources.tcrd);
+        },
+
+        batch: async function (_, args, {dataSources}) {
+            let funcs = [
+                getTargetResult (args, dataSources.tcrd),
+                getDiseaseResult (args, dataSources.tcrd)
+            ];
+            return Promise.all(funcs).then(r => {
+                return {
+                    targetResult: r[0],
+                    diseaseResult: r[1]
+                };
+            }).catch(function(error) {
+                console.error(error);
+            });
         }
     },
     
@@ -1576,6 +1595,7 @@ const resolvers = {
         facets: async (result, args, _) => filterResultFacets (result, args),
         targets: async function (result, args, {dataSources}) {
             args.filter = result.filter;
+            args.batch = result.batch;
             return dataSources.tcrd.getTargets(args)
                 .then(targets => {
                     return targets;

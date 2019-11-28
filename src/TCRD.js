@@ -305,7 +305,12 @@ end`, [args.term, args.term, args.term, args.term,
 a.tdl as name, count(*) as value
 from target a, protein b, t2tc c`));
 
-        if (args.filter) {
+        if (args.batch && args.batch.length > 0) {
+            q = q.andWhere(builder => builder.whereIn('b.uniprot', args.batch)
+                           .orWhereIn('b.sym', args.batch)
+                           .orWhereIn('b.stringid', args.batch));
+        }
+        else if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -344,7 +349,12 @@ from target a, protein b, t2tc c
 left join xref d on d.protein_id = c.protein_id and xtype = ?`,
                                            ['UniProt Keyword']));
 
-        if (args.filter) {
+        if (args.batch && args.batch.length > 0) {
+            q = q.andWhere(builder => builder.whereIn('b.uniprot', args.batch)
+                           .orWhereIn('b.sym', args.batch)
+                           .orWhereIn('b.stringid', args.batch));
+        }
+        else if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -386,7 +396,12 @@ when 'NR' then 'Nuclear Receptor'
 else if(a.fam is null,'Other',a.fam) end as name,count(*) as value
 from target a, protein b, t2tc c`));
 
-        if (args.filter) {
+        if (args.batch) {
+            q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
+                           .orWhereIn('b.sym', args.batch)
+                           .orWhereIn('b.stringid', args.batch));
+        }
+        else if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -423,7 +438,12 @@ from target a, protein b, t2tc c`));
 a.species as name, count(*) as value
 from ortholog a, protein b`));
 
-        if (args.filter) {
+        if (args.batch && args.batch.length > 0) {
+            q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
+                           .orWhereIn('b.sym', args.batch)
+                           .orWhereIn('b.stringid', args.batch));
+        }
+        else if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -459,7 +479,12 @@ from ortholog a, protein b`));
 a.name as name, count(distinct b.id) as value
 from disease a, protein b`));
 
-        if (args.filter) {
+        if (args.batch && args.batch.length > 0) {
+            q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
+                           .orWhereIn('b.sym', args.batch)
+                           .orWhereIn('b.stringid', args.batch));
+        }
+        else if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -495,22 +520,28 @@ from disease a, protein b`));
 
     getTargetIMPCPhenotypeCounts (args, species) {
         let q;
-        if (args.filter) {
-            // MAKE SURE THE TABLE phenotype HAS AN INDEX ON nhprotein_id COLUMN
-            // AND NAMED THE INDEX AS phenotype_nhid_idx
+        if (args.batch || args.filter) {
             q = this.db.select(this.db.raw(`
 d.term_name as name, count(distinct b.id) as value
 from ortholog a, protein b, nhprotein c, phenotype d 
 use index(phenotype_nhid_idx)`));
             
-            let sub = this.getTargetFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('b.id', subq);
-            });
-            
-            let t = args.filter.term;
-            if (t != undefined && t !== '') {
-                q = q.andWhere(this.db.raw(`
+            if (args.batch.length > 0) {
+                q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
+                               .orWhereIn('b.sym', args.batch)
+                               .orWhereIn('b.stringid', args.batch));
+            }
+            else {
+                // MAKE SURE THE TABLE phenotype HAS AN INDEX ON nhprotein_id
+                //  COLUMN AND NAMED THE INDEX AS phenotype_nhid_idx
+                let sub = this.getTargetFacetSubQueries(args.filter.facets);
+                sub.forEach(subq => {
+                    q = q.whereIn('b.id', subq);
+                });
+                
+                let t = args.filter.term;
+                if (t != undefined && t !== '') {
+                    q = q.andWhere(this.db.raw(`
 (match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
      or b.id in 
           (select protein_id from alias 
@@ -522,6 +553,7 @@ use index(phenotype_nhid_idx)`));
           (select protein_id from tdl_info
             where match(string_value) against(? in boolean mode)))
 `, [t, t, t, t]));
+                }
             }
             
             q = q.andWhere(this.db.raw(`
@@ -548,7 +580,12 @@ name, value from ncats_facet_impc`));
         let q = this.db.select(this.db.raw(`
 term_name as name, count(distinct b.id) as value
 from phenotype a, protein b`));
-        if (args.filter) {
+        if (args.batch && args.batch.length > 0) {
+            q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
+                           .orWhereIn('b.sym', args.batch)
+                           .orWhereIn('b.stringid', args.batch));
+        }
+        else if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -583,8 +620,13 @@ and a.ptype = ?`, ['JAX/MGI Human Ortholog Phenotype']))
         let q = this.db.select(this.db.raw(`
 substr(go_term,3) as name, count(distinct b.id) as value
 from goa a, protein b`));
-        
-        if (args.filter) {
+
+        if (args.batch && args.batch.length > 0) {
+            q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
+                           .orWhereIn('b.sym', args.batch)
+                           .orWhereIn('b.stringid', args.batch));
+        }
+        else if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -680,7 +722,13 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
         let q = this.db.select(this.db.raw(`
 disease_trait as name, count(distinct b.id) as value
 from gwas a, protein b`));
-        if (args.filter) {
+        
+        if (args.batch && args.batch.length > 0) {
+            q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
+                           .orWhereIn('b.sym', args.batch)
+                           .orWhereIn('b.stringid', args.batch));
+        }
+        else if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -713,22 +761,29 @@ from gwas a, protein b`));
 
     getTargetExpressionCounts (args, type) {
         let q;
-        if (args.filter) {
+        if (args.filter || args.batch) {
             // MAKE SURE THE TABLE expression HAS AN INDEX ON COLUMNS
             // (protein_id, etype, and tissue)
             // AND NAMED THE INDEX AS expression_facet_idx
             q = this.db.select(this.db.raw(`
 tissue as name, count(distinct protein_id) as value
 from expression a use index (expression_facet_idx), protein b`));
+
+            if (args.batch.length > 0) {
+                q = q.andWhere(builder=>builder
+                               .whereIn('b.uniprot', args.batch)
+                               .orWhereIn('b.sym', args.batch)
+                               .orWhereIn('b.stringid', args.batch));
+            }
+            else {
+                let sub = this.getTargetFacetSubQueries(args.filter.facets);
+                sub.forEach(subq => {
+                    q = q.whereIn('b.id', subq);
+                });
             
-            let sub = this.getTargetFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('b.id', subq);
-            });
-            
-            let t = args.filter.term;
-            if (t != undefined && t !== '') {
-                q = q.andWhere(this.db.raw(`
+                let t = args.filter.term;
+                if (t != undefined && t !== '') {
+                    q = q.andWhere(this.db.raw(`
 (match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
      or a.protein_id in 
           (select protein_id from alias 
@@ -740,6 +795,7 @@ from expression a use index (expression_facet_idx), protein b`));
           (select protein_id from tdl_info
             where match(string_value) against(? in boolean mode)))
 `, [t, t, t, t]));
+                }
             }
             
             q = q.andWhere(this.db.raw(`a.protein_id = b.id`));
@@ -761,7 +817,7 @@ name, value from ncats_facet_expression`));
     }
     
     getTargets (args) {
-        //console.log('>>> getTargets: '+JSON.stringify(args));
+        console.log('>>> getTargets: '+JSON.stringify(args));
         let q = undefined;
         if (args.filter) {
             let filter = parseFilter (args.filter);
@@ -836,8 +892,24 @@ end`, [t,t,t,t,t]));
                 .offset(args.skip);
         }
         else {
-            q = this.db.select(this.db.raw(TARGET_SQL+`
-order by novelty desc limit ? offset ?`, [args.top, args.skip]));
+            q = this.db.select(this.db.raw(`
+a.*,b.uniprot,b.seq,b.sym,e.score as novelty, a.id as tcrdid, 
+b.description as name, f.string_value as description
+from target a, protein b, t2tc c
+left join tinx_novelty e use index(tinx_novelty_idx3)
+on e.protein_id = c.protein_id
+left join tdl_info f on f.protein_id = c.protein_id 
+and f.itype = '${DESCRIPTION_TYPE}'`));
+            if (args.batch && args.batch.length > 0) {
+                q = q.andWhere
+                (builder => builder.whereIn('b.uniprot', args.batch)
+                 .orWhereIn('b.sym', args.batch)
+                 .orWhereIn('b.stringid', args.batch));
+            }
+            q = q.andWhere(this.db.raw(`
+a.id = c.target_id and b.id = c.protein_id`))
+                .orderByRaw(this.db.raw(`
+novelty desc limit ? offset ?`, [args.top, args.skip]));
         }
         console.log('>>> getTargets: '+q);
         
