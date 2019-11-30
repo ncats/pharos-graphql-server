@@ -319,8 +319,20 @@ type DiseaseOntology {
 }
 
 type TINXDisease { 
-     doid: String!
-     
+     tinxid: Int!
+"""Disease novelty"""
+     novelty: Float
+"""Importance of disease-target combination"""
+     score: Float
+     disease: DiseaseOntology!
+}
+
+type TINXTarget {
+"""Target novelty"""
+     novelty: Float
+"""Importance of disease-target combination"""
+     score: Float
+     target: Target!
 }
 
 """Target entity"""
@@ -414,6 +426,10 @@ type Target {
      ligandCounts: [IntProp]
      ligands(skip: Int=0, top: Int=20, isdrug: Boolean = false, 
              filter: IFilter): [Ligand]
+
+"""TINX"""
+     tinxCount: Int
+     tinx(skip: Int=0, top: Int=20, filter: IFilter): [TINXDisease]
 }
 
 type TargetResult {
@@ -538,7 +554,7 @@ function getTargetFacets (args, tcrd, all) {
             if (find (args.facets, x => {
                 var matched = x == key;
                 if (!matched) {
-                    var re = new RegExp(x);
+                    var re = new RegExp(x, 'i');
                     matched = re.test(key);
                     //console.log('**** '+x+ ' ~ '+key+' => '+matched);
                 }
@@ -707,7 +723,7 @@ function filterResultFacets (result, args) {
                          find (args.include, x => {
                              var matched = x == f.facet;
                              if (!matched) {
-                                 var re = new RegExp(x);
+                                 var re = new RegExp(x, 'i');
                                  matched = re.test(f.facet);
                              }
                              return matched;
@@ -719,7 +735,7 @@ function filterResultFacets (result, args) {
                          find (args.exclude, x => {
                              var matched = x == f.facet;
                              if (!matched) {
-                                 var re = new RegExp(x);
+                                 var re = new RegExp(x, 'i');
                                  matched = re.test(f.facet);
                              }
                              return !matched;
@@ -904,7 +920,7 @@ const resolvers = {
                     return filter (rows, x => {
                         var matched = x.name == args.name;
                         if (!matched) {
-                            var re = new RegExp (args.name);
+                            var re = new RegExp (args.name, 'i');
                             matched = re.test(x.name);
                         }
                         return matched;
@@ -1375,6 +1391,24 @@ const resolvers = {
             }).catch(function(error) {
                 console.error(error);
             });
+        },
+
+        tinxCount: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.getTINXCountForTarget(target)
+                .then(rows => {
+                    if (rows) return rows[0].cnt;
+                    return 0;
+                }).catch(function (error) {
+                    console.error(error);
+                });
+        },
+        tinx: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.getTINXForTarget(target, args)
+                .then(rows => {
+                    return rows;
+                }).catch(function (error) {
+                    console.error(error);
+                });
         }
     },
 
@@ -1611,7 +1645,7 @@ const resolvers = {
                 values = filter (values, x => {
                     var matched = x.name == args.name;
                     if (!matched) {
-                        var re = new RegExp(args.name);
+                        var re = new RegExp(args.name, 'i');
                         matched = re.test(x.name);
                     }
                     return matched;
@@ -1802,6 +1836,16 @@ const resolvers = {
                 }).catch(function(error) {
                     console.error(error);
                 });
+        }
+    },
+
+    TINXDisease: {
+        disease: async function (tinx, _, {dataSources}) {
+            //console.log('~~~~~ tinx: '+tinx.doid);
+            if (tinx.doid)
+                return dataSources.tcrd.doTree[tinx.doid];
+            console.error('No doid in TINX '+tinx.tinxid);
+            return null;
         }
     }
 };

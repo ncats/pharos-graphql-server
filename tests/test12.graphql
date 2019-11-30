@@ -25,7 +25,19 @@
             value
           }
         }
+        tinxCount
+        tinx(top:50){
+          tinxid
+          novelty
+          score
+          disease{
+            doid
+            name
+            def
+          }
+        }
       }
     }
   }
 }
+

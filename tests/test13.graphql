@@ -1,0 +1,26 @@
+{
+  doTree {
+    doid
+    name
+    children {
+      doid
+      name
+      children{
+        doid
+        name
+      }
+    }
+  }
+  diseaseOntology(name:"gaucher*") {
+    doid
+    name
+    children{
+      doid
+      name
+    }
+    parents{
+      doid
+      name
+    }
+  }
+}

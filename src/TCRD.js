@@ -92,7 +92,7 @@ function diseaseOntologyTraversal (matches, node, args) {
     else {
         var matched = node.name == args.name;
         if (!matched) {
-            var re = new RegExp (args.name);
+            var re = new RegExp (args.name, 'i');
             matched = re.test(node.name);
         }
         if (matched)
@@ -107,8 +107,17 @@ class TCRD extends SQLDataSource {
     constructor (config) {
         super(config);
         const _this = this;
+
+        const root = {
+            doid: 'DOID:4',
+            name: 'disease',
+            def: `A disease is a disposition (i) to undergo pathological processes that (ii) exists in an organism because of one or more disorders in that organism.`,
+            parents: [],
+            children: []
+        };
         
         this.doTree = {};
+        this.doTree[root.doid] = root;
         this.getDOHierarchy()
             .then(rows => {
                 rows.forEach(r => {
@@ -146,6 +155,10 @@ class TCRD extends SQLDataSource {
                             n.parents.push(p);
                             p.children.push(n);
                         }
+                        else if (id == root.doid) {
+                            root.children.push(n);
+                            n.parents.push(root);
+                        }
                         else {
                             console.error("Can't locate parent "
                                           +id+" for node "+n.doid);
@@ -159,6 +172,7 @@ class TCRD extends SQLDataSource {
                         console.log('!!!!! '+n.doid+' '+n.name);
                     }
                 }
+
             }).catch(function(error) {
                 console.error(error);
             });
@@ -2344,6 +2358,42 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
             }
         }
         return matches;
+    }
+
+    getTINXCountForTarget (target) {
+        let q = this.db.select(this.db.raw(`
+count(*) as cnt
+from tinx_importance a, t2tc b
+where a.protein_id = b.protein_id
+and b.target_id = ?`, [target.tcrdid]));
+        return q;
+    }
+
+    getTINXForTarget (target, args) {
+        let q = this.db.select(this.db.raw(`
+a.*,b.doid, b.score as novelty, a.id as tinxid
+from tinx_importance a, tinx_disease b, t2tc c`));
+
+        let sort = true;
+        if (args.filter) {
+            let t = args.filter.term;
+            if (t != undefined && t != '') {
+                q = q.andWhere(this.db.raw(`
+match(b.name,b.summary) against(? in boolean mode)`, [t]));
+                sort = false;
+            }
+        }
+        q = q.andWhere(this.db.raw(`a.disease_id = b.id
+and a.protein_id = c.protein_id
+and c.target_id = ?`, [target.tcrdid]));
+        
+        q = q.limit(args.top)
+            .offset(args.skip);
+        if (sort) {
+            q = q.orderBy('b.score', 'desc');
+        }
+        
+        return q;
     }
 }
 
