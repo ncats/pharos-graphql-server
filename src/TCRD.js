@@ -79,7 +79,127 @@ function diseaseFacetMapping (facet) {
     return facet;
 }
 
+function diseaseOntologyTraversal (matches, node, args) {
+    if (args.doid) {
+        if (node.doid == args.doid) {
+            matches.push(node);
+            return;
+        }
+        
+        for (var n in node.children)
+            diseaseOntologyTraversal (matches, node.children[n], args);
+    }
+    else {
+        var matched = node.name == args.name;
+        if (!matched) {
+            var re = new RegExp (args.name);
+            matched = re.test(node.name);
+        }
+        if (matched)
+            matches.push(node);
+        
+        for (var n in node.children)
+            diseaseOntologyTraversal (matches, node.children[n], args);
+    }
+}
+
 class TCRD extends SQLDataSource {
+    constructor (config) {
+        super(config);
+        const _this = this;
+        
+        this.doTree = {};
+        this.getDOHierarchy()
+            .then(rows => {
+                rows.forEach(r => {
+                    let d = _this.doTree[r.doid];
+                    if (!d) {
+                        d = {
+                            doid: r.doid,
+                            name: r.name,
+                            def: r.def,
+                            parents: [],
+                            _parents: [],
+                            children: []
+                        };
+                        _this.doTree[r.doid] = d;
+                    }
+                    
+                    if (r.parent_id) {
+                        let p = _this.doTree[r.parent_id];
+                        if (p) {
+                            d.parents.push(p);
+                            p.children.push(d);
+                        }
+                        else {
+                            d._parents.push(r.parent_id);
+                        }
+                    }
+                });
+                
+                for (var key in _this.doTree) {
+                    let n = _this.doTree[key];
+                    for (var i in n._parents) {
+                        let id = n._parents[i];
+                        let p = _this.doTree[id];
+                        if (p) {
+                            n.parents.push(p);
+                            p.children.push(n);
+                        }
+                        else {
+                            console.error("Can't locate parent "
+                                          +id+" for node "+n.doid);
+                        }
+                    }
+                }
+                
+                for (var key in _this.doTree) {
+                    let n = _this.doTree[key];
+                    if (n.parents.length == 0) {
+                        console.log('!!!!! '+n.doid+' '+n.name);
+                    }
+                }
+            }).catch(function(error) {
+                console.error(error);
+            });
+
+        this.gaTypes = [];
+        this.getGeneAttributeTypes()
+            .then(rows => {
+                console.log('~~~~~~ Gene Attribute Types');
+                rows.forEach(r => {
+                    console.log('...'+r.attribute_type);
+                    _this.gaTypes.push(r.attribute_type);
+                });
+            }).catch(function(error) {
+                console.error(error);
+            });
+
+        this.gaGroups = [];
+        this.getGeneAttributeGroups()
+            .then(rows => {
+                console.log('~~~~~~ Gene Attribute Groups');
+                rows.forEach(r => {
+                    console.log('...'+r.attribute_group);
+                    _this.gaGroups.push(r.attribute_group);
+                });
+            }).catch(function(error) {
+                console.error(error);
+            });
+
+        this.gaCategories = [];
+        this.getGeneAttributeCategories()
+            .then(rows => {
+                console.log('~~~~~~ Gene Attribute Categories');
+                rows.forEach(r => {
+                    console.log('...'+r.resource_group);
+                    _this.gaCategories.push(r.resource_group);
+                });
+            }).catch(function(error) {
+                console.error(error);
+            });
+    }
+    
     getTargetGOFacetSubquery (values, prefix) {
         let q = this.db.select(this.db.raw(`protein_id from goa`))
             .whereIn('go_term', values.map(x => {
@@ -526,7 +646,7 @@ d.term_name as name, count(distinct b.id) as value
 from ortholog a, protein b, nhprotein c, phenotype d 
 use index(phenotype_nhid_idx)`));
             
-            if (args.batch.length > 0) {
+            if (args.batch && args.batch.length > 0) {
                 q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
                                .orWhereIn('b.sym', args.batch)
                                .orWhereIn('b.stringid', args.batch));
@@ -769,7 +889,7 @@ from gwas a, protein b`));
 tissue as name, count(distinct protein_id) as value
 from expression a use index (expression_facet_idx), protein b`));
 
-            if (args.batch.length > 0) {
+            if (args.batch && args.batch.length > 0) {
                 q = q.andWhere(builder=>builder
                                .whereIn('b.uniprot', args.batch)
                                .orWhereIn('b.sym', args.batch)
@@ -1440,10 +1560,12 @@ group by `+p+` order by name`, [target.tcrdid]));
         return this.db.select(this.db.raw(`distinct attribute_type 
 from gene_attribute_type order by attribute_type`));
     }
+    
     getGeneAttributeGroups () {
         return this.db.select(this.db.raw(`distinct attribute_group 
 from gene_attribute_type order by attribute_group`));
     }
+    
     getGeneAttributeCategories () {
         return this.db.select(this.db.raw(`distinct resource_group 
 from gene_attribute_type order by resource_group`));
@@ -2205,6 +2327,23 @@ id, act_value, act_type, action_type, target_id from drug_activity`));
         q = q.andWhere(this.db.raw(`
 lychi_h4 = ? or drug = ?`, [ligand.ligid, ligand.ligid]));
         return q;        
+    }
+
+    getDOHierarchy () {
+        let q = this.db.select(this.db.raw(`
+a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
+        return q;
+    }
+
+    getDiseaseOntology (args) {
+        let matches = [];
+        for (var n in this.doTree) {
+            let node = this.doTree[n];
+            if (node.parents.length == 0) {
+                diseaseOntologyTraversal (matches, node, args);
+            }
+        }
+        return matches;
     }
 }
 

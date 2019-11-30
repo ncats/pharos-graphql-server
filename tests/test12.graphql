@@ -1,0 +1,31 @@
+{
+  batch(targets: ["abl1", "P42858"]) {
+    targetResult {
+      facets {
+        facet
+        values {
+          name
+          value
+        }
+      }
+      count
+      targets {
+        sym
+        name
+        description
+        ligandCounts {
+          name
+          value
+        }
+        ligands {
+          name
+          smiles
+          synonyms {
+            name
+            value
+          }
+        }
+      }
+    }
+  }
+}

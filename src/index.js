@@ -310,6 +310,19 @@ type LigandActivity {
      pubs: [PubMed]
 }
 
+type DiseaseOntology {
+     doid: String
+     name: String
+     def: String
+     parents: [DiseaseOntology]
+     children: [DiseaseOntology]
+}
+
+type TINXDisease { 
+     doid: String!
+     
+}
+
 """Target entity"""
 type Target {
 """Internal TCRD ID; should not be used externally!"""
@@ -445,6 +458,8 @@ type Query {
      target(q: ITarget): Target
 
      diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
+     diseaseOntology(doid: String, name: String): [DiseaseOntology]
+     doTree: [DiseaseOntology]
 
      pubCount(term: String = ""): Int
      pubmed(pmid: Int!): PubMed
@@ -824,6 +839,21 @@ const resolvers = {
             }).catch(function(error) {
                 console.error(error);
             });
+        },
+
+        doTree: async function (_, args, {dataSources}) {
+            let nodes = [];
+            let doTree = dataSources.tcrd.doTree;
+            for (var key in doTree) {
+                let node = doTree[key];
+                // only return the root nodes
+                if (node.parents.length == 0)
+                    nodes.push(node);
+            }
+            return nodes;
+        },
+        diseaseOntology: async function (_, args, {dataSources}) {
+            return dataSources.tcrd.getDiseaseOntology(args);
         }
     },
     
@@ -1681,13 +1711,13 @@ const resolvers = {
                 let map;
                 switch (args.which) {
                 case 'group':
-                    map = dataSources.gaGroups;
+                    map = dataSources.tcrd.gaGroups;
                     break;
                 case 'category':
-                    map = dataSources.gaCategories;
+                    map = dataSources.tcrd.gaCategories;
                     break;
                 default:
-                    map = dataSources.gaTypes;
+                    map = dataSources.tcrd.gaTypes;
                 }
 
                 let values = new Map ();
@@ -1802,50 +1832,12 @@ const tcrdConfig = {
 };
 
 const tcrd = new TCRD(tcrdConfig);
-const gaTypes = [];
-const gaGroups = [];
-const gaCategories = [];
-
-tcrd.getGeneAttributeTypes()
-      .then(rows => {
-          console.log('~~~~~~ Gene Attribute Types');
-          rows.forEach(r => {
-              console.log('...'+r.attribute_type);
-              gaTypes.push(r.attribute_type);
-          });
-      }).catch(function(error) {
-          console.error(error);
-      });
-tcrd.getGeneAttributeGroups()
-      .then(rows => {
-          console.log('~~~~~~ Gene Attribute Groups');
-          rows.forEach(r => {
-              console.log('...'+r.attribute_group);
-              gaGroups.push(r.attribute_group);
-          });
-      }).catch(function(error) {
-          console.error(error);
-      });
-tcrd.getGeneAttributeCategories()
-      .then(rows => {
-          console.log('~~~~~~ Gene Attribute Categories');
-          rows.forEach(r => {
-              console.log('...'+r.resource_group);
-              gaCategories.push(r.resource_group);
-          });
-      }).catch(function(error) {
-          console.error(error);
-      });
-
 const server = new ApolloServer({
     schema: schema,
     introspection: true,
     playground: true,
     dataSources: () => ({
-        tcrd: tcrd,
-        gaTypes: gaTypes,
-        gaGroups: gaGroups,
-        gaCategories: gaCategories
+        tcrd: tcrd
     })
 });
 
