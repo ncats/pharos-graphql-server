@@ -18,7 +18,8 @@ const typeDefs = `
 
 type Xref {
      source: String!
-     value: String!
+     name: String!
+     value: String
      targets(tdl: String = "", fam: String = ""): [Target]
 }
 

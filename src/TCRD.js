@@ -809,10 +809,14 @@ order by value desc`, [target.tcrdid]));
 from goa a, t2tc b
 `));
         if (args.filter) {
-            let sub = this.getTargetFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('b.protein_id', subq);
-            });
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                switch (f.facet) {
+                case 'type':
+                    q = q.whereIn(this.db.raw(`substr(go_term,1,1)`), f.values);
+                    break;
+                }
+            }
             
             let t = args.filter.term;
             if (t != undefined && t !== '') {
@@ -1274,7 +1278,7 @@ limit ? offset ?`, [args.top, args.skip]));
     getXrefsForTarget (target) {
         //console.log('>>> getXrefsForTarget: '+target.tcrdid);
         return this.db.select(this.db.raw(`
-xtype as source, value 
+xtype as source, value as name, xtra as value 
 from xref where protein_id = ?`, [target.tcrdid]));
     }
 
