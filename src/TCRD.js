@@ -17,7 +17,7 @@ and f.itype = '${DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
 `;
 
-function parseFilter (filter) {
+function parseFilterOrder (filter) {
     let order = filter.order;
     let sortColumn = 'novelty';
     let dir = 'desc';
@@ -444,7 +444,7 @@ from target a, protein b, t2tc c`));
                            .orWhereIn('b.sym', args.batch)
                            .orWhereIn('b.stringid', args.batch));
         }
-        else if (args.filter) {
+        if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -488,7 +488,7 @@ left join xref d on d.protein_id = c.protein_id and xtype = ?`,
                            .orWhereIn('b.sym', args.batch)
                            .orWhereIn('b.stringid', args.batch));
         }
-        else if (args.filter) {
+        if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -535,7 +535,7 @@ from target a, protein b, t2tc c`));
                            .orWhereIn('b.sym', args.batch)
                            .orWhereIn('b.stringid', args.batch));
         }
-        else if (args.filter) {
+        if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -577,7 +577,7 @@ from ortholog a, protein b`));
                            .orWhereIn('b.sym', args.batch)
                            .orWhereIn('b.stringid', args.batch));
         }
-        else if (args.filter) {
+        if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -618,7 +618,7 @@ from disease a, protein b`));
                            .orWhereIn('b.sym', args.batch)
                            .orWhereIn('b.stringid', args.batch));
         }
-        else if (args.filter) {
+        if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -665,7 +665,7 @@ use index(phenotype_nhid_idx)`));
                                .orWhereIn('b.sym', args.batch)
                                .orWhereIn('b.stringid', args.batch));
             }
-            else {
+            if (args.filter) {
                 // MAKE SURE THE TABLE phenotype HAS AN INDEX ON nhprotein_id
                 //  COLUMN AND NAMED THE INDEX AS phenotype_nhid_idx
                 let sub = this.getTargetFacetSubQueries(args.filter.facets);
@@ -719,7 +719,7 @@ from phenotype a, protein b`));
                            .orWhereIn('b.sym', args.batch)
                            .orWhereIn('b.stringid', args.batch));
         }
-        else if (args.filter) {
+        if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -760,7 +760,7 @@ from goa a, protein b`));
                            .orWhereIn('b.sym', args.batch)
                            .orWhereIn('b.stringid', args.batch));
         }
-        else if (args.filter) {
+        if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -866,7 +866,7 @@ from gwas a, protein b`));
                            .orWhereIn('b.sym', args.batch)
                            .orWhereIn('b.stringid', args.batch));
         }
-        else if (args.filter) {
+        if (args.filter) {
             let sub = this.getTargetFacetSubQueries(args.filter.facets);
             sub.forEach(subq => {
                 q = q.whereIn('b.id', subq);
@@ -913,7 +913,7 @@ from expression a use index (expression_facet_idx), protein b`));
                                .orWhereIn('b.sym', args.batch)
                                .orWhereIn('b.stringid', args.batch));
             }
-            else {
+            if (args.filter) {
                 let sub = this.getTargetFacetSubQueries(args.filter.facets);
                 sub.forEach(subq => {
                     q = q.whereIn('b.id', subq);
@@ -957,8 +957,8 @@ name, value from ncats_facet_expression`));
     getTargets (args) {
         console.log('>>> getTargets: '+JSON.stringify(args));
         let q = undefined;
-        if (args.filter) {
-            let filter = parseFilter (args.filter);
+        if (args.filter && !args.batch) {
+            let filter = parseFilterOrder (args.filter);
             if (filter.order) {
                 q = this.db.select(this.db.raw(`
 a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid, 
@@ -1044,6 +1044,15 @@ and f.itype = '${DESCRIPTION_TYPE}'`));
                  .orWhereIn('b.sym', args.batch)
                  .orWhereIn('b.stringid', args.batch));
             }
+
+            if (args.filter && args.filter.facets.length > 0) {
+                let sub = this.getTargetFacetSubQueries(args.filter.facets);
+                console.log('!!!!!!!!! subqueries: '+sub);
+                sub.forEach(subq => {
+                    q = q.whereIn('b.id', subq);
+                });
+            }
+            
             q = q.andWhere(this.db.raw(`
 a.id = c.target_id and b.id = c.protein_id`))
                 .orderByRaw(this.db.raw(`
@@ -1417,7 +1426,7 @@ on c.protein_id = b2.protein_id
 `;
         let q;
         if (args.filter) {
-            let filter = parseFilter (args.filter);
+            let filter = parseFilterOrder (args.filter);
             if (filter.order) {
                 q = this.db.select(this.db.raw(PPI_SQL+`
 left join tdl_info f on f.protein_id = b2.protein_id
@@ -1651,7 +1660,7 @@ left join tdl_info g on g.protein_id = c.protein_id and
 g.itype = '${DESCRIPTION_TYPE}'`;
         let q;
         if (args.filter) {
-            let filter = parseFilter (args.filter);
+            let filter = parseFilterOrder (args.filter);
             if (filter.order) {
                 q = this.db.select(this.db.raw(DISEASE_SQL+`
 left join tdl_info f on f.protein_id = c.protein_id
@@ -1767,7 +1776,7 @@ g.itype = '${DESCRIPTION_TYPE}'
 `;
         let q;
         if (args.filter) {
-            let filter = parseFilter (args.filter);
+            let filter = parseFilterOrder (args.filter);
             if (filter.order) {
                 q = this.db.select(this.db.raw(PUBMED_SQL+`
 left join tdl_info d on d.protein_id = c.protein_id
@@ -1842,7 +1851,7 @@ left join tdl_info g on g.protein_id = c.protein_id
 and g.itype = '${DESCRIPTION_TYPE}'`;
         let q;
         if (args.filter) {
-            let filter = parseFilter (args.filter);
+            let filter = parseFilterOrder (args.filter);
             if (filter.order) {
                 q = this.db.select(this.db.raw(PATHWAY_SQL+`
 left join tdl_info f on f.protein_id = c.protein_id
@@ -1951,7 +1960,7 @@ left join tinx_novelty c use index(tinx_novelty_idx3) on c.protein_id = a.pid2
 `;
         let q;
         if (args.filter) {
-            let filter = parseFilter (args.filter);
+            let filter = parseFilterOrder (args.filter);
             if (filter.order) {
                 q = this.db.select(this.db.raw(KEGG_SQL+`
 left join tdl_info f on f.protein_id = a.pid2 

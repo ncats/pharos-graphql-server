@@ -486,7 +486,8 @@ type Query {
      orthologs(skip: Int=0, top: Int=10, filter: IFilter): OrthologResult
 
      search(term: String!, facets: [String!]): Result
-     batch(targets: [String], ligands: [String], diseases:[String]): Result
+     batch(targets: [String], ligands: [String], 
+           diseases:[String], filter: IFilter): Result
      xref(source: String!, value: String!): Xref
 }
 `;
