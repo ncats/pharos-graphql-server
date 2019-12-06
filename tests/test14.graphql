@@ -1,0 +1,35 @@
+{
+  ligands(filter:{
+      facets:[
+        {facet:"activity",
+        values:["KB", "ED50"]}
+      ]
+    }) {
+    count
+    facets {
+      facet
+      values {
+        name
+        value
+      }
+    }
+    ligands(skip:20){
+      ligid
+      name
+      isdrug
+      smiles
+      description
+      actcnt
+      activities{
+        actid
+        type
+        value
+        target{
+          tdl
+          sym
+          name
+        }
+      }
+    }
+  }
+}

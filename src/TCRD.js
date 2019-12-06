@@ -1714,9 +1714,11 @@ and b.target_id = ? order by year`, [target.tcrdid]));
     }
     getPubTatorScores (target, args) {
         return this.db.select(this.db.raw(`
-* from ptscore a, t2tc b
+year,sum(score) as score 
+from ptscore a, t2tc b
 where a.protein_id = b.protein_id
-and b.target_id = ? order by year`, [target.tcrdid]));
+and b.target_id = ?
+group by year order by year`, [target.tcrdid]));
     }
     getPubMedScores (target, args) {
         return this.db.select(this.db.raw(`
@@ -2247,6 +2249,174 @@ and b.target_id = ?`, [target.tcrdid]));
         return q;
     }
 
+    getLigandDrugCounts (args, table) {
+        let q;
+        if (args.filter) {
+            q = this.db.select(this.db.raw(`
+count(distinct lychi_h4) as cnt
+from ${table} a`));
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                switch (f.facet) {
+                case 'type': // do nothing
+                    break;
+                case 'activity':
+                    q = q.whereIn('act_type', f.values);
+                    break;
+                }
+            }
+
+            let idcolumn;
+            if (table == 'cmpd_activity') {
+                q = q.whereNotExists(builder => 
+                                     builder.select('*').from('drug_activity')
+                                     .whereRaw('lychi_h4=a.lychi_h4'))
+                    .andWhere(this.db.raw(`lychi_h4 is not null`));
+                idcolumn = 'cmpd_id_in_src';
+            }
+            else {
+                idcolumn = 'drug';
+            }
+
+            let p = this.db.select(this.db.raw(`
+count(distinct ${idcolumn}) as cnt
+from ${table}`));
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                switch (f.facet) {
+                case 'type': // do nothing
+                    break;
+                case 'activity':
+                    p = p.whereIn('act_type', f.values);
+                    break;
+                }
+            }
+            p = p.andWhere(this.db.raw(`lychi_h4 is null`));
+            q = q.union(p);
+        }
+        else {
+            let sql = `count(distinct lychi_h4) as cnt
+from ${table} a where `;
+            let idcolumn;
+            if (table == 'cmpd_activity') {
+                sql += `not exists (select 1 from drug_activity 
+where lychi_h4=a.lychi_h4) and `;
+                idcolumn = 'cmpd_id_in_src';
+            }
+            else {
+                idcolumn = 'drug';
+            }
+            sql += `lychi_h4 is not null
+union select count(distinct ${idcolumn}) as cnt
+from ${table} where lychi_h4 is null`;
+            q = this.db.select(this.db.raw(sql));
+        }
+
+        console.log('>>> getLigandDrugCounts: '+q);
+        
+        return q;
+    }
+
+    getLigandCounts (args) {
+        return this.getLigandDrugCounts(args, 'cmpd_activity');
+    }
+
+    getDrugCounts (args) {
+        return this.getLigandDrugCounts(args, 'drug_activity');
+    }
+    
+    getLigandLabels (args) {
+        let q = this.db.select(this.db.raw(`* from ncats_ligand_labels a`));
+        if (args.filter) {
+            for (var i in args.filter.facets) {
+                let f = args.filter.facets[i];
+                switch (f.facet) {
+                case 'type':
+                    for (var j in f.values) {
+                        switch (f.values[j]) {
+                        case 'drug': case 'Drug':
+                            q = q.andWhere(this.db.raw(`
+exists (select 1 from drug_activity where lychi_h4 = a.label)
+or exists (select 1 from drug_activity where drug = a.label)`));
+                            break;
+                        case 'ligand': case 'Ligand':
+                            q = q.andWhere(this.db.raw(`
+exists (select 1 from cmpd_activity where lychi_h4 = a.label)
+or exists (select 1 from cmpd_activity where  cmpd_id_in_src = a.label)`));
+                            break;
+                        }
+                    }
+                    break;
+                    
+                case 'activity':
+                    q = q.whereExists(builder => 
+                                      builder.select('*').from('drug_activity')
+                                      .whereIn('act_type', f.values)
+                                      .andWhereRaw(`lychi_h4=a.label`))
+                        .orWhereExists(builder =>
+                                     builder.select('*')
+                                     .from('cmpd_activity')
+                                     .whereIn('act_type', f.values)
+                                     .andWhereRaw(`lychi_h4=a.label`));
+                    break;
+                }
+            }
+        }
+
+        q = q.orderByRaw(this.db.raw(`count desc, label`));
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+
+        console.log('>>> getLigandLabels: '+q);
+        return q;
+    }
+    
+    __getLigandLabels (args) {
+        let q = this.db.select(this.db.raw(`
+label,sum(cnt) as cnt from (
+  select lychi_h4 as label,count(*) as cnt 
+  from drug_activity where lychi_h4 is not null 
+  group by lychi_h4 
+  union 
+  select drug as label,count(*) as cnt
+  from drug_activity where lychi_h4 is null
+  group by drug
+  union
+  select lychi_h4 as label,count(*) as cnt 
+  from cmpd_activity where lychi_h4 is not null 
+  group by lychi_h4
+  union
+  select cmpd_id_in_src as label,count(*) as cnt
+  from cmpd_activity where lychi_h4 is null
+  group by cmpd_id_in_src
+) a group by label order by cnt desc, label`));
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
+        console.log('>>> getLigandLabels: '+q);
+        return q;
+    }
+
+    getActivityCounts (args) {
+        let q = this.db.select(this.db.raw(`
+act_type,count(distinct lychi_h4) as cnt from drug_activity 
+where act_type not in ('','-') and lychi_h4 is not null
+group by act_type
+union select act_type,count(distinct drug) as cnt from drug_activity 
+where act_type not in ('','-') and lychi_h4 is null
+group by act_type
+union select act_type,count(distinct lychi_h4) as cnt from cmpd_activity 
+where act_type not in ('','-') and lychi_h4 is not null
+group by act_type
+union select act_type,count(distinct cmpd_id_in_src) as cnt
+from cmpd_activity where act_type not in ('','-') and lychi_h4 is null
+group by act_type`));
+        return q;
+    }
+    
     getLigandCountForTarget (target) {
         // don't count drug
         return this.db.select(this.db.raw(`
@@ -2284,7 +2454,7 @@ select cmpd_id_in_src as label,count(*) as cnt
 from cmpd_activity where lychi_h4 is null and target_id = ? 
 group by cmpd_id_in_src
 order by cnt desc`, [target.tcrdid, target.tcrdid]));
-        //console.log('~~~~~~~~~ getLigandsForTarget: '+q);
+        //console.log('~~~~~~~~~ getLigandLabelsForTarget: '+q);
         return q;
     }
     
@@ -2301,11 +2471,14 @@ where lychi_h4 is null
 and target_id = ?
 group by drug
 order by cnt desc`, [target.tcrdid, target.tcrdid]));
-        //console.log('~~~~~~~~~ getDrugsForTarget: '+q);        
+        //console.log('~~~~~~~~~ getDrugLabelsForTarget: '+q);        
         return q;
     }
 
-    getLigands (target, labels) {
+    getLigandsForLabels (labels) {
+        return this.getLigandsForTarget(null, labels);
+    }
+    getLigandsForTarget (target, labels) {
         let q = this.db.select(this.db.raw(`
 catype,cmpd_id_in_src,cmpd_name_in_src,cmpd_pubchem_cid,smiles,lychi_h4
 from cmpd_activity`))
@@ -2315,11 +2488,14 @@ from cmpd_activity`))
             q = q.andWhere(this.db.raw(`target_id = ?`, [target.tcrdid]));
         }
 
-        //console.log('^^^^^^^^^^^^^^ getLigands: '+q);
+        console.log('^^^^^^^^^^^^^^ getLigandsForTarget: '+q);
         return q;
     }
 
-    getDrugs (target, labels) {
+    getDrugsForLabels (labels) {
+        return this.getDrugsForTarget(null, labels);
+    }
+    getDrugsForTarget (target, labels) {
         let q = this.db.select(this.db.raw(`
 drug, cmpd_chemblid, nlm_drug_info, cmpd_pubchem_cid, dcid,smiles,lychi_h4
 from drug_activity`))
@@ -2328,6 +2504,7 @@ from drug_activity`))
         if (target) {
             q = q.andWhere(this.db.raw(`target_id = ?`, [target.tcrdid]));
         }
+        console.log('>>> getDrugsForTarget: '+q);
         
         return q;
     }

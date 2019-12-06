@@ -142,11 +142,14 @@ add fulltext index alias_text_idx(value)
 alter table drug_activity
 add lychi_h4 varchar(15)
 ,add index drug_lychi_idx(lychi_h4)
+,add index drug_drug_idx(drug)
 ;
 
 alter table cmpd_activity
 add lychi_h4 varchar(15)
 ,add index cmpd_lychi_idx(lychi_h4)
+,add index cmpd_acttype_idx(act_type)
+,add index cmpd_activity_idx4(act_type,lychi_h4)
 ;
 
 create table if not exists ncats_facet_impc (
@@ -219,3 +222,28 @@ select drug as name, drug as refid, 1, count(*) as actcnt
 from drug_activity where lychi_h4 is null
 group by drug
 ;
+
+create table if not exists ncats_ligand_labels(
+label varchar(255) not null,
+`count` int not null,
+index (label),
+index (`count`)
+);
+insert ncats_ligand_labels(label,`count`)
+select label,sum(cnt) as `count` from (
+  select lychi_h4 as label,count(*) as cnt 
+  from drug_activity where lychi_h4 is not null 
+  group by lychi_h4 
+  union 
+  select drug as label,count(*) as cnt
+  from drug_activity where lychi_h4 is null
+  group by drug
+  union
+  select lychi_h4 as label,count(*) as cnt 
+  from cmpd_activity where lychi_h4 is not null 
+  group by lychi_h4
+  union
+  select cmpd_id_in_src as label,count(*) as cnt
+  from cmpd_activity where lychi_h4 is null
+  group by cmpd_id_in_src
+) a group by label order by cnt desc, label;
