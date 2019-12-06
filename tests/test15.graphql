@@ -1,0 +1,25 @@
+{
+  dto{
+    dtoid
+    name
+    children{
+      dtoid
+      name
+    }
+  }
+  dtoNode(name:"potassium"){
+    dtoid
+    name
+    parent {
+      dtoid
+      name
+    }
+  }
+  node1: dtoNode(dtoid:"DTO_03100197") {
+    name
+    parent {
+      dtoid
+      name
+    }
+  }
+}

@@ -7,7 +7,7 @@ const DESCRIPTION_TYPE =
       'NCBI Gene Summary';
 
 const TARGET_SQL = `
-a.*,b.uniprot,b.seq,b.sym,e.score as novelty, a.id as tcrdid, 
+a.*,b.dtoid,b.uniprot,b.seq,b.sym,e.score as novelty, a.id as tcrdid, 
 b.description as name, f.string_value as description
 from target a, protein b, t2tc c
 left join tinx_novelty e use index(tinx_novelty_idx3)
@@ -77,6 +77,23 @@ function diseaseFacetMapping (facet) {
         return 'tdl';
     }
     return facet;
+}
+
+function dtoTraversal (matches, node, args) {
+    var matched = node.name == args.name;
+    if (!matched) {
+        matched = node.name.indexOf(args.name) >= 0;
+    }
+    
+    if (!matched) { // assume regex
+        var re = new RegExp (args.name, 'i');
+        matched = re.test(node.name);
+    }
+    
+    if (matched)
+        matches.push(node);
+    for (var n in node.children)
+        dtoTraversal (matches, node.children[n], args);
 }
 
 function diseaseOntologyTraversal (matches, node, args) {
@@ -174,6 +191,55 @@ class TCRD extends SQLDataSource {
                 }
 
             }).catch(function(error) {
+                console.error(error);
+            });
+
+        this.dto = {};
+        this.getDTOHierarchy()
+            .then(rows => {
+                rows.forEach(r => {
+                    let d = _this.dto[r.id];
+                    if (!d) {
+                        d = {
+                            dtoid: r.id,
+                            name: r.name,
+                            children: []
+                        };
+                        _this.dto[r.id] = d;
+                    }
+
+                    if (r.parent) {
+                        let p = _this.dto[r.parent];
+                        if (p) {
+                            d.parent = p;
+                            p.children.push(d);
+                        }
+                        else d._parent = r.parent;
+                    }
+                });
+
+                for (var key in _this.dto) {
+                    let n = _this.dto[key];
+                    if (n._parent) {
+                        n.parent = _this.dto[n._parent];
+                        if (n.parent) {
+                            n.parent.children.push(n);
+                        }
+                        else {
+                            console.warn('DTO node '+n.dtoid
+                                         +' has nonexistence parent '
+                                         +n._parent);
+                        }
+                    }
+                }
+
+                for (var key in _this.dto) {
+                    let n = _this.dto[key];
+                    if (!n.parent) {
+                        console.log('!!!!! '+n.dtoid+' '+n.name);
+                    }
+                }
+            }).catch(function (error) {
                 console.error(error);
             });
 
@@ -397,7 +463,7 @@ and a.id = ?`, [args.tcrdid]));
 
     searchTargets (args) {
         let q = this.db.select(this.db.raw(`
-a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid, 
+a.*,b.uniprot,b.dtoid,b.sym,b.seq,e.score as novelty, a.id as tcrdid, 
 b.description as name, d.string_value as description
 from target a, protein b, t2tc c
 left join tinx_novelty e use index (tinx_novelty_idx3) 
@@ -2545,6 +2611,29 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
             let node = this.doTree[n];
             if (node.parents.length == 0) {
                 diseaseOntologyTraversal (matches, node, args);
+            }
+        }
+        return matches;
+    }
+
+    getDTOHierarchy () {
+        return this.db.select(this.db.raw(`* from dto`));
+    }
+
+    getDTO (args) {
+        let matches = [];
+        if (args.dtoid) {
+            let n = this.dto[args.dtoid];
+            while (n) {
+                matches.push(n);
+                n = n.parent;
+            }
+        }
+        else {
+            for (var key in this.dto) {
+                let n = this.dto[key];
+                if (!n.parent)
+                    dtoTraversal (matches, n, args);
             }
         }
         return matches;

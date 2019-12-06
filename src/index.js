@@ -326,6 +326,13 @@ type DiseaseOntology {
      children: [DiseaseOntology]
 }
 
+type DTO {
+     dtoid: String!
+     name: String!
+     parent: DTO
+     children: [DTO]
+}
+
 type TINXDisease { 
      tinxid: Int!
 """Disease novelty"""
@@ -362,6 +369,9 @@ type Target {
      seq: String!
 """Target novelty score"""
      novelty: Float
+
+"""DTO hierarchy if avaiable"""
+     dto: [DTO]
 
 """Properties and cross references"""
      props(name: String = ""): [Prop]
@@ -491,6 +501,9 @@ type Query {
      diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
      diseaseOntology(doid: String, name: String): [DiseaseOntology]
      doTree: [DiseaseOntology]
+
+     dto: [DTO]
+     dtoNode(dtoid: String, name: String): [DTO]
 
      ligands(skip: Int=0, top: Int=10, filter: IFilter): LigandResult
 
@@ -1013,10 +1026,39 @@ const resolvers = {
         },
         diseaseOntology: async function (_, args, {dataSources}) {
             return dataSources.tcrd.getDiseaseOntology(args);
+        },
+
+        dto: async function (_, args, {dataSources}) {
+            let nodes = [];
+            let dto = dataSources.tcrd.dto;
+            for (var key in dto) {
+                let n = dto[key];
+                if (!n.parent)
+                    nodes.push(n);
+            }
+            return nodes;
+        },
+        dtoNode: async function (_, args, {dataSources}) {
+            return dataSources.tcrd.getDTO(args);
         }
     },
     
     Target: {
+        dto: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.getDTO(target);
+            
+            let nodes = [];
+            if (target.dtoid) {
+                console.log('~~~~~ target: '+target.tcrdid+' '+target.dtoid);
+                let n = dataSources.tcrd.dto[target.dtoid];
+                while (n) {
+                    nodes.push(n);
+                    n = n.parent;
+                }
+            }
+            return nodes;
+        },
+        
         xrefs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getXrefsForTarget(target);
             return q.then(rows => {
