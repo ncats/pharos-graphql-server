@@ -498,6 +498,7 @@ type Query {
              facets: [String!], filter: IFilter): TargetResult
      target(q: ITarget): Target
 
+     disease(name: String): Disease
      diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
      diseaseOntology(doid: String, name: String): [DiseaseOntology]
      doTree: [DiseaseOntology]
@@ -505,6 +506,7 @@ type Query {
      dto: [DTO]
      dtoNode(dtoid: String, name: String): [DTO]
 
+     ligand(ligid: String): Ligand
      ligands(skip: Int=0, top: Int=10, filter: IFilter): LigandResult
 
      pubCount(term: String = ""): Int
@@ -836,7 +838,7 @@ function filterResultFacets (result, args) {
     return facets;
 }
 
-function toLigand (r) {
+function toLigand (r, lig) {
     let l = {};
     if (r.lychi_h4) {
         l.ligid = r.lychi_h4;
@@ -865,32 +867,39 @@ function toLigand (r) {
     
     l.synonyms = [];    
     if (r.cmpd_pubchem_cid) {
-        l.synonyms.push(
-            { name: 'PubChem',
-              value: r.cmpd_pubchem_cid}
-        );
+        let s = { name: 'PubChem',
+                  value: r.cmpd_pubchem_cid};
+        if (lig)
+            lig.synonyms.push(s);
+        l.synonyms.push(s);
     }
     if (r.cmpd_id_in_src) {
-        l.synonyms.push(
-            { name: r.catype,
-              value: r.cmpd_id_in_src});
+        let s = { name: r.catype,
+                  value: r.cmpd_id_in_src};
+        if (lig)
+            lig.synonyms.push(s);
+        l.synonyms.push(s);
     }
     if (r.cmpd_pubchem_cid) {
-        l.synonyms.push(
-            { name: 'PubChem',
-              value: r.cmpd_pubchem_cid}
-        );
+        let s = { name: 'PubChem',
+                  value: r.cmpd_pubchem_cid};
+        if (lig)
+            lig.synonyms.push(s);
+        l.synonyms.push(s);
     }
     if (r.dcid) {
-        l.synonyms.push(
-            { name: 'DrugCentral',
-              value: r.dcid}
-        );
+        let s = { name: 'DrugCentral',
+                  value: r.dcid};
+        if (lig)
+            lig.synonyms.push(s);
+        l.synonyms.push(s);
     }
     if (r.reference) {
-        l.synonyms.push(
-            { name: r.source,
-              value: r.reference});
+        let s = { name: r.source,
+                  value: r.reference};
+        if (lig)
+            lig.synonyms.push(s);
+        l.synonyms.push(s);
     }
     
     return l;
@@ -938,10 +947,51 @@ const resolvers = {
             return getTargetResult (args, dataSources.tcrd);
         },
 
+        disease: async function (_, args, {dataSources}) {
+            return dataSources.tcrd.getDisease(args.name)
+                .then(rows => {
+                    if (rows) return rows[0];
+                    return rows;
+                }).catch(function (error) {
+                    console.error(error);
+                });
+        },
         diseases: async function (_, args, {dataSources}) {
             return getDiseaseResult (args, dataSources.tcrd);
         },
 
+        ligand: async function (_, args, {dataSources}) {
+            return Promise.all([
+                dataSources.tcrd.getDrug(args.ligid),
+                dataSources.tcrd.getLigand(args.ligid)
+            ]).then(rows => {
+                let lig = null;                
+                if (rows[0]) {
+                    rows[0].forEach(r => {
+                        if (!lig)
+                            lig = toLigand (r);
+                        else
+                            toLigand (r, lig);
+                    });
+                    
+                    if (lig) {
+                        lig.actcnt = rows[0].length;
+                    }
+                }
+                if (rows[1]) {
+                    rows[1].forEach(r => {
+                        if (!lig) lig = toLigand (r);
+                        else toLigand (r, lig);
+                    });
+                    if (lig) {
+                        lig.actcnt += rows[1].length;
+                    }
+                }
+                return lig;
+            }).catch(function (error) {
+                console.error(error);
+            });
+        },
         ligands: async function (_, args, {dataSources}) {
             return getLigandResult (args, dataSources.tcrd);
         },

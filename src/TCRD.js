@@ -1205,6 +1205,14 @@ match(name, description, drug_name) against(? in boolean mode)`, [t]));
         return q;        
     }
 
+    getDisease (name) {
+        let q = this.db.select(this.db.raw(`
+name,count(*) as associationCount
+from disease
+where name = ?`, [name]));
+        return q;
+    }
+    
     getDiseases (args) {
         let q = this.db.select(this.db.raw(`
 name,count(*) as associationCount
@@ -2436,6 +2444,24 @@ or exists (select 1 from cmpd_activity where  cmpd_id_in_src = a.label)`));
             q = q.offset(args.skip);
 
         console.log('>>> getLigandLabels: '+q);
+        return q;
+    }
+
+    getLigand (id) {
+        let q = this.db.select(this.db.raw(`
+catype,cmpd_id_in_src,cmpd_name_in_src,cmpd_pubchem_cid,smiles,lychi_h4
+from cmpd_activity`))
+            .where('lychi_h4', id)
+            .orWhere('cmpd_id_in_src', id);
+        return q;
+    }
+
+    getDrug (id) {
+        let q = this.db.select(this.db.raw(`
+drug, cmpd_chemblid, nlm_drug_info, cmpd_pubchem_cid, dcid,smiles,lychi_h4
+from drug_activity`))
+            .where('lychi_h4', id)
+            .orWhere('drug', id);
         return q;
     }
     
