@@ -488,6 +488,7 @@ type OrthologResult {
 type Result {
      targetResult: TargetResult
      diseaseResult: DiseaseResult
+     ligandResult: LigandResult
      pubResult: PubResult
      orthologResult: OrthologResult
 }
@@ -1051,12 +1052,14 @@ const resolvers = {
         batch: async function (_, args, {dataSources}) {
             let funcs = [
                 getTargetResult (args, dataSources.tcrd),
-                getDiseaseResult (args, dataSources.tcrd)
+                getDiseaseResult (args, dataSources.tcrd),
+                getLigandResult(args, dataSources.tcrd)
             ];
             return Promise.all(funcs).then(r => {
                 return {
                     targetResult: r[0],
-                    diseaseResult: r[1]
+                    diseaseResult: r[1],
+                    ligandResult: r[2] // sigh
                 };
             }).catch(function(error) {
                 console.error(error);
