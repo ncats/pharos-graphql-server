@@ -870,35 +870,28 @@ function toLigand (r, lig) {
     if (r.cmpd_pubchem_cid) {
         let s = { name: 'PubChem',
                   value: r.cmpd_pubchem_cid};
-        if (lig)
+        if (lig && !filter (lig.synonyms, {name:s.name}))
             lig.synonyms.push(s);
         l.synonyms.push(s);
     }
     if (r.cmpd_id_in_src) {
         let s = { name: r.catype,
                   value: r.cmpd_id_in_src};
-        if (lig)
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    if (r.cmpd_pubchem_cid) {
-        let s = { name: 'PubChem',
-                  value: r.cmpd_pubchem_cid};
-        if (lig)
+        if (lig && !filter (lig.synonyms, {name:s.name}))
             lig.synonyms.push(s);
         l.synonyms.push(s);
     }
     if (r.dcid) {
         let s = { name: 'DrugCentral',
                   value: r.dcid};
-        if (lig)
+        if (lig && !filter (lig.synonyms, {name:s.name}))
             lig.synonyms.push(s);
         l.synonyms.push(s);
     }
     if (r.reference) {
         let s = { name: r.source,
                   value: r.reference};
-        if (lig)
+        if (lig && !filter (lig.synonyms, {name:s.name}))
             lig.synonyms.push(s);
         l.synonyms.push(s);
     }
