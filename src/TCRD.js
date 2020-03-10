@@ -723,7 +723,7 @@ from disease a, protein b`));
         if (args.batch || args.filter) {
             q = this.db.select(this.db.raw(`
 d.term_name as name, count(distinct b.id) as value
-from ortholog a, protein b, nhprotein c, phenotype d 
+from ortholog a use index (ortholog_idx1), protein b, nhprotein c, phenotype d 
 use index(phenotype_nhid_idx)`));
             
             if (args.batch && args.batch.length > 0) {
@@ -925,7 +925,7 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
     getTargetGWASCounts (args) {
         let q = this.db.select(this.db.raw(`
 disease_trait as name, count(distinct b.id) as value
-from gwas a, protein b`));
+from gwas a force index (gwas_idx1), protein b`));
         
         if (args.batch && args.batch.length > 0) {
             q = q.andWhere(builder=>builder.whereIn('b.uniprot', args.batch)
