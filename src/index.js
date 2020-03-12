@@ -12,7 +12,7 @@ const { ApolloServer } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
 const { find, filter, slice } = require('lodash');
 const TCRD = require('./TCRD');
-
+const {performance} = require('perf_hooks');
 
 const typeDefs = `
 
@@ -457,6 +457,19 @@ type TargetResult {
      targets(skip: Int=0, top: Int=10): [Target]
 }
 
+type SuggestionResults{
+     elapsedTime: Float
+     genes: [Suggestion]
+     targets: [Suggestion]
+     diseases: [Suggestion]
+     keywords: [Suggestion]
+     phenotypes: [Suggestion]
+}
+
+type Suggestion{
+     key: String
+}
+
 type DiseaseResult {
      filter: Filter
      count: Int
@@ -494,6 +507,7 @@ type Result {
 }
 
 type Query {
+     autocomplete(name: String): SuggestionResults
      targetFacets: [String!]
      targets(skip: Int=0, top: Int=10, 
              facets: [String!], filter: IFilter): TargetResult
@@ -901,6 +915,34 @@ function toLigand (r, lig) {
 
 const resolvers = {
     Query: {
+        autocomplete: async function (_, args, {dataSources}){
+            let results = dataSources.tcrd.getSuggestions(args.name);
+            let startTime = performance.now();
+
+            return Promise.all([results]).then(rows => {
+                var sorted = {};
+                sorted["UniProt Gene"]=[];
+                sorted["Target"]=[];
+                sorted["Disease"]=[];
+                sorted["IMPC Phenotype"]=[];
+                sorted["UniProt Keyword"]=[];
+
+                for(var i = 0 ; i < rows[0].length ; i++){
+                    sorted[rows[0][i].source].push({key:rows[0][i].value});
+                }
+                return {
+                    elapsedTime: (performance.now() - startTime)/1000,
+                    genes: sorted["UniProt Gene"],
+                    targets: sorted["Target"],
+                    diseases: sorted["Disease"],
+                    phenotypes: sorted["IMPC Phenotype"],
+                    keywords: sorted["UniProt Keyword"]
+                };
+            }).catch(function (error) {
+                console.error(error);
+            });
+        },
+
         search: async function (_, args, {dataSources}) {
             args.filter = {
                 term: args.term
