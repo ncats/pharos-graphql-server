@@ -2700,6 +2700,78 @@ and c.target_id = ?`, [target.tcrdid]));
         
         return q;
     }
+
+    getSuggestions(key){
+        let firstWordMatch = key + '%';
+        let laterWordMatch = '% ' + key + '%';
+        let q = this.db.select(this.db.raw(`
+* from (
+    select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'UniProt Gene'
+        and value like ?
+    union select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'UniProt Gene'
+        and value like ?
+    limit 10
+) as genes
+union select * from (
+    select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'Target'
+        and value like ?
+    union select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'Target'
+        and value like ?
+    limit 10
+) as targets
+union select * from (
+    select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'Disease'
+        and value like ?
+    union select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'Disease'
+        and value like ?
+    limit 10
+) as diseases
+union select * from (
+    select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'IMPC Phenotype'
+        and value like ?
+    union select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'IMPC Phenotype'
+        and value like ?
+    limit 10
+) as phenotypes
+union select * from (
+    select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'UniProt Keyword'
+        and value like ?
+    union select 
+        value, source 
+    from ncats_typeahead 
+    where source = 'UniProt Keyword'
+        and value like ?
+    limit 10
+) as keywords`, [firstWordMatch, laterWordMatch,firstWordMatch, laterWordMatch,firstWordMatch, laterWordMatch,firstWordMatch, laterWordMatch,firstWordMatch, laterWordMatch]));
+        return q;
+    }
 }
 
 module.exports = TCRD;
