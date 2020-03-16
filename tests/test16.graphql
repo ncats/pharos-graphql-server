@@ -1,0 +1,18 @@
+# Write your query or mutation here
+{autocomplete(name:"a"){
+    diseases{
+        key
+    }
+    targets{
+        key
+    }
+    keywords{
+        key
+    }
+    phenotypes{
+        key
+    }
+    genes{
+        key
+    }
+}}
