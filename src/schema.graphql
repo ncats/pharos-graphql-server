@@ -1,32 +1,520 @@
-type Synonym {
+type Xref {
      source: String!
      name: String!
+     value: String
+     targets(tdl: String = "", fam: String = ""): [Target]
 }
 
-enum TargetDevelopmentLevel {
-     Tclin
-     Tchem
-     Tbio
-     Tdark
-}
-
-interface Entity {
-     id: ID!
+type Prop {
      name: String!
-     synonyms: [Synonym]
-     description: String
+     value: String!
 }
 
-type Target implements Entity {
-     id: ID!
+type IntProp {
      name: String!
-     synonyms: [Synonym]
+     value: Int!
+}
+
+type FloatProp {
+     name: String!
+     value: Float!
+}
+
+type TemporalCount {
+     year: Int!
+     count: Int!
+}
+
+type TemporalScore {
+     year: Int!
+     score: Float!
+}
+
+type Facet {
+     facet: String!
+     count: Int
+     values (skip: Int=0, top: Int=10, name: String): [IntProp]
+}
+
+input IFilterFacet {
+     facet: String!
+     values: [String]
+}
+
+type FilterFacet {
+     facet: String!
+     values: [String]
+}
+
+"""Input IRangeFloat: [start, end)"""
+input IRangeInt {
+     name: String!
+     start: Int
+     end: Int
+}
+
+"""Input IRangeFloat: [start, end) when start & end are specified;
+if start is not specified, then < end. Otherwise if end is not specified,
+then the range >= start is assumed."""
+input IRangeFloat {
+     name: String!
+     start: Float
+     end: Float
+}
+
+input IFilter {
+     term: String
+     facets: [IFilterFacet]
+     irange: [IRangeInt]
+     frange: [IRangeFloat]
+     order: String
+}
+
+type Filter {
+     term: String
+     facets: [FilterFacet]
+}
+
+type PantherPath {
+     pcid: String!
+     name: String!
+     parents: [PantherPath]
+}
+
+type PantherClass {
+     pcid: String!
+     name: String!
+     parents: [String]
+}
+
+type Pathway {
+     pwid: Int!
+     type: String!
+     name: String!
+     targetCounts: [IntProp]
+     targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
+}
+
+input ITarget {
+     tcrdid: Int
+     uniprot: String
+     geneid: Int
+     sym: String
+     stringid: String
+}
+
+type PubMed {
+     pmid: String!
+     title: String
+     journal: String
+     date: String
+     year: Int
+     abstract: String
+     targetCounts: [IntProp]
+     targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
+}
+
+type GeneRIF {
+     rifid: Int!
+     text: String
+     target: Target!
+     pubs: [PubMed]
+}
+
+"""Ortholog"""
+type Ortholog {
+     orid: Int!
+     species: String!
+     sym: String
+     name: String!
+     dbid: String
+     geneid: Int
+     source: [String]
+     diseases: [OrthologDisease]
+}
+
+type OrthologDisease {
+     ordid: Int!
+     score: Float!
+     diseases: [Disease]
+}
+
+"""Disease entity"""
+type Disease {
+     name: String!
+     associationCount: Int!
+     associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
+}
+
+type DiseaseAssociation {
+     disassid: Int!
+     type: String!
+     name: String!
+     did: String
      description: String
-     tdl: TargetDevelopmentLevel
-     family: String
+     zscore: Float
+     evidence: String
+     conf: Float
+     reference: String
+     drug: String
+     log2foldchange: Float
+     pvalue: Float
+     score: Float
+     source: String
+
+     targetCounts: [IntProp]
+     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
+}
+
+"""Target relationships such as PPI"""
+type TargetNeighbor {
+     nid: Int!
+     type: String!
+     props: [Prop]
+     target: Target!
+}
+
+"""LocSigDB: database of protein localization signals"""
+type LocSig {
+     locid: Int!
+     location: String!
+     signal: String!
+     pubs: [PubMed]
+}
+
+"""LINCS: Library of Integrated Network-Based Cellular Signatures"""
+type LINCS {
+     lncsid: Int!
+     cellid: String!
+     zscore: Float
+     smiles: String
+     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
+}
+
+type Uberon {
+     uid: String!
+     name: String!
+     def: String
+     comment: String
+}
+
+"""Expression entity"""
+type Expression {
+     expid: Int!
+     type: String!
+     tissue: String!
+     """quality value: enum('Not detected','Low','Medium','High')"""
+     qual: String
+     value: String
+     evidence: String
+     zscore: Float
+     conf: Float
+     """BrendaTissue ontology"""
+     btoid: String
+     cellid: String
+     uberon: Uberon
+     pub: PubMed
+}
+
+type GO {
+     goid: String!
+     """type: 'C' - component, 'F' - function, 'P' - process"""
+     type: String!
+     term: String!
+     evidence: String
+     goeco: String
+}
+
+type MIM {
+     mimid: Int!
+     term: String!
+}
+
+"""GWAS catalog data"""
+type GWAS {
+     gwasid: Int!
+     trait: String!
+     snps: [Prop]
+     pvalue: Float
+     pub: PubMed
+}
+
+"""Harmonizome"""
+type Harmonizome {
+     target: Target!
+     count: Int
+     attrs: [GeneAttribute]
+     """which must be one of 'type', 'group', or 'category'"""
+     summary (which: String="type"): [FloatProp]
+}
+
+type GeneAttribute {
+     gaid: Int!
+     gat: GeneAttributeType!
+     count: Int!
+     cdf: Float!
+}
+
+"""Gene attribute type associated with harmonizome entry"""
+type GeneAttributeType {
+     gatid: Int!
+     name: String!
+     association: String
+     description: String
+     """resource_group in table gene_attribute_type"""
+     category: String
+     group: String
+     type: String
+     pubs: [PubMed]
+     url: String
+}
+
+"""Ligand"""
+type Ligand {
+     """identify associated with this ligand; for small molecule it's the lychi hash"""
+     ligid: String
+     """recognized name for the ligand"""
+     name: String
+     """nlm description of the drug"""
+     description: String
+     """is ligand an approved drug?"""
+     isdrug: Boolean
+     synonyms: [Prop]
+     """molecular structure of ligand if small molecule"""
+     smiles: String
+     """Activity count"""
+     actcnt: Int
+     activities (all: Boolean = true): [LigandActivity]
+}
+
+type LigandActivity {
+     actid: Int!
+     """activity type; e.g., IC50"""
+     type: String
+     value: Float
+     """mode of action; e.g., INHIBITOR"""
+     moa: String
+     reference: String
+     ligand: Ligand!
+     target: Target!
+     pubs: [PubMed]
+}
+
+type DiseaseOntology {
+     doid: String
+     name: String
+     def: String
+     parents: [DiseaseOntology]
+     children: [DiseaseOntology]
+}
+
+type DTO {
+     dtoid: String!
+     name: String!
+     parent: DTO
+     children: [DTO]
+}
+
+type TINXDisease {
+     tinxid: Int!
+     """Disease novelty"""
+     novelty: Float
+     """Importance of disease-target combination"""
+     score: Float
+     disease: DiseaseOntology!
+}
+
+type TINXTarget {
+     """Target novelty"""
+     novelty: Float
+     """Importance of disease-target combination"""
+     score: Float
+     target: Target!
+}
+
+"""Target entity"""
+type Target {
+     """Internal TCRD ID; should not be used externally!"""
+     tcrdid: Int!
+     """UniProt Accession"""
+     uniprot: String!
+     """Target name"""
+     name: String!
+     """Gene symbol"""
+     sym: String
+     """Summary of gene/protein"""
+     description: String
+     """Target development leve"""
+     tdl: String
+     """Target family"""
+     fam: String
+     seq: String!
+     """Target novelty score"""
+     novelty: Float
+
+     """DTO hierarchy if avaiable"""
+     dto: [DTO]
+
+     """Properties and cross references"""
+     props(name: String = ""): [Prop]
+     synonyms(name: String = ""): [Prop]
+     xrefs(source: String = ""): [Xref]
+
+     """Publications associated with this protein"""
+     pubCount: Int
+     pubs(skip: Int = 0, top: Int = 10, term: String = ""): [PubMed]
+
+     """GeneRIF information"""
+     generifCount: Int
+     generifs(skip: Int = 0, top: Int = 10, term: String=""): [GeneRIF]
+
+     """Protein-protein interaction"""
+     ppiCounts: [IntProp]
+     ppis(skip: Int = 0, top: Int = 10, filter: IFilter): [TargetNeighbor]
+
+     """Disease associations"""
+     diseaseCounts: [IntProp]
+     diseases(skip: Int=0, top: Int=10, type: [String]=[]): [Disease]
+
+     """Patent information"""
+     patentCounts: [TemporalCount]
+     pubTatorScores: [TemporalScore]
+     pubmedScores: [TemporalScore]
+
+     """Panther protein ontology"""
+     pantherPaths: [PantherPath]
+     pantherClasses: [PantherClass]
+
+     """Pathway information"""
+     pathwayCounts: [IntProp]
+     pathways(skip: Int=0, top: Int=10, type: [String]=[]): [Pathway]
+
+     """Protein signal localization"""
+     locsigs: [LocSig]
+
+     """LINCS: Library of Integrated Network-Based Cellular Signatures"""
+     lincs (skip: Int=0, top: Int=10, cellid: [String]=[]): [LINCS]
+     lincsCounts: [IntProp]
+
+     """Target neighbors expressed as distance in KEGG pathway"""
+     kegg(skip: Int=0, top: Int=10, filter: IFilter): [TargetNeighbor]
+
+     """Tissue expression"""
+     expressionCounts: [IntProp]
+     expressions(skip: Int=0, top: Int=10, filter: IFilter): [Expression]
+
+     """Ortholog protein"""
+     orthologCounts: [IntProp]
+     orthologs(skip: Int=0, top: Int=10, filter: IFilter): [Ortholog]
+
+     """GWAS catalog"""
+     gwasCounts: [IntProp]
+     gwas(skip: Int=0, top: Int=10, filter: IFilter): [GWAS]
+
+     """GO terms"""
+     goCounts: [IntProp]
+     go(skip: Int=0, top: Int=20, filter: IFilter): [GO]
+
+     """MIM terms"""
+     mimCount: Int
+     mim: [MIM]
+
+     """Harmonizome data"""
+     harmonizome: Harmonizome
+
+     """Ligand activity data"""
+     ligandCounts: [IntProp]
+     ligands(skip: Int=0, top: Int=20, isdrug: Boolean = false,
+          filter: IFilter): [Ligand]
+
+     """TINX"""
+     tinxCount: Int
+     tinx(skip: Int=0, top: Int=20, filter: IFilter): [TINXDisease]
+}
+
+type TargetResult {
+     filter: Filter
+     count: Int
+     facets (include: [String], exclude: [String]): [Facet]
+     targets(skip: Int=0, top: Int=10): [Target]
+}
+
+type SuggestionResults{
+     elapsedTime: Float
+     genes: [Suggestion]
+     targets: [Suggestion]
+     diseases: [Suggestion]
+     keywords: [Suggestion]
+     phenotypes: [Suggestion]
+}
+
+type Suggestion{
+     key: String
+}
+
+type DiseaseResult {
+     filter: Filter
+     count: Int
+     facets (include: [String], exclude: [String]): [Facet]
+     diseases(skip: Int=0, top: Int=10): [Disease]
+}
+
+type LigandResult {
+     filter: Filter
+     count: Int
+     facets (include: [String], exclude: [String]): [Facet]
+     ligands(skip: Int=0, top: Int=10): [Ligand]
+}
+
+type PubResult {
+     filter: Filter
+     count: Int
+     facets (include: [String], exclude: [String]): [Facet]
+     pubs(skip: Int=0, top: Int=10): [PubMed]
+}
+
+type OrthologResult {
+     filter: Filter
+     count: Int
+     facets (include: [String], exclude: [String]): [Facet]
+     orthologs(skip: Int=0, top: Int=10): [Ortholog]
+}
+
+type Result {
+     targetResult: TargetResult
+     diseaseResult: DiseaseResult
+     ligandResult: LigandResult
+     pubResult: PubResult
+     orthologResult: OrthologResult
 }
 
 type Query {
-     targets(skip: Int, top: Int): [Target]
-     target(id: String): Target
+     autocomplete(name: String): SuggestionResults
+     targetFacets: [String!]
+     targets(skip: Int=0, top: Int=10,
+          facets: [String!], filter: IFilter): TargetResult
+     target(q: ITarget): Target
+
+     disease(name: String): Disease
+     diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
+     diseaseOntology(doid: String, name: String): [DiseaseOntology]
+     doTree: [DiseaseOntology]
+
+     dto: [DTO]
+     dtoNode(dtoid: String, name: String): [DTO]
+
+     ligand(ligid: String): Ligand
+     ligands(skip: Int=0, top: Int=10, filter: IFilter): LigandResult
+
+     pubCount(term: String = ""): Int
+     pubmed(pmid: Int!): PubMed
+     pubs(skip: Int=0, top: Int=10, term: String!): PubResult
+
+     orthologCounts: [IntProp]
+     orthologs(skip: Int=0, top: Int=10, filter: IFilter): OrthologResult
+
+     search(term: String!, facets: [String!]): Result
+     batch(targets: [String], ligands: [String],
+          diseases:[String], filter: IFilter): Result
+     xref(source: String!, value: String!): Xref
 }
