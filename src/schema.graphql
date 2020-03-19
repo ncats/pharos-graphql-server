@@ -424,7 +424,7 @@ type Target {
 
      """Ligand activity data"""
      ligandCounts: [IntProp]
-     ligands(skip: Int=0, top: Int=20, isdrug: Boolean = false,
+     ligands(skip: Int=0, top: Int=10, isdrug: Boolean = false,
           filter: IFilter): [Ligand]
 
      """TINX"""
