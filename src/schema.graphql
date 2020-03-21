@@ -429,7 +429,7 @@ type Target {
 
      """TINX"""
      tinxCount: Int
-     tinx(skip: Int=0, top: Int=20, filter: IFilter): [TINXDisease]
+     tinx(skip: Int=0, top: Int, filter: IFilter): [TINXDisease]
 }
 
 type TargetResult {

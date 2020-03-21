@@ -1035,8 +1035,8 @@ const resolvers = {
                 }).then(values => {
                     let labels = Array.from(values.keys());
                     return Promise.all([
-                        tcrd.getDrugsForLabels(labels),
-                        tcrd.getLigandsForLabels(labels)
+                        dataSources.tcrd.getDrugsForLabels(labels),
+                        dataSources.tcrd.getLigandsForLabels(labels)
                     ]).then(rows => {
                         let ligs = new Map();
                         rows.forEach(r => {
