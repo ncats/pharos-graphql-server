@@ -1,5 +1,5 @@
 const {performance} = require('perf_hooks');
-const { find, filter, slice } = require('lodash');
+const {find, filter, slice} = require('lodash');
 
 const resolvers = {
     Query: {
@@ -661,6 +661,14 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
+
+            function sumAllRows(array) {
+                let count = 0;
+                array.forEach(row => {
+                    count += row.cnt;
+                });
+                return count;
+            }
         },
 
         ligands: async function (target, args, {dataSources}) {
@@ -679,27 +687,40 @@ const resolvers = {
                     dataSources.tcrd.getDrugsForTarget(target, args, labelArray)
                 ]).then(rows => {
                     const ligs = new Map();
-
                     if (args.isdrug == false) {
-                        rows[0].forEach(r => {
-                            let l = toLigand(r);
-                            l.parent = target;
-                            ligs.set(l.ligid, l);
-                        });
+                        addAllLigands(ligs, rows[0]);
+                    } else {
+                        addAllLigands(ligs, rows[1]);
                     }
-                    else{
-                        rows[1].forEach(r => {
-                            let l = toLigand(r);
-                            l.parent = target;
-                            ligs.set(l.ligid, l);
-                        });
-                    }
-
                     return Array.from(ligs.values());
                 });
             }).catch(function (error) {
                 console.error(error);
             });
+
+            function combineResultsIntoUniqueMap(allResults) {
+                let labelMap = new Map();
+                allResults.forEach(resultSet => {
+                    resultSet.forEach(row => {
+                        addOrUpdateMap(labelMap, row.label, row.cnt);
+                    });
+                });
+                return labelMap;
+            }
+
+            function addOrUpdateMap(labelMap, label, count) {
+                let currentCount = labelMap.get(label);
+                currentCount = (!!currentCount) ? (currentCount + count) : count;
+                labelMap.set(label, currentCount);
+            }
+
+            function addAllLigands(ligands, queryResults) {
+                queryResults.forEach(dataRow => {
+                    let ligandObj = toLigand(dataRow);
+                    ligandObj.parent = target;
+                    ligands.set(ligandObj.ligid, ligandObj);
+                });
+            }
         },
 
         tinxCount: async function (target, args, {dataSources}) {
@@ -1576,32 +1597,7 @@ function toLigand(r, lig) {
             lig.synonyms.push(s);
         l.synonyms.push(s);
     }
-
     return l;
-}
-
-function sumAllRows(array) {
-    let count = 0;
-    array.forEach(row => {
-        count += row.cnt;
-    });
-    return count;
-}
-
-function addOrUpdateMap(labelMap, label, count) {
-    let currentCount = labelMap.get(label);
-    currentCount = (!!currentCount) ? (currentCount + count) : count;
-    labelMap.set(label, currentCount);
-}
-
-function combineResultsIntoUniqueMap(allResults) {
-    let labelMap = new Map();
-    allResults.forEach(resultSet => {
-        resultSet.forEach(row => {
-            addOrUpdateMap(labelMap, row.label, row.cnt);
-        });
-    });
-    return labelMap;
 }
 
 module.exports = resolvers;
