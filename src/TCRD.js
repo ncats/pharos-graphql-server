@@ -2510,15 +2510,11 @@ group by act_type`));
     }
     
     getLigandCountForTarget (target) {
-        // don't count drug
         return this.db.select(this.db.raw(`
 count(distinct lychi_h4) as cnt 
 from cmpd_activity a
 where target_id = ?
 and lychi_h4 is not null
-and not exists (select 1 from drug_activity b 
-where a.lychi_h4 = b.lychi_h4 
-and a.target_id = b.target_id)
 union select count(distinct cmpd_id_in_src) as cnt
 from cmpd_activity where target_id = ?
 and lychi_h4 is null`, [target.tcrdid, target.tcrdid]));
@@ -2536,7 +2532,7 @@ where target_id = ?
 and lychi_h4 is null`, [target.tcrdid, target.tcrdid]));
     }
 
-    getLigandLabelsForTarget (target, args) {
+    getLigandLabelsForTarget (target) {
         let q = this.db.select(this.db.raw(`
 lychi_h4 as label,count(*) as cnt 
 from cmpd_activity where lychi_h4 is not null and target_id = ? 
@@ -2550,7 +2546,7 @@ order by cnt desc`, [target.tcrdid, target.tcrdid]));
         return q;
     }
     
-    getDrugLabelsForTarget (target, args) {
+    getDrugLabelsForTarget (target) {
         let q = this.db.select(this.db.raw(`
 lychi_h4 as label,count(*) as cnt
 from drug_activity
@@ -2568,36 +2564,44 @@ order by cnt desc`, [target.tcrdid, target.tcrdid]));
     }
 
     getLigandsForLabels (labels) {
-        return this.getLigandsForTarget(null, labels);
+        return this.getLigandsForTarget(null, null, labels);
     }
-    getLigandsForTarget (target, labels) {
+    getLigandsForTarget (target, args, labels) {
         let q = this.db.select(this.db.raw(`
-catype,cmpd_id_in_src,cmpd_name_in_src,cmpd_pubchem_cid,smiles,lychi_h4
-from cmpd_activity`))
-            .whereIn('lychi_h4', labels)
-            .orWhereIn('cmpd_id_in_src', labels);
+    catype,avg(act_value) as potency,cmpd_id_in_src,cmpd_name_in_src,cmpd_pubchem_cid,smiles,lychi_h4,
+    ifnull(lychi_h4,cmpd_id_in_src) as identifier
+    from cmpd_activity`));
         if (target) {
             q = q.andWhere(this.db.raw(`target_id = ?`, [target.tcrdid]));
         }
-
-        console.log('^^^^^^^^^^^^^^ getLigandsForTarget: '+q);
+        q = q.whereIn('lychi_h4', labels)
+            .orWhereIn('cmpd_id_in_src', labels);
+        q = q.limit(args.top)
+            .offset(args.skip)
+            .groupBy('identifier')
+            .orderBy('potency','desc');
+        //console.log("getLigandsForTarget : " + q);
         return q;
     }
 
     getDrugsForLabels (labels) {
-        return this.getDrugsForTarget(null, labels);
+        return this.getDrugsForTarget(null, null, labels);
     }
-    getDrugsForTarget (target, labels) {
+    getDrugsForTarget (target, args, labels) {
         let q = this.db.select(this.db.raw(`
-drug, cmpd_chemblid, nlm_drug_info, cmpd_pubchem_cid, dcid,smiles,lychi_h4
-from drug_activity`))
-            .whereIn('lychi_h4', labels)
-            .orWhereIn('drug', labels);
+    drug, avg(act_value) as potency, cmpd_chemblid, nlm_drug_info, cmpd_pubchem_cid, dcid,smiles,lychi_h4,
+    ifnull(lychi_h4,drug) as identifier
+    from drug_activity`));
         if (target) {
-            q = q.andWhere(this.db.raw(`target_id = ?`, [target.tcrdid]));
+            q = q.where(this.db.raw(`target_id = ?`, [target.tcrdid]));
         }
-        console.log('>>> getDrugsForTarget: '+q);
-        
+        q = q.whereIn('lychi_h4', labels)
+            .orWhereIn('drug', labels);
+        q = q.limit(args.top)
+            .offset(args.skip)
+            .groupBy('identifier')
+            .orderBy('potency','desc');
+        // console.log('getDrugsForTarget : ' +q);
         return q;
     }
 

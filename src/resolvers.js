@@ -1,5 +1,5 @@
 const {performance} = require('perf_hooks');
-const { find, filter, slice } = require('lodash');
+const {find, filter, slice} = require('lodash');
 
 const resolvers = {
     Query: {
@@ -650,78 +650,77 @@ const resolvers = {
             return Promise.all([
                 dataSources.tcrd.getLigandCountForTarget(target),
                 dataSources.tcrd.getDrugCountForTarget(target)
-            ]).then(rows => {
-                let ligcnt = 0;
-                rows[0].forEach(r => {
-                    ligcnt += r.cnt;
-                });
-                let drugcnt = 0;
-                rows[1].forEach(r => {
-                    drugcnt += r.cnt;
-                });
+            ]).then(results => {
                 return [{
                     name: "ligand",
-                    value: ligcnt
+                    value: sumAllRows(results[0])
                 }, {
                     name: "drug",
-                    value: drugcnt
+                    value: sumAllRows(results[1])
                 }];
             }).catch(function (error) {
                 console.error(error);
             });
+
+            function sumAllRows(array) {
+                let count = 0;
+                array.forEach(row => {
+                    count += row.cnt;
+                });
+                return count;
+            }
         },
+
         ligands: async function (target, args, {dataSources}) {
             /*
              * TODO: need to rework to use the ncats_ligand_labels table
              */
             return Promise.all([
-                dataSources.tcrd.getLigandLabelsForTarget(target, args),
-                dataSources.tcrd.getDrugLabelsForTarget(target, args)
-            ]).then(rows => {
-                let unique = new Map();
-                rows.forEach(r => {
-                    r.forEach(rr => {
-                        let cnt = unique.get(rr.label);
-                        if (cnt)
-                            cnt += rr.cnt;
-                        else
-                            cnt = rr.cnt;
-                        unique.set(rr.label, cnt);
-                    });
-                });
-
-                let ligands = Array.from(unique.keys());
-                return slice(ligands, args.skip, args.top + args.skip);
-            }).then(ligands => {
+                dataSources.tcrd.getLigandLabelsForTarget(target),
+                dataSources.tcrd.getDrugLabelsForTarget(target)
+            ]).then(allResults => {
+                let labelMap = combineResultsIntoUniqueMap(allResults);
+                return Array.from(labelMap.keys());
+            }).then(labelArray => {
                 return Promise.all([
-                    dataSources.tcrd.getLigandsForTarget(target, ligands),
-                    dataSources.tcrd.getDrugsForTarget(target, ligands)
+                    dataSources.tcrd.getLigandsForTarget(target, args, labelArray),
+                    dataSources.tcrd.getDrugsForTarget(target, args, labelArray)
                 ]).then(rows => {
                     const ligs = new Map();
-
                     if (args.isdrug == false) {
-                        rows[0].forEach(r => {
-                            let l = toLigand(r);
-                            l.parent = target;
-                            ligs.set(l.ligid, l);
-                        });
+                        addAllLigands(ligs, rows[0]);
+                    } else {
+                        addAllLigands(ligs, rows[1]);
                     }
-
-                    rows[1].forEach(r => {
-                        let l = toLigand(r);
-                        l.parent = target;
-                        ligs.set(l.ligid, l);
-                    });
-
-                    return Array.from(ligs.values()).sort((a, b) => {
-                        if (a.isdrug && !b.isdrug) return -1;
-                        if (!a.isdrug && b.isdrug) return 1;
-                        return a.name.localeCompare(b.name);
-                    });
+                    return Array.from(ligs.values());
                 });
             }).catch(function (error) {
                 console.error(error);
             });
+
+            function combineResultsIntoUniqueMap(allResults) {
+                let labelMap = new Map();
+                allResults.forEach(resultSet => {
+                    resultSet.forEach(row => {
+                        addOrUpdateMap(labelMap, row.label, row.cnt);
+                    });
+                });
+                return labelMap;
+            }
+
+            function addOrUpdateMap(labelMap, label, count) {
+                let currentCount = labelMap.get(label);
+                currentCount = (!!currentCount) ? (currentCount + count) : count;
+                labelMap.set(label, currentCount);
+            }
+
+            function addAllLigands(ligands, queryResults) {
+                queryResults.forEach(dataRow => {
+                    let ligandObj = toLigand(dataRow);
+                    ligandObj.parent = target;
+                    ligands.set(ligandObj.ligid, ligandObj);
+                });
+            }
         },
 
         tinxCount: async function (target, args, {dataSources}) {
@@ -1598,10 +1597,7 @@ function toLigand(r, lig) {
             lig.synonyms.push(s);
         l.synonyms.push(s);
     }
-
     return l;
 }
-
-
 
 module.exports = resolvers;
