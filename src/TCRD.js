@@ -1935,7 +1935,7 @@ order by cnt desc`, [target.tcrdid, target.tcrdid]));
             .offset(args.skip)
             .groupBy('identifier')
             .orderBy('potency', 'desc');
-        console.log("getLigandsForTarget : " + q);
+        // console.log("getLigandsForTarget : " + q);
         return q;
     }
 
@@ -1957,7 +1957,7 @@ order by cnt desc`, [target.tcrdid, target.tcrdid]));
             .offset(args.skip)
             .groupBy('identifier')
             .orderBy('potency', 'desc');
-        console.log('getDrugsForTarget : ' +q);
+        // console.log('getDrugsForTarget : ' +q);
         return q;
     }
 
