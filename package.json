@@ -16,7 +16,7 @@
     "apollo-fetch": "^0.7.0",
     "apollo-server": "2.6.1",
     "apollo-server-express": "^2.9.7",
-    "apollo-server-testing": "2.6.1",
+    "apollo-server-testing": "^2.6.1",
     "datasource-sql": "^1.0.2",
     "express": "^4.17.1",
     "graphql": "^14.5.8",
@@ -39,7 +39,8 @@
   "jest": {
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/__utils"
+      "/__utils",
+      "/datasources"
     ]
   }
 }

@@ -225,7 +225,7 @@ const resolvers = {
 
             let nodes = [];
             if (target.dtoid) {
-                console.log('~~~~~ target: ' + target.tcrdid + ' ' + target.dtoid);
+                //console.log('~~~~~ target: ' + target.tcrdid + ' ' + target.dtoid);
                 let n = dataSources.tcrd.dto[target.dtoid];
                 while (n) {
                     nodes.push(n);
@@ -1027,15 +1027,15 @@ const resolvers = {
                 .then(rows => {
                     let values = new Map();
                     rows.forEach(r => {
-                        console.log('~~~~~ ' + r.label + ' ' + r.count);
+                        //console.log('~~~~~ ' + r.label + ' ' + r.count);
                         values.set(r.label, r.count);
                     });
                     return values;
                 }).then(values => {
                     let labels = Array.from(values.keys());
                     return Promise.all([
-                        dataSources.tcrd.getDrugsForLabels(labels),
-                        dataSources.tcrd.getLigandsForLabels(labels)
+                        dataSources.tcrd.getDrugsForLabels(labels,args),
+                        dataSources.tcrd.getLigandsForLabels(labels,args)
                     ]).then(rows => {
                         let ligs = new Map();
                         rows.forEach(r => {
@@ -1326,32 +1326,44 @@ function getTargetFacets(args, tcrd, all) {
 
 function getTargetResult(args, tcrd) {
     args.batch = args.targets;
-    const facets = getTargetFacets(args, tcrd);
-    const fkeys = Array.from(facets.keys());
+    let proteinList;
+    if (args.filter && args.filter.term) {
+        proteinList = tcrd.getProteinList(args.filter.term);
+    }
+    if(!!proteinList) {
+        return proteinList.then(rows => {
+            args.proteinList = Array.from(rows, row => row.protein_id);
+        }).then(() => {return doFacetQuery()});
+    }
+    else{
+        return doFacetQuery();
+    }
 
-    console.log('!!!! targetResult: args=' + JSON.stringify(args) + ' keys=' + fkeys);
-    return Promise.all(Array.from(facets.values())).then(rows => {
-        let count = 0;
-        rows[0].forEach(x => {
-            count += x.value;
-        });
-
-        let facets = [];
-        for (var i in rows) {
-            facets.push({
-                facet: fkeys[i],
-                count: rows[i].length,
-                values: rows[i]
+    function doFacetQuery() {
+        const facets = getTargetFacets(args, tcrd);
+        const fkeys = Array.from(facets.keys());
+        return Promise.all(Array.from(facets.values())).then(rows => {
+            let count = 0;
+            rows[0].forEach(x => {
+                count += x.value;
             });
-        }
 
-        return {
-            filter: args.filter,
-            batch: args.targets,
-            count: count,
-            facets: facets
-        };
-    });
+            let facets = [];
+            for (var i in rows) {
+                facets.push({
+                    facet: fkeys[i],
+                    count: rows[i].length,
+                    values: rows[i]
+                });
+            }
+            return {
+                filter: args.filter,
+                batch: args.targets,
+                count: count,
+                facets: facets
+            };
+        });
+    }
 }
 
 function getDiseaseResult(args, tcrd) {
