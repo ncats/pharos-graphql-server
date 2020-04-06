@@ -10,7 +10,7 @@ module.exports.getTargets = function(args) {
     } else {
         q = this.getTargetsForBatch(args);
     }
-    console.log(q.toString());
+    //console.log(q.toString());
     return q;
 };
 

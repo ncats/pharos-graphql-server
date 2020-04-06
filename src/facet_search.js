@@ -178,7 +178,7 @@ from expression a use index (expression_facet_idx), protein b`));
         q.orderBy('value', 'desc');
     }
 
-   // console.log('>>> getTargetExpressionCounts: '+q);
+   //console.log('>>> getTargetExpressionCounts: '+q);
     return q;
 };
 

@@ -3,7 +3,6 @@ const request = require('sync-request');
 const tester = require('graphql-tester').tester;
 testDirectory = './tests';
 
-// url = 'https://pharos-api.ncats.io/graphql';
 url = 'http://localhost:4000/graphql/';
 
 function postit(query) {
