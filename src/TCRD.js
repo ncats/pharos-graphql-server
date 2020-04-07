@@ -1930,15 +1930,17 @@ order by cnt desc`, [target.tcrdid, target.tcrdid]));
     catype,avg(act_value) as potency,cmpd_id_in_src,cmpd_name_in_src,cmpd_pubchem_cid,smiles,lychi_h4,
     ifnull(lychi_h4,cmpd_id_in_src) as identifier
     from cmpd_activity`));
-        if (target) {
-            q = q.andWhere(this.db.raw(`target_id = ?`, [target.tcrdid]));
-        }
         q = q.whereIn('lychi_h4', labels)
-            .orWhereIn('cmpd_id_in_src', labels);
-        q = q.limit(args.top)
-            .offset(args.skip)
+            .orWhereIn('cmpd_id_in_src', labels)
             .groupBy('identifier')
             .orderBy('potency', 'desc');
+        if(!!target) {
+            q = q.andWhere(this.db.raw(`target_id = ?`, [target.tcrdid]));
+            if (args.top)
+                q = q.limit(args.top);
+            if (args.skip)
+                q = q.offset(args.skip);
+        }
         //console.log("getLigandsForTarget : " + q);
         return q;
     }
@@ -1952,15 +1954,17 @@ order by cnt desc`, [target.tcrdid, target.tcrdid]));
     drug, avg(act_value) as potency, cmpd_chemblid, nlm_drug_info, cmpd_pubchem_cid, dcid,smiles,lychi_h4,
     ifnull(lychi_h4,drug) as identifier
     from drug_activity`));
-        if (target) {
-            q = q.where(this.db.raw(`target_id = ?`, [target.tcrdid]));
-        }
         q = q.whereIn('lychi_h4', labels)
-            .orWhereIn('drug', labels);
-        q = q.limit(args.top)
-            .offset(args.skip)
+            .orWhereIn('drug', labels)
             .groupBy('identifier')
             .orderBy('potency', 'desc');
+        if(!!target) {
+            q = q.where(this.db.raw(`target_id = ?`, [target.tcrdid]));
+            if (args.top)
+                q = q.limit(args.top);
+            if (args.skip)
+                q = q.offset(args.skip);
+        }
         //console.log('getDrugsForTarget : ' +q);
         return q;
     }
