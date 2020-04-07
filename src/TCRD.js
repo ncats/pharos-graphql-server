@@ -1796,6 +1796,10 @@ or exists (select 1 from cmpd_activity where  cmpd_id_in_src = a.label)`));
         }
 
         q = q.orderByRaw(this.db.raw(`count desc, label`));
+        if (args.top)
+            q = q.limit(args.top);
+        if (args.skip)
+            q = q.offset(args.skip);
 
         //console.log('>>> getLigandLabels: '+q);
         return q;
