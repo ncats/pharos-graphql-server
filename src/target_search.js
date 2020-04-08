@@ -80,7 +80,10 @@ module.exports.getTargetsForTerm = function(args) {
     } else { // sort by search term constraint
         targetQuery = targetQuery.orderBy(['sq.min_score', {column: 'sq.match_score', order: 'desc'}, 'sq.match']);
     }
-    targetQuery.limit(args.top).offset(args.skip);
+    if (args.top)
+        targetQuery.limit(args.top);
+    if (args.skip)
+        targetQuery.offset(args.skip);
     return targetQuery;
 };
 
@@ -89,8 +92,11 @@ module.exports.getTargetsForBatch = function(args) {
     this._addBatchConstraint(targetQuery,args.batch);
     this._addFacetSubQueries(targetQuery, args.filter);
     this._addTargetProteinLink(targetQuery);
-    targetQuery.orderBy([{column:'novelty', order:'desc'}])
-        .limit(args.top).offset(args.skip);
+    targetQuery.orderBy([{column:'novelty', order:'desc'}]);
+    if (args.top)
+        targetQuery.limit(args.top);
+    if (args.skip)
+        targetQuery.offset(args.skip);
     return targetQuery;
 };
 
