@@ -341,7 +341,16 @@ distinct protein_id from ortholog`))
                 }
                     break;
 
-                case 'JAX/MGI Human Ortholog Phenotype':
+                case 'JAX/MGI Human Ortholog Phenotype': {
+                    let q = this.db('phenotype')
+                        .distinct('protein_id')
+                        .whereIn('term_name', f.values)
+                        .andWhere('ptype', fn);
+                    console.log(q.toString());
+                    subqueries.push(q);
+                }
+                break;
+
                 case 'IMPC': {
                     let q = this.db.select(this.db.raw(`
 distinct a.protein_id from ortholog a, nhprotein c, phenotype d`))
