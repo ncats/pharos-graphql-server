@@ -346,7 +346,7 @@ distinct protein_id from ortholog`))
                         .distinct('protein_id')
                         .whereIn('term_name', f.values)
                         .andWhere('ptype', fn);
-                    console.log(q.toString());
+                    //console.log(q.toString());
                     subqueries.push(q);
                 }
                 break;

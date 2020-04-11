@@ -1325,6 +1325,7 @@ function getTargetFacets(args, tcrd, all) {
 }
 
 function getTargetResult(args, tcrd) {
+    console.log(JSON.stringify(args));
     args.batch = args.targets;
     let proteinList;
     if (args.filter && args.filter.term) {
