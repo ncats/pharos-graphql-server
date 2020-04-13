@@ -182,3 +182,15 @@ from expression a use index (expression_facet_idx), protein b`));
     return q;
 };
 
+module.exports.getIDGtargetListCounts = function(args) {
+    let q = this.db({b:'protein',list:'ncats_idg_list',type:'ncats_idg_list_type'})
+        .select({name: 'type.list_type'}).count('* as value')
+        .where(this.db.raw(`list.protein_id = b.id`))
+        .andWhere(this.db.raw(`list.idg_list = type.id`));
+    this._addBatchConstraint(q, args.batch);
+    this._addFacetSubQueries(q, args.filter);
+    _addProteinListConstraint(q, args.proteinList);
+    q.groupBy('list.idg_list').orderBy('type.id');
+    //console.log('>>> getIDGtargetListCounts: '+q);
+    return q;
+};

@@ -1223,6 +1223,7 @@ const resolvers = {
 
 function getTargetFacets(args, tcrd, all) {
     const TARGET_FACETS = [
+        ['IDG Target Lists', tcrd.getIDGtargetListCounts(args)],
         ['Target Development Level', tcrd.getTargetTDLCounts(args)],
         ['tdl', tcrd.getTargetTDLCounts(args)],
         ['UniProt Keyword', tcrd.getTargetUniProtKeywordCounts(args)],
@@ -1306,6 +1307,7 @@ function getTargetFacets(args, tcrd, all) {
     } else if (!all) {
         const deffacets = [
             'Target Development Level',
+            'IDG Target Lists',
             'Family',
             'IMPC Phenotype',
             'GWAS',
@@ -1325,7 +1327,7 @@ function getTargetFacets(args, tcrd, all) {
 }
 
 function getTargetResult(args, tcrd) {
-    console.log(JSON.stringify(args));
+    //console.log(JSON.stringify(args));
     args.batch = args.targets;
     let proteinList;
     if (args.filter && args.filter.term) {
