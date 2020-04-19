@@ -3,7 +3,8 @@ const request = require('sync-request');
 const tester = require('graphql-tester').tester;
 testDirectory = './tests';
 
-url = 'http://localhost:4000/graphql/';
+const PORT = process.env.PORT || 4000;
+url = `http://localhost:${PORT}/graphql/`;
 
 function postit(query) {
     return request('POST', url, {
