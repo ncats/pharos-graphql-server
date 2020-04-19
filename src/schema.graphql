@@ -34,8 +34,6 @@ type Facet {
      facet: String!
      count: Int
      values (skip: Int=0, top: Int=20, name: String): [IntProp]
-     sql: String
-     elapsedTime: Float
 }
 
 input IFilterFacet {

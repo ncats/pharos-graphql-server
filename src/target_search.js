@@ -124,7 +124,7 @@ module.exports._getTargetListQuery = function(term) {
 };
 
 module.exports.getProteinList = function(term) {
-    return this.db.distinct('protein_id').from(this._getTargetListQuery(term));
+    return this.db.select('protein_id').from(this._getTargetListQuery(term));
 };
 
 module.exports.getScoredProteinList = function(term) {
@@ -174,8 +174,7 @@ module.exports.phenotypeSearch = function (db, term, score) {
 module.exports.tdlInfoSearch = function (db, term, score) {
     return db('tdl_info')
         .select({protein_id: 'protein_id', match: 'string_value', score: score, match_score: 1})
-        .where('string_value', 'regexp', term)
-        .whereIn('itype',['UniProt Function','NCBI Gene Summary']);
+        .where('string_value', 'regexp', term);
 };
 module.exports.xrefXtraSearch = function (db, term, score) {
     return db('xref')

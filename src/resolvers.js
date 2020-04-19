@@ -1,8 +1,5 @@
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
-const {QueryFacet, FacetType} = require('./models/facetQuery');
-const {TargetListQuery} = require('./models/targetListQuery');
-const {QueryArguments} = require('./models/query.arguments');
 
 const resolvers = {
     Query: {
@@ -57,7 +54,7 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return QueryFacet.AllTargetFacets();
+            return getTargetFacets(args, dataSources.tcrd, true).keys();
         },
 
         target: async function (_, args, {dataSources}) {
@@ -1037,8 +1034,8 @@ const resolvers = {
                 }).then(values => {
                     let labels = Array.from(values.keys());
                     return Promise.all([
-                        dataSources.tcrd.getDrugsForLabels(labels, args),
-                        dataSources.tcrd.getLigandsForLabels(labels, args)
+                        dataSources.tcrd.getDrugsForLabels(labels,args),
+                        dataSources.tcrd.getLigandsForLabels(labels,args)
                     ]).then(rows => {
                         let ligs = new Map();
                         rows.forEach(r => {
@@ -1224,26 +1221,109 @@ const resolvers = {
     }
 };
 
-function getTargetFacetQueries(queryArguments, tcrd) {
-    let facetsToFetch = [];
-    if (queryArguments.facets.length > 0) {
-        facetsToFetch = queryArguments.facets;
-        for (let i = 0; i < queryArguments.filter.facets.length; i++) {
-            if (facetsToFetch.filter(
-                f => {
-                    return (f.facetType == queryArguments.filter.facets[i].facetType);
-                }).length == 0) {
-                facetsToFetch.push(queryArguments.filter.facets[i]);
+function getTargetFacets(args, tcrd, all) {
+    const TARGET_FACETS = [
+        ['IDG Target Lists', tcrd.getIDGtargetListCounts(args)],
+        ['Target Development Level', tcrd.getTargetTDLCounts(args)],
+        ['tdl', tcrd.getTargetTDLCounts(args)],
+        ['UniProt Keyword', tcrd.getTargetUniProtKeywordCounts(args)],
+        ['Keyword', tcrd.getTargetUniProtKeywordCounts(args)],
+        ['Family', tcrd.getTargetFamilyCounts(args)],
+        ['fam', tcrd.getTargetFamilyCounts(args)],
+        ['Indication',
+            tcrd.getTargetDiseaseCounts(args, 'DrugCentral Indication')],
+        ['Monarch Disease', tcrd.getTargetDiseaseCounts(args, 'Monarch')],
+        ['UniProt Disease',
+            tcrd.getTargetDiseaseCounts(args, 'UniProt Disease')],
+        ['Ortholog', tcrd.getTargetOrthologCounts(args)],
+        ['IMPC Phenotype', tcrd.getTargetIMPCPhenotypeCounts(args)],
+        ['JAX/MGI Phenotype', tcrd.getTargetMGIPhenotypeCounts(args)],
+        ['GO Process', tcrd.getTargetGOCounts(args, 'P')],
+        ['GO Component', tcrd.getTargetGOCounts(args, 'C')],
+        ['GO Function', tcrd.getTargetGOCounts(args, 'F')],
+        ['GWAS', tcrd.getTargetGWASCounts(args)],
+        ['Expression: CCLE', tcrd.getTargetExpressionCounts(args, 'CCLE')],
+        ['Expression: HCA RNA',
+            tcrd.getTargetExpressionCounts(args, 'HCA RNA')],
+        ['Expression: HPM Protein',
+            tcrd.getTargetExpressionCounts(args, 'HPM Protein')],
+        ['Expression: HPA', tcrd.getTargetExpressionCounts(args, 'HPA')],
+        ['Expression: JensenLab Experiment HPA',
+            tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment HPA')],
+        ['Expression: HPM Gene',
+            tcrd.getTargetExpressionCounts(args, 'HPM Gene')],
+        ['Expression: JensenLab Experiment HPA-RNA',
+            tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment HPA-RNA')],
+        ['Expression: JensenLab Experiment GNF',
+            tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment GNF')],
+        ['Expression: Consensus',
+            tcrd.getTargetExpressionCounts(args, 'Consensus')],
+        ['Expression: JensenLab Experiment Exon array',
+            tcrd.getTargetExpressionCounts
+            (args, 'JensenLab Experiment Exon array')],
+        ['Expression: JensenLab Experiment RNA-seq',
+            tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment RNA-seq')],
+        ['Expression: JensenLab Experiment UniGene',
+            tcrd.getTargetExpressionCounts(args, 'JensenLab Experiment UniGene')],
+        ['Expression: UniProt Tissue',
+            tcrd.getTargetExpressionCounts(args, 'UniProt Tissue')],
+        ['Expression: JensenLab Knowledge UniProtKB-RC',
+            tcrd.getTargetExpressionCounts
+            (args, 'JensenLab Knowledge UniProtKB-RC')],
+        ['Expression: JensenLab Text Mining',
+            tcrd.getTargetExpressionCounts(args, 'JensenLab Text Mining')],
+        ['Expression: JensenLab Experiment Cardiac proteome',
+            tcrd.getTargetExpressionCounts
+            (args, 'JensenLab Experiment Cardiac proteome')],
+        ['Expression: Cell Surface Protein Atlas',
+            tcrd.getTargetExpressionCounts(args, 'Cell Surface Protein Atlas')]
+    ];
+
+    let facets = new Map(TARGET_FACETS);
+    if (args.facets) {
+        let subset = new Map();
+        facets.forEach((value, key) => {
+            if (find(args.facets, x => {
+                var matched = x == key;
+                if (!matched) {
+                    var re = new RegExp(x, 'i');
+                    matched = re.test(key);
+                    //console.log('**** '+x+ ' ~ '+key+' => '+matched);
+                }
+                return matched;
+            })) {
+                subset.set(key, value);
+            }
+        });
+
+        // make sure facets specified in filter are also included
+        if (args.filter && args.filter.facets) {
+            for (var i in args.filter.facets) {
+                var f = args.filter.facets[i];
+                subset.set(f.facet, facets.get(f.facet));
             }
         }
-    } else {
-        facetsToFetch = QueryFacet.getFacetsFromList(QueryFacet.DefaultFacets, queryArguments.isNull());
+        facets = subset;
+    } else if (!all) {
+        const deffacets = [
+            'Target Development Level',
+            'IDG Target Lists',
+            'Family',
+            'IMPC Phenotype',
+            'GWAS',
+            'Expression: Consensus',
+            'Ortholog',
+            'UniProt Disease',
+            'Keyword'
+        ];
+        let subset = new Map();
+        deffacets.forEach(x => {
+            subset.set(x, facets.get(x));
+        });
+        facets = subset;
     }
-    let facetQueries = [];
-    for (let i = 0; i < facetsToFetch.length; i++) {
-        facetQueries.push(facetsToFetch[i].getFacetQuery(tcrd, queryArguments));
-    }
-    return [facetsToFetch, facetQueries];
+
+    return facets;
 }
 
 function getTargetResult(args, tcrd) {
@@ -1253,36 +1333,30 @@ function getTargetResult(args, tcrd) {
     if (args.filter && args.filter.term) {
         proteinList = tcrd.getProteinList(args.filter.term);
     }
-    if (!!proteinList) {
+    if(!!proteinList) {
         return proteinList.then(rows => {
             args.proteinList = Array.from(rows, row => row.protein_id);
-        }).then(() => {
-            return doFacetQuery()
-        });
-    } else {
+        }).then(() => {return doFacetQuery()});
+    }
+    else{
         return doFacetQuery();
     }
 
     function doFacetQuery() {
-        const queryArgs = new QueryArguments(args);
-        const combinedObj = getTargetFacetQueries(queryArgs, tcrd);
-        const facetsToFetch = combinedObj[0];
-        const facetQueries = combinedObj[1];
-        const targetList = new TargetListQuery();
-        facetQueries.unshift(targetList.getCountQuery(tcrd, queryArgs));
-
-        return Promise.all(Array.from(facetQueries.values())).then(rows => {
-            let count = rows.shift()[0].count;
-            console.log(`count : ${targetList.startTime} : ${targetList.endTime}`);
+        const facets = getTargetFacets(args, tcrd);
+        const fkeys = Array.from(facets.keys());
+        return Promise.all(Array.from(facets.values())).then(rows => {
+            let count = 0;
+            rows[0].forEach(x => {
+                count += x.value;
+            });
 
             let facets = [];
             for (var i in rows) {
                 facets.push({
-                    facet: FacetType[facetsToFetch[i].facetType],
+                    facet: fkeys[i],
                     count: rows[i].length,
-                    values: rows[i],
-                    sql: facetQueries[i].toString(),
-                    elapsedTime: facetsToFetch[i].getElapsedTime()
+                    values: rows[i]
                 });
             }
             return {
