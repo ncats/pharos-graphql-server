@@ -13,6 +13,7 @@ const { ApolloServer } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
 const TCRD = require('./TCRD');
 const fs = require('fs');
+require('typescript-require');
 
 const typeDefs = fs.readFileSync(__dirname + '/schema.graphql','utf8');
 const resolvers = require('./resolvers');

@@ -2154,7 +2154,6 @@ union select * from (
     }
 
 }
-Object.assign(TCRD.prototype, require('./facet_search'));
 Object.assign(TCRD.prototype, require('./target_search'));
 
 module.exports = TCRD;
