@@ -1,8 +1,14 @@
-const now = require( "performance-now");
+import now from "performance-now";
 
 export class Query{
-    startTime?: number;
-    endTime?: number;
+    startTime: number;
+    endTime: number;
+
+    constructor() {
+        this.startTime = -1;
+        this.endTime = -1;
+    }
+
 
     getElapsedTime(){
         if(this.startTime && this.endTime){
