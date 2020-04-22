@@ -1,8 +1,7 @@
+const {DiseaseList} = require("./models/disease/diseaseList");
+const {TargetList} = require("./models/target/targetList");
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
-const {QueryFacet, FacetType} = require('./models/facetQuery');
-const {TargetListQuery} = require('./models/targetListQuery');
-const {QueryArguments} = require('./models/query.arguments');
 
 const resolvers = {
     Query: {
@@ -57,7 +56,7 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return QueryFacet.AllTargetFacets();
+            return TargetList.AllFacets;
         },
 
         target: async function (_, args, {dataSources}) {
@@ -1224,52 +1223,25 @@ const resolvers = {
     }
 };
 
-function getTargetFacetQueries(queryArguments, tcrd) {
-    let facetsToFetch = [];
-    if (queryArguments.facets.length > 0) {
-        facetsToFetch = queryArguments.facets;
-        for (let i = 0; i < queryArguments.filter.facets.length; i++) {
-            if (facetsToFetch.filter(
-                f => {
-                    return (f.facetType == queryArguments.filter.facets[i].facetType);
-                }).length == 0) {
-                facetsToFetch.push(queryArguments.filter.facets[i]);
-            }
-        }
-    } else {
-        facetsToFetch = QueryFacet.getFacetsFromList(QueryFacet.DefaultFacets, queryArguments.isNull());
-    }
-    let facetQueries = [];
-    for (let i = 0; i < facetsToFetch.length; i++) {
-        facetQueries.push(facetsToFetch[i].getFacetQuery(tcrd, queryArguments));
-    }
-    return [facetsToFetch, facetQueries];
-}
-
 function getTargetResult(args, tcrd) {
     //console.log(JSON.stringify(args));
     args.batch = args.targets;
-    let proteinList;
-    if (args.filter && args.filter.term) {
-        proteinList = tcrd.getProteinList(args.filter.term);
-    }
-    if (!!proteinList) {
-        return proteinList.then(rows => {
-            args.proteinList = Array.from(rows, row => row.protein_id);
+    const targetList = new TargetList(args);
+    const proteinListQuery = targetList.fetchProteinList(tcrd);
+    if (!!proteinListQuery) {
+        return proteinListQuery.then(rows => {
+            targetList.cacheProteinList(Array.from(rows, row => row.protein_id));
         }).then(() => {
-            return doFacetQuery()
+            return doFacetQuery();
         });
     } else {
         return doFacetQuery();
     }
 
     function doFacetQuery() {
-        const queryArgs = new QueryArguments(args);
-        const combinedObj = getTargetFacetQueries(queryArgs, tcrd);
-        const facetsToFetch = combinedObj[0];
-        const facetQueries = combinedObj[1];
-        const targetList = new TargetListQuery();
-        facetQueries.unshift(targetList.getCountQuery(tcrd, queryArgs));
+        const countQuery = targetList.getCountQuery(tcrd);
+        const facetQueries = targetList.getFacetQueries(tcrd);
+        facetQueries.unshift(countQuery);
 
         return Promise.all(Array.from(facetQueries.values())).then(rows => {
             let count = rows.shift()[0].count;
@@ -1277,11 +1249,11 @@ function getTargetResult(args, tcrd) {
             let facets = [];
             for (var i in rows) {
                 facets.push({
-                    facet: FacetType[facetsToFetch[i].facetType],
+                    facet: targetList.facetsToFetch[i].type,
                     count: rows[i].length,
                     values: rows[i],
                     sql: facetQueries[i].toString(),
-                    elapsedTime: facetsToFetch[i].getElapsedTime()
+                    elapsedTime: targetList.getElapsedTime(targetList.facetsToFetch[i].type)
                 });
             }
             return {
@@ -1295,33 +1267,21 @@ function getTargetResult(args, tcrd) {
 }
 
 function getDiseaseResult(args, tcrd) {
-    let counts = [
-        tcrd.getDiseaseDataSourceCounts(args),
-        tcrd.getDiseaseDrugCounts(args),
-        tcrd.getDiseaseTDLCounts(args)
-    ];
-    return Promise.all(counts).then(rows => {
-        let facets = [];
-        facets.push({
-            facet: 'Data Source',
-            count: rows[0].length,
-            values: rows[0]
-        });
-        let count = 0;
-        rows[0].forEach(x => {
-            count += x.value;
-        });
+    let diseaseList = new DiseaseList(args);
+    let queries = diseaseList.getFacetQueries(tcrd);
+    queries.unshift(diseaseList.getCountQuery(tcrd));
 
-        facets.push({
-            facet: 'Drug',
-            count: rows[1].length,
-            values: rows[1]
-        });
-        facets.push({
-            facet: 'Target Development Level',
-            count: rows[2].length,
-            values: rows[2]
-        });
+    return Promise.all(queries).then(rows => {
+        let count = rows.shift()[0].count;
+
+        let facets = [];
+        for (var i in rows) {
+            facets.push({
+                facet: diseaseList.facetsToFetch[i].type,
+                count: rows[i].length,
+                values: rows[i]
+            })
+        }
 
         return {
             filter: args.filter,

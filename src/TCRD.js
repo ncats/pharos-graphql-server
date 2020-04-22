@@ -428,6 +428,13 @@ and b.id = c.target_id`));
                         subqueries.push(q);
                     }
                         break;
+                    case 'Drug': {
+                        let q = this.db.select(this.db.raw(`
+                        distinct id from disease`))
+                            .whereIn('drug_name', f.values);
+                        subqueries.push(q);
+                    }
+                    break;
                 }
             });
         }
@@ -514,81 +521,6 @@ where a.mim = b.value
 and b.protein_id = c.protein_id
 and b.xtype = ?
 and c.target_id = ?`, ['MIM', target.tcrdid]));
-    }
-
-    getDiseaseDataSourceCounts(args) {
-        let q = this.db.select(this.db.raw(`
-dtype as name, count(distinct name) as value
-from disease`));
-        if (args.filter) {
-            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('id', subq);
-            });
-
-            let t = args.filter.term;
-            if (t != undefined && t !== '') {
-                q = q.andWhere(this.db.raw(`
-match(name, description, drug_name) against(? in boolean mode)`, [t]));
-            }
-        }
-
-        q = q.groupBy('dtype')
-            .orderBy('value', 'desc');
-
-        //console.log('>>> getDiseaseDataSourceCounts: '+q);
-        return q;
-    }
-
-    getDiseaseTDLCounts(args) {
-        let q = this.db.select(this.db.raw(`
-a.tdl as name, count(distinct c.name) as value
-from target a, t2tc b, disease c`));
-
-        if (args.filter) {
-            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('c.id', subq);
-            });
-
-            let t = args.filter.term;
-            if (t != undefined && t !== '') {
-                q = q.andWhere(this.db.raw(`
-match(c.name, c.description, c.drug_name) against(? in boolean mode)`, [t]));
-            }
-        }
-        q = q.andWhere(this.db.raw(`
-a.id = b.target_id and b.protein_id = c.protein_id`))
-            .groupBy('a.tdl')
-            .orderBy('value', 'desc');
-
-        //console.log('>>> getDiseaseTDLCounts: '+q);
-        return q;
-    }
-
-    getDiseaseDrugCounts(args) {
-        let q = this.db.select(this.db.raw(`
-drug_name as name, count(distinct name) as value
-from disease`));
-
-        if (args.filter) {
-            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('id', subq);
-            });
-
-            let t = args.filter.term;
-            if (t != undefined && t !== '') {
-                q = q.andWhere(this.db.raw(`
-match(name, description, drug_name) against(? in boolean mode)`, [t]));
-            }
-        }
-        q = q.andWhere(this.db.raw(`drug_name is not null`))
-            .groupBy('name')
-            .orderBy('value', 'desc');
-
-        //console.log('>>> getDiseaseDrugCounts: '+q);
-        return q;
     }
 
     getDisease(name) {
