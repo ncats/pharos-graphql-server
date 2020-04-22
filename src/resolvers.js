@@ -56,7 +56,7 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return TargetList.AllFacets;
+            return new TargetList().AllFacets;
         },
 
         target: async function (_, args, {dataSources}) {

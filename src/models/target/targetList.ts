@@ -5,8 +5,8 @@ import {FacetInfo} from "../FacetInfo";
 
 export class TargetList extends DataModelList {
     batch: string[] = [];
-    skip: number;
-    top: number;
+    skip: number = 0;
+    top: number = 10;
     proteinList: string[] = [];
     proteinListCached: boolean = false;
 
@@ -27,8 +27,10 @@ export class TargetList extends DataModelList {
                 this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, json.facets, this.isNull())));
         }
 
-        this.skip = json.skip;
-        this.top = json.top;
+        if(json) {
+            this.skip = json.skip;
+            this.top = json.top;
+        }
     }
 
     addModelSpecificConstraints(query: any, tcrd: any): void {
