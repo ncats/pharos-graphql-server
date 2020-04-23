@@ -70,6 +70,7 @@ input IFilter {
      irange: [IRangeInt]
      frange: [IRangeFloat]
      order: String
+     ppiTarget: String
 }
 
 type Filter {

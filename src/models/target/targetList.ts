@@ -16,18 +16,23 @@ export class TargetList extends DataModelList {
             this.batch = json.batch;
         }
 
+        let facetList: string[];
         if (!json || !json.facets || json.facets.length == 0) {
-            this.facetsToFetch = FacetInfo.deduplicate(
-                this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, this.DefaultFacets, this.isNull())));
+            if(this.ppiTarget){
+                facetList = this.DefaultPPIFacets;
+            }
+            else {
+                facetList = this.DefaultFacets;
+            }
         } else if (json.facets == "all") {
-            this.facetsToFetch = FacetInfo.deduplicate(
-                this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, this.AllFacets, this.isNull())));
+            facetList = this.AllFacets;
         } else {
-            this.facetsToFetch = FacetInfo.deduplicate(
-                this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, json.facets, this.isNull())));
+            facetList = json.facets;
         }
+        this.facetsToFetch = FacetInfo.deduplicate(
+            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList, this.isNull())));
 
-        if(json) {
+        if (json) {
             this.skip = json.skip;
             this.top = json.top;
         }
@@ -78,16 +83,22 @@ export class TargetList extends DataModelList {
     }
 
     fetchProteinList(tcrd: any): any {
-        if (this.term.length == 0) {
+        if (this.term.length == 0 && this.ppiTarget.length == 0) {
             return null;
         }
         if (this.proteinListCached) {
             return this.proteinList;
         }
-        let proteinListQuery = tcrd.getProteinList(this.term);
+        let proteinListQuery;
+        if (this.term) {
+            proteinListQuery = tcrd.getProteinList(this.term);
+        } else {
+            proteinListQuery = tcrd.getProteinListFromPPI(this.ppiTarget);
+        }
         this.captureQueryPerformance(proteinListQuery, "protein list");
         return proteinListQuery;
     }
+
     cacheProteinList(list: string[]) {
         this.proteinListCached = true;
         this.proteinList = list;
@@ -117,6 +128,9 @@ export class TargetList extends DataModelList {
         if (this.term.length > 0) {
             return false;
         }
+        if(this.ppiTarget.length > 0) {
+            return false;
+        }
         if (this.filteringFacets.length > 0) {
             return false;
         }
@@ -124,6 +138,16 @@ export class TargetList extends DataModelList {
     }
 
     AllFacets = Object.keys(TargetFacetType).filter(key => isNaN(Number(key)));
+
+    DefaultPPIFacets = [
+        "Target Development Level",
+        "IDG Target Lists",
+        "GO Process",
+        "GO Component",
+        "GO Function",
+        "UniProt Disease",
+        "Expression: UniProt Tissue",
+        "Ortholog"];
 
     DefaultFacets =
         [

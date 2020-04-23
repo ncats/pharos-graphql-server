@@ -855,8 +855,12 @@ and b1.target_id = ?`, [target.tcrdid]));
                     {column: filter.sortColumn, order: filter.dir}]);
             }
 
-            q = q.limit(args.top)
-                .offset(args.skip);
+            if(args.top){
+                q.limit(args.top);
+            }
+            if(args.skip){
+                q.limit(args.skip);
+            }
         } else {
             q = this.db.select(this.db.raw(PPI_SQL + `
 where a.protein2_id = b2.protein_id
@@ -1080,8 +1084,12 @@ and d.name = ?`, [disease.name]));
                 q = q.orderBy(filter.sortColumn, filter.dir);
             }
 
-            q = q.limit(args.top)
-                .offset(args.skip);
+            if(args.top){
+                q.limit(args.top);
+            }
+            if(args.skip){
+                q.limit(args.skip);
+            }
         } else {
             q = this.db.select(this.db.raw(DISEASE_SQL + `
 where a.id = c.target_id and b.id = c.protein_id
@@ -1197,8 +1205,12 @@ and f.pubmed_id = ?`, [pubmed.pmid]));
             if (sort) {
                 q = q.orderBy(filter.sortColumn, filter.dir);
             }
-            q = q.limit(args.top)
-                .offset(args.skip);
+            if(args.top){
+                q.limit(args.top);
+            }
+            if(args.skip){
+                q.limit(args.skip);
+            }
         } else {
             q = this.db.select(this.db.raw(PUBMED_SQL + `
 where a.id = c.target_id and b.id = c.protein_id
@@ -1270,8 +1282,12 @@ and f.pwtype = ? and f.name = ?`, [pathway.type, pathway.name]));
             if (sort) {
                 q = q.orderBy(filter.sortColumn, filter.dir);
             }
-            q = q.limit(args.top)
-                .offset(args.skip);
+            if(args.top){
+                q.limit(args.top);
+            }
+            if(args.skip){
+                q.limit(args.skip);
+            }
         } else {
             q = this.db.select(this.db.raw(PATHWAY_SQL + `
 where a.id = c.target_id and b.id = c.protein_id
@@ -1378,8 +1394,12 @@ and b1.target_id = ?`, [target.tcrdid]));
                 q = q.orderBy([{column: 'distance', order: 'asc'},
                     {column: filter.sortColumn, order: filter.dir}]);
             }
-            q = q.limit(args.top)
-                .offset(args.skip);
+            if(args.top){
+                q.limit(args.top);
+            }
+            if(args.skip){
+                q.limit(args.skip);
+            }
         } else {
             q = this.db.select(this.db.raw(KEGG_SQL + `
 where a.pid1 = b1.protein_id
@@ -1437,9 +1457,13 @@ match(d.tissue) against(? in boolean mode)`, [args.filter.term]));
 
         q = q.andWhere(this.db.raw(`            
 d.protein_id = c.protein_id
-and c.target_id = ?`, [target.tcrdid]))
-            .limit(args.top)
-            .offset(args.skip);
+and c.target_id = ?`, [target.tcrdid]));
+        if(args.top){
+            q.limit(args.top);
+        }
+        if(args.skip){
+            q.limit(args.skip);
+        }
 
         //console.log('>>> getExpressionForTarget: '+q);
         return q;
@@ -2009,8 +2033,12 @@ match(b.name,b.summary) against(? in boolean mode)`, [t]));
 and a.protein_id = c.protein_id
 and c.target_id = ?`, [target.tcrdid]));
 
-        q = q.limit(args.top)
-            .offset(args.skip);
+        if(args.top){
+            q.limit(args.top);
+        }
+        if(args.skip){
+            q.limit(args.skip);
+        }
         if (sort) {
             q = q.orderBy('b.score', 'desc');
         }

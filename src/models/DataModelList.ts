@@ -15,14 +15,20 @@ export abstract class DataModelList {
     keyColumn: string;
     filteringFacets: FacetInfo[] = [];
     facetsToFetch: FacetInfo[] = [];
+    ppiTarget: string = "";
 
     constructor(rootTable: string, keyColumn: string, facetFactory: FacetFactory, json: any, extra?: any) {
         this.rootTable = rootTable;
         this.keyColumn = keyColumn;
         this.facetFactory = facetFactory;
 
-        if (json && json.filter && json.filter.term) {
-            this.term = json.filter.term;
+        if (json && json.filter){
+            if(json.filter.term){
+                this.term = json.filter.term;
+            }
+            if(json.filter.ppiTarget){
+                this.ppiTarget = json.filter.ppiTarget;
+            }
         }
 
         if (json && json.filter && json.filter.facets && json.filter.facets.length > 0) {

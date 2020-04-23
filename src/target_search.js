@@ -5,7 +5,7 @@ const utils = require("./target_search_utils");
 module.exports.getTargets = function(args) {
     //console.log('>>> getTargets: '+JSON.stringify(args));
     let q = undefined;
-    if (args.filter && !args.batch) {
+    if (args.filter && !args.batch && !args.filter.ppiTarget) {
         q = this.getTargetsForTerm(args);
     } else {
         q = this.getTargetsForBatch(args);
@@ -46,6 +46,21 @@ module.exports._addBatchConstraint = function(targetQuery, batch){
             .orWhereIn('b.sym', batch)
             .orWhereIn('b.stringid', batch));
     }
+};
+
+module.exports._addPPITargetConstraint = function(targetQuery, filter){
+    if (filter && filter.ppiTarget){
+        targetQuery.whereIn('b.id', this.getProteinListFromPPI(filter.ppiTarget));
+    }
+};
+
+module.exports.getProteinListFromPPI = function(ppiTarget) {
+    let proteinIDquery = this.db("protein")
+        .select("id").whereRaw(this.db.raw(`match(uniprot,sym,stringid) against('${ppiTarget}' in boolean mode)`));
+    let ppiListQuery = this.db("ppi")
+        .select(this.db.raw('distinct protein2_id as protein_id'))
+        .whereIn('protein1_id', proteinIDquery);
+    return ppiListQuery;
 };
 
 module.exports._addTargetProteinLink = function(targetQuery){
@@ -90,6 +105,7 @@ module.exports.getTargetsForTerm = function(args) {
 module.exports.getTargetsForBatch = function(args) {
     let targetQuery = this._getBaseTargetSearchQuery("","");
     this._addBatchConstraint(targetQuery,args.batch);
+    this._addPPITargetConstraint(targetQuery,args.filter);
     this._addFacetSubQueries(targetQuery, args.filter);
     this._addTargetProteinLink(targetQuery);
     targetQuery.orderBy([{column:'novelty', order:'desc'}]);
