@@ -33,7 +33,9 @@ type TemporalScore {
 type Facet {
      facet: String!
      count: Int
-     values (skip: Int=0, top: Int=10, name: String): [IntProp]
+     values (skip: Int=0, top: Int=20, name: String): [IntProp]
+     sql: String
+     elapsedTime: Float
 }
 
 input IFilterFacet {
@@ -68,6 +70,7 @@ input IFilter {
      irange: [IRangeInt]
      frange: [IRangeFloat]
      order: String
+     ppiTarget: String
 }
 
 type Filter {
@@ -491,8 +494,7 @@ type Result {
 type Query {
      autocomplete(name: String): SuggestionResults
      targetFacets: [String!]
-     targets(skip: Int=0, top: Int=10,
-          facets: [String!], filter: IFilter): TargetResult
+     targets(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter, targets: [String]): TargetResult
      target(q: ITarget): Target
 
      disease(name: String): Disease
