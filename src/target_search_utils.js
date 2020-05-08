@@ -1,7 +1,7 @@
 const utils = {
     parseFilterOrder: function (filter) {
         let order = filter.order;
-        let sortColumn = order;
+        let sortColumn = order || 'novelty';
         let dir = 'desc';
 
         if (order) {
