@@ -162,7 +162,7 @@
         { facet: "tdl", values: ["Tclin", "Tchem"] }
         { facet: "fam", values: ["Transporter"] }
       ]
-      order: "!JensenLab PubMed Score"
+      order: "!tdl_info.JensenLab PubMed Score"
     }
   ) {
     filter {

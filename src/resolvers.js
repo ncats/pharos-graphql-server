@@ -38,7 +38,7 @@ const resolvers = {
                 term: args.term
             };
 
-            let t = getTargetResult(args, dataSources.tcrd);
+            let t = getTargetResult(args, dataSources);
             let d = getDiseaseResult(args, dataSources.tcrd);
             let p = getPubResult(args, dataSources.tcrd);
             let o = getOrthologResult(args, dataSources.tcrd);
@@ -70,7 +70,7 @@ const resolvers = {
         },
 
         targets: async function (_, args, {dataSources}) {
-            return getTargetResult(args, dataSources.tcrd);
+            return getTargetResult(args, dataSources);
         },
 
         disease: async function (_, args, {dataSources}) {
@@ -174,9 +174,9 @@ const resolvers = {
             return getOrthologResult(args, dataSources.tcrd);
         },
 
-        batch: async function (_, args, {dataSources}) {
+        batch: async function (line, args, {dataSources}, info) {
             let funcs = [
-                getTargetResult(args, dataSources.tcrd),
+                getTargetResult(args, dataSources),
                 getDiseaseResult(args, dataSources.tcrd),
                 getLigandResult(args, dataSources.tcrd)
             ];
@@ -344,9 +344,27 @@ const resolvers = {
         },
 
         ppiCounts: async function (target, args, {dataSources}) {
-            const q = dataSources.tcrd.getPPICountsForTarget(target);
+            const q = dataSources.tcrd.getPPICountsForTarget(target, args);
             return q.then(rows => {
-                return rows;
+                let returnArray = [];
+                let total = 0;
+                for(let i = 0 ; i < rows.length ; i++){
+                    let sources = rows[i].name;
+                    let value = rows[i].value;
+                    total += value;
+                    let sourceArray = sources.split(',');
+                    for(let j = 0 ; j < sourceArray.length ; j++){
+                        let ix = returnArray.findIndex(rr => rr.name == sourceArray[j]);
+                        if(ix >= 0) {
+                            returnArray[ix].value += value;
+                        }
+                        else{
+                            returnArray.push({name: sourceArray[j], value: value});
+                        }
+                    }
+                }
+                returnArray.push({name: "Total", value: total});
+                return returnArray;
             }).catch(function (error) {
                 console.error(error);
             });
@@ -358,6 +376,32 @@ const resolvers = {
                 return rows;
             }).catch(function (error) {
                 console.error(error);
+            });
+        },
+        ppiTargetInteractionDetails: async function(target, args, {dataSources}){
+            if(!dataSources.ppiTarget){
+                return null;
+            }
+            if(dataSources.listResults && dataSources.listResults.length > 0) {
+                theRow = dataSources.listResults.find(rowData => {
+                    return rowData.tcrdid == target.tcrdid;
+                });
+                if (theRow) {
+                    theRow.score = theRow.score / 1000;
+                    return theRow;
+                }
+            }
+            const q = dataSources.tcrd.db.select(
+                dataSources.tcrd.db.raw(
+                    `ppitypes, p_int, p_ni, p_wrong, evidence, interaction_type, score/1000
+            FROM ncats_ppi, t2tc
+            WHERE
+            t2tc.target_id = ?
+            AND (ncats_ppi.protein_id = t2tc.protein_id
+            AND ncats_ppi.other_id = (select id from protein where match(uniprot,sym,stringid) against(? in boolean mode)))`,
+                    [target.tcrdid, dataSources.ppiTarget]));
+            return q.then(rows => {
+                return rows[0];
             });
         },
 
@@ -802,7 +846,7 @@ const resolvers = {
             ];
 
             if (neighbor.novelty)
-                props.push({'name': 'novelty', 'value': neighbor.novelty});
+                props.push({'name': 'Novelty', 'value': neighbor.novelty});
             if (neighbor.fam)
                 props.push({'name': 'fam', 'value': neighbor.fam});
 
@@ -827,12 +871,15 @@ const resolvers = {
                 }
                 if (neighbor.evidence) {
                     props.push({
-                        'name': 'evidence',
+                        'name': 'Evidence',
                         'value': neighbor.evidence
                     });
                 }
                 if (neighbor.score) {
-                    props.push({'name': 'score', 'value': neighbor.score});
+                    props.push({'name': 'Score', 'value': neighbor.score/1000});
+                }
+                if (neighbor.ppiTypes){
+                    props.push({'name': 'Data Source', 'value': neighbor.ppiTypes});
                 }
             }
             return props;
@@ -996,8 +1043,9 @@ const resolvers = {
         targets: async function (result, args, {dataSources}) {
             args.filter = result.filter;
             args.batch = result.batch;
-            return dataSources.tcrd.getTargets(args)
+            return new TargetList(dataSources.tcrd, args).getListQuery()
                 .then(targets => {
+                    dataSources.listResults = targets;
                     return targets;
                 }).catch(function (error) {
                     console.error(error);
@@ -1223,11 +1271,12 @@ const resolvers = {
     }
 };
 
-function getTargetResult(args, tcrd) {
+function getTargetResult(args, dataSources) {
     //console.log(JSON.stringify(args));
     args.batch = args.targets;
-    const targetList = new TargetList(args);
-    const proteinListQuery = targetList.fetchProteinList(tcrd);
+    const targetList = new TargetList(dataSources.tcrd, args);
+    dataSources.ppiTarget = targetList.ppiTarget;
+    const proteinListQuery = targetList.fetchProteinList();
     if (!!proteinListQuery) {
         return proteinListQuery.then(rows => {
             targetList.cacheProteinList(Array.from(rows, row => row.protein_id));
@@ -1238,9 +1287,30 @@ function getTargetResult(args, tcrd) {
         return doFacetQuery();
     }
 
+    function splitOnDelimiters(rowData){
+        let returnArray = [];
+        let total = 0;
+        for(let i = 0 ; i < rowData.length ; i++){
+            let sources = rowData[i].name;
+            let value = rowData[i].value;
+            total += value;
+            let sourceArray = sources.split(',');
+            for(let j = 0 ; j < sourceArray.length ; j++){
+                let ix = returnArray.findIndex(rr => rr.name == sourceArray[j]);
+                if(ix >= 0) {
+                    returnArray[ix].value += value;
+                }
+                else{
+                    returnArray.push({name: sourceArray[j], value: value});
+                }
+            }
+        }
+        return returnArray;
+    }
+
     function doFacetQuery() {
-        const countQuery = targetList.getCountQuery(tcrd);
-        const facetQueries = targetList.getFacetQueries(tcrd);
+        const countQuery = targetList.getCountQuery();
+        const facetQueries = targetList.getFacetQueries();
         facetQueries.unshift(countQuery);
 
         return Promise.all(Array.from(facetQueries.values())).then(rows => {
@@ -1248,10 +1318,11 @@ function getTargetResult(args, tcrd) {
 
             let facets = [];
             for (var i in rows) {
+                let rowData = splitOnDelimiters(rows[i]);
                 facets.push({
                     facet: targetList.facetsToFetch[i].type,
-                    count: rows[i].length,
-                    values: rows[i],
+                    count: rowData.length,
+                    values: rowData,
                     sql: facetQueries[i].toString(),
                     elapsedTime: targetList.getElapsedTime(targetList.facetsToFetch[i].type)
                 });
@@ -1267,9 +1338,9 @@ function getTargetResult(args, tcrd) {
 }
 
 function getDiseaseResult(args, tcrd) {
-    let diseaseList = new DiseaseList(args);
-    let queries = diseaseList.getFacetQueries(tcrd);
-    queries.unshift(diseaseList.getCountQuery(tcrd));
+    let diseaseList = new DiseaseList(tcrd, args);
+    let queries = diseaseList.getFacetQueries();
+    queries.unshift(diseaseList.getCountQuery());
 
     return Promise.all(queries).then(rows => {
         let count = rows.shift()[0].count;

@@ -6,6 +6,7 @@ export class FacetInfo {
     dataColumn: string;
     countColumn: string; // for precalculated tables
     whereClause: string;
+    valuesDelimited: boolean;
     select: string;
     groupBy: string;
     allowedValues: string[];
@@ -18,6 +19,7 @@ export class FacetInfo {
         this.dataColumn = obj.dataColumn || "";
         this.countColumn = obj.countColumn || "";
         this.whereClause = obj.whereClause || "";
+        this.valuesDelimited = obj.valuesDelimited || false;
         this.select = obj.select || this.dataString();
         this.groupBy = obj.groupBy || this.dataString();
         this.allowedValues = obj.allowedValues || [];
@@ -33,24 +35,28 @@ export class FacetInfo {
     }
 
 
-    getFacetConstraintQuery(tcrd: any) {
-        let query = tcrd.db(DataModelList.listToObject(this.tables))
-            .select(this.parent.rootTable + ".id")
-            .whereIn(tcrd.db.raw(this.select), this.allowedValues);
+    getFacetConstraintQuery() {
+        let query = this.parent.database(DataModelList.listToObject(this.tables))
+            .select(this.parent.keyString());
+        if(this.valuesDelimited){
+            query.where(this.parent.database.raw(`${this.select} REGEXP '${this.allowedValues.join('|')}'`));
+        }else{
+            query.whereIn(this.parent.database.raw(this.select), this.allowedValues);
+        }
         if (this.whereClause.length > 0) {
             query.whereRaw(this.whereClause);
         }
-        this.parent.addLinkToRootTable(query, tcrd, this);
+        this.parent.addLinkToRootTable(query, this);
         return query;
     }
 
-    getFacetQuery(tcrd: any) {
+    getFacetQuery() {
         if (this.dataTable == "") {
             return null;
         }
         if (this.countColumn != "") {
-            let query = tcrd.db(this.dataTable)
-                .select(tcrd.db.raw(`${this.dataColumn} as name, ${this.countColumn} as value`));
+            let query = this.parent.database(this.dataTable)
+                .select(this.parent.database.raw(`${this.dataColumn} as name, ${this.countColumn} as value`));
             if (this.whereClause.length > 0) {
                 query.whereRaw(this.whereClause);
             }
@@ -59,14 +65,14 @@ export class FacetInfo {
             this.parent.captureQueryPerformance(query, this.type);
             return query;
         }
-        let query = tcrd.db(DataModelList.listToObject(this.tables))
-            .select(tcrd.db.raw(this.select + " as name, count(distinct " + this.parent.keyString() + ") as value"));
+        let query = this.parent.database(DataModelList.listToObject(this.tables))
+            .select(this.parent.database.raw(this.select + " as name, count(distinct " + this.parent.keyString() + ") as value"));
         if (this.whereClause.length > 0) {
             query.whereRaw(this.whereClause);
         }
-        this.parent.addFacetConstraints(query, tcrd, this.parent.filteringFacets, this.type);
-        this.parent.addModelSpecificConstraints(query, tcrd);
-        this.parent.addLinkToRootTable(query, tcrd, this);
+        this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.type);
+        this.parent.addModelSpecificFiltering(query);
+        this.parent.addLinkToRootTable(query, this);
         query.groupBy(this.groupBy).orderBy('value', 'desc');
 
         this.parent.captureQueryPerformance(query, this.type);
