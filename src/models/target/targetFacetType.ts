@@ -29,5 +29,9 @@ export enum TargetFacetType {
     "Expression: JensenLab Knowledge UniProtKB-RC",
     "Expression: JensenLab Text Mining",
     "Expression: JensenLab Experiment Cardiac proteome",
-    "Expression: Cell Surface Protein Atlas"
+    "Expression: Cell Surface Protein Atlas",
+    "Reactome Pathway",
+    "WikiPathways Pathway",
+    "KEGG Pathway",
+    "PPI Data Source"
 }

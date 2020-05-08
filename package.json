@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "test": "node src/index.js & jest",
-    "start": "nodemon src/index.js",
+    "start": "tsc && nodemon src/index.js",
     "start:ci": "tsc && node src/index.js",
     "gcp-build": "tsc -p ."
   },

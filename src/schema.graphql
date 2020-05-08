@@ -71,6 +71,7 @@ input IFilter {
      frange: [IRangeFloat]
      order: String
      ppiTarget: String
+     ppiConfidence: Int = 400
 }
 
 type Filter {
@@ -372,7 +373,7 @@ type Target {
      generifs(skip: Int = 0, top: Int = 10, term: String=""): [GeneRIF]
 
      """Protein-protein interaction"""
-     ppiCounts: [IntProp]
+     ppiCounts(filter: IFilter) : [IntProp]
      ppis(skip: Int = 0, top: Int = 10, filter: IFilter): [TargetNeighbor]
 
      """Disease associations"""
@@ -433,6 +434,18 @@ type Target {
      """TINX"""
      tinxCount: Int
      tinx(skip: Int=0, top: Int, filter: IFilter): [TINXDisease]
+
+     ppiTargetInteractionDetails: InteractionDetails
+}
+
+type InteractionDetails{
+     ppitypes: String
+     score: Float
+     interaction_type: String
+     evidence: String
+     p_ni: Float
+     p_int: Float
+     p_wrong: Float
 }
 
 type TargetResult {

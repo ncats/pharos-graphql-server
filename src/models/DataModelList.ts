@@ -1,13 +1,19 @@
 import now from "performance-now";
 import {FacetInfo} from "./FacetInfo";
 import {FacetFactory} from "./FacetFactory";
+import {Config, ConfigKeys, QueryDefinition, SqlTable} from "./config";
+import {DatabaseConfig, DatabaseTable} from "./databaseConfig";
+// @ts-ignore
+import * as CONSTANTS from "../constants";
 
 export abstract class DataModelList {
     abstract AllFacets: string[];
     abstract DefaultFacets: string[];
-    abstract addModelSpecificConstraints(query: any, db: any): void;
-    abstract addLinkToRootTable(query: any, db: any, facet: FacetInfo): void;
+    abstract addModelSpecificFiltering(query: any, list?: boolean): void;
+    abstract addLinkToRootTable(query: any, facet: FacetInfo): void;
     abstract getRequiredTablesForFacet(info: FacetInfo): string[];
+    abstract listQueryKey(): ConfigKeys;
+    abstract defaultSortParameters(): {column:string,order:string}[];
 
     facetFactory: FacetFactory;
     term: string = "";
@@ -15,12 +21,32 @@ export abstract class DataModelList {
     keyColumn: string;
     filteringFacets: FacetInfo[] = [];
     facetsToFetch: FacetInfo[] = [];
-    ppiTarget: string = "";
 
-    constructor(rootTable: string, keyColumn: string, facetFactory: FacetFactory, json: any, extra?: any) {
+    ppiTarget: string = "";
+    ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
+    skip: number = 0;
+    top: number = 10;
+
+    tcrd: any;
+    database: any;
+    databaseConfig: DatabaseConfig;
+
+    sortTable: string = "";
+    sortColumn: string = "";
+    direction: string = "";
+
+    constructor(tcrd: any, rootTable: string, facetFactory: FacetFactory, json: any, extra?: any) {
+        this.tcrd = tcrd;
+        this.database = tcrd.db;
+        this.databaseConfig = tcrd.tableInfo;
         this.rootTable = rootTable;
-        this.keyColumn = keyColumn;
+        this.keyColumn = this.databaseConfig.getPrimaryKey(this.rootTable);
         this.facetFactory = facetFactory;
+
+        if (json){
+            if(json.skip) {this.skip = json.skip;}
+            if(json.top) {this.top = json.top;}
+        }
 
         if (json && json.filter){
             if(json.filter.term){
@@ -28,6 +54,18 @@ export abstract class DataModelList {
             }
             if(json.filter.ppiTarget){
                 this.ppiTarget = json.filter.ppiTarget;
+            }
+            if(json.filter.ppiConfidence){
+                this.ppiConfidence = json.filter.ppiConfidence;
+            }
+            if(json.filter.order){
+                this.sortColumn = json.filter.order.substring(1);
+                if(this.sortColumn.indexOf('.') > 0){
+                    this.sortTable = this.sortColumn.split('.')[0];
+                    this.sortColumn = this.sortColumn.split('.')[1];
+                }
+                let ch = json.filter.order.charAt(0);
+                this.direction = (ch == '^') ? 'asc' : 'desc';
             }
         }
 
@@ -47,28 +85,99 @@ export abstract class DataModelList {
         return this.rootTable + "." + this.keyColumn;
     }
 
-    getFacetQueries(tcrd: any) {
+    getFacetQueries() {
         let facetQueries = [];
         for (let i = 0; i < this.facetsToFetch.length; i++) {
-            facetQueries.push(this.facetsToFetch[i].getFacetQuery(tcrd));
+            facetQueries.push(this.facetsToFetch[i].getFacetQuery());
+
         }
         return facetQueries;
     }
 
-    getCountQuery(tcrd: any): any {
-        let query = tcrd.db(this.rootTable)
-            .select(tcrd.db.raw('count(distinct ' + this.keyColumn + ') as count'));
-        this.addFacetConstraints(query, tcrd, this.filteringFacets);
-        this.addModelSpecificConstraints(query, tcrd);
+    getCountQuery(): any {
+        let query = this.database(this.rootTable)
+            .select(this.database.raw('count(distinct ' + this.keyColumn + ') as count'));
+        this.addFacetConstraints(query, this.filteringFacets);
+        this.addModelSpecificFiltering(query);
         this.captureQueryPerformance(query, "list count");
         return query;
     };
 
-    addFacetConstraints(query: any, tcrd: any, filteringFacets: FacetInfo[], facetToIgnore?: string) {
+    getListQuery() {
+        const that = this;
+        let dataFields = Config.GetDataFields(this.listQueryKey(), this.sortTable, this.sortColumn);
+        const queryDefinition = QueryDefinition.GenerateQueryDefinition(this.rootTable, dataFields);
+        let rootTableObject = queryDefinition.getRootTable();
+        if(rootTableObject == undefined){
+            return;
+        }
+        let leftJoins = queryDefinition.getLeftJoinTables();
+        let innerJoins = queryDefinition.getInnerJoinTables();
+
+        let query = this.database(queryDefinition.getTablesAsObjectArray(innerJoins))
+            .select(queryDefinition.getColumnList());
+        for (let i = 0; i < leftJoins.length; i++) {
+            let linkInfo = this.databaseConfig.getLinkInformation(rootTableObject.tableName, leftJoins[i].tableName);
+            if(!linkInfo) throw new Error("bad table configuration: " + rootTableObject?.tableName + " + " + leftJoins[i].tableName);
+            query.leftJoin(leftJoins[i].tableName + (leftJoins[i].alias ? ' as ' + leftJoins[i].alias : ''), function(this: any) {
+                // @ts-ignore
+                this.on(rootTableObject.tableName + "." +  linkInfo.fromCol, '=', leftJoins[i].alias + "." + linkInfo.toCol);
+                if(leftJoins[i].joinConstraint) {
+                    this.andOn(that.database.raw(leftJoins[i].joinConstraint));
+                }
+            });
+        }
+        for(let i = 0 ; i < innerJoins.length; i++){
+            if(rootTableObject !== innerJoins[i]){
+                let leftTable = rootTableObject;
+                for(let j = 0 ; j < innerJoins[i].linkingTables.length; j++){
+                    let linkInfo = this.databaseConfig.getLinkInformation(leftTable.tableName, innerJoins[i].linkingTables[j]);
+                    if(!linkInfo) throw new Error("bad table configuration: " + leftTable.tableName + " + " + innerJoins[i].linkingTables[j]);
+                    query.whereRaw(leftTable.alias + "." + linkInfo.fromCol + "=" + innerJoins[i].linkingTables[j] + "." + linkInfo.toCol);
+                    const addtJoinConstraint = DatabaseTable.additionalJoinConstraints(innerJoins[i].tableName, innerJoins[i].alias, this);
+                    if(addtJoinConstraint){
+                        query.andWhere(this.database.raw(addtJoinConstraint));
+                    }
+                    leftTable = new SqlTable(innerJoins[i].linkingTables[j]);
+                }
+                let linkInfo = this.databaseConfig.getLinkInformation(leftTable.tableName, innerJoins[i].tableName);
+                if(!linkInfo) throw new Error("bad table configuration: " + leftTable.tableName + " + " + innerJoins[i].tableName);
+                query.whereRaw(leftTable.alias + "." + linkInfo.fromCol + "=" + innerJoins[i].alias + "." + linkInfo.toCol);
+                const addtJoinConstraint = DatabaseTable.additionalJoinConstraints(innerJoins[i].tableName, innerJoins[i].alias, this);
+                if(addtJoinConstraint){
+                    query.andWhere(this.database.raw(addtJoinConstraint));
+                }
+            }
+        }
+        this.addModelSpecificFiltering(query, true);
+        this.addFacetConstraints(query, this.filteringFacets);
+        this.addSort(query, queryDefinition);
+        if(this.skip){
+            query.offset(this.skip);
+        }
+        if(this.top){
+            query.limit(this.top);
+        }
+        //console.log(query.toString());
+        this.captureQueryPerformance(query, "list count");
+        return query;
+    }
+
+    addSort(query: any, queryDefinition: QueryDefinition){
+        if(!this.sortColumn){
+            query.orderBy(this.defaultSortParameters());
+            return;
+        }
+        let col = this.sortColumn;
+        let dir = this.direction;
+        query.orderBy(col, dir);
+    }
+
+    addFacetConstraints(query: any, filteringFacets: FacetInfo[], facetToIgnore?: string) {
         for (let i = 0; i < filteringFacets.length; i++) {
             if (facetToIgnore == null || facetToIgnore != filteringFacets[i].type) {
-                let subQuery = filteringFacets[i].getFacetConstraintQuery(tcrd);
-                query.whereIn(this.rootTable + ".id", subQuery);
+                let subQuery = filteringFacets[i].getFacetConstraintQuery();
+                query.whereIn(this.keyString(), subQuery);
             }
         }
     }

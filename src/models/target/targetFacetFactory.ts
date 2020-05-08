@@ -65,7 +65,7 @@ export class TargetFacetFactory extends FacetFactory{
                         ...partialReturn,
                         dataTable: "phenotype",
                         dataColumn: "term_name",
-                        whereClause: `phenotype.ptype = '${"JAX/MGI Human Ortholog Phenotype"}'`
+                        whereClause: `phenotype.ptype = 'JAX/MGI Human Ortholog Phenotype'`
                     } as FacetInfo);
             case TargetFacetType["GO Component"]:
             case TargetFacetType["GO Function"]:
@@ -138,6 +138,24 @@ export class TargetFacetFactory extends FacetFactory{
                         whereClause: `expression.etype = '${TargetFacetFactory.getExtraParam(typeName)}'`
                     } as FacetInfo);
                 }
+            case TargetFacetType["WikiPathways Pathway"]:
+            case TargetFacetType["KEGG Pathway"]:
+            case TargetFacetType["Reactome Pathway"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "pathway",
+                    dataColumn: "name",
+                    whereClause: `pathway.pwtype = '${TargetFacetFactory.getExtraParam(typeName)}'`
+                } as FacetInfo);
+            case TargetFacetType["PPI Data Source"]:
+                if(!parent.ppiTarget) { return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable:"ncats_ppi",
+                    dataColumn: "ppitypes",
+                    whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.ppiTarget}' in boolean mode))`,
+                    valuesDelimited: true
+                } as FacetInfo);
         }
         return this.unknownFacet();
     }
@@ -189,6 +207,12 @@ export class TargetFacetFactory extends FacetFactory{
                 return "JensenLab Text Mining";
             case "Expression: UniProt Tissue":
                 return "UniProt Tissue";
+            case "WikiPathways Pathway":
+                return "WikiPathways";
+            case "KEGG Pathway":
+                return "KEGG";
+            case "Reactome Pathway":
+                return "Reactome";
         }
         return type;
     }

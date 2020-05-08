@@ -2,6 +2,7 @@ import {TargetFacetFactory} from "./targetFacetFactory";
 import {TargetFacetType} from "./targetFacetType";
 import {DataModelList} from "../DataModelList";
 import {FacetInfo} from "../FacetInfo";
+import {ConfigKeys} from "../config";
 
 export class TargetList extends DataModelList {
     batch: string[] = [];
@@ -10,8 +11,18 @@ export class TargetList extends DataModelList {
     proteinList: string[] = [];
     proteinListCached: boolean = false;
 
-    constructor(json: any) {
-        super("protein", "id", new TargetFacetFactory(), json);
+    defaultSortParameters(): {column: string; order: string}[] {
+        if(this.term){
+            return [{column:'min_score', order:'asc'},{column:'name', order:'asc'}];
+        }
+        else if(this.ppiTarget){
+            return [{column:'p_int', order:'desc'},{column:'score', order:'desc'}];
+        }
+        return [{column:'novelty', order:'desc'}];
+    }
+
+    constructor(tcrd: any, json: any) {
+        super(tcrd,"protein", new TargetFacetFactory(), json);
         if (json && json.batch) {
             this.batch = json.batch;
         }
@@ -38,29 +49,42 @@ export class TargetList extends DataModelList {
         }
     }
 
-    addModelSpecificConstraints(query: any, tcrd: any): void {
-        this.addBatchConstraint(query, this.batch);
-        this.addProteinListConstraint(query, this.fetchProteinList(tcrd));
+    listQueryKey() {
+        if(this.ppiTarget){
+            return ConfigKeys.Target_List_PPI;
+        }
+        return ConfigKeys.Target_List_Default;
     }
 
-    addLinkToRootTable(query: any, db: any, facet: FacetInfo): void {
+    addModelSpecificFiltering(query: any, list: boolean = false): void {
+        if(list && this.term.length > 0) {
+            query.join(this.tcrd.getScoredProteinList(this.term).as("searchQuery"), 'searchQuery.protein_id', 'protein.id');
+        } else {
+            if(!list || !this.ppiTarget) {
+                this.addProteinListConstraint(query, this.fetchProteinList());
+            }
+        }
+        this.addBatchConstraint(query, this.batch);
+    }
+
+    addLinkToRootTable(query: any, facet: FacetInfo): void {  // TODO, use database.ts instead, maybe we don't need this at all
         if (facet.dataTable == 'target') {
-            query.andWhere('target.id', db.db.raw('t2tc.target_id'))
-                .andWhere('protein.id', db.db.raw('t2tc.protein_id'));
+            query.andWhere('target.id', this.database.raw('t2tc.target_id'))
+                .andWhere('protein.id', this.database.raw('t2tc.protein_id'));
         } else if (facet.dataTable == 'ncats_idg_list_type') {
-            query.andWhere('protein.id', db.db.raw('ncats_idg_list.protein_id'))
-                .andWhere('ncats_idg_list_type.id', db.db.raw('ncats_idg_list.idg_list'));
+            query.andWhere('protein.id', this.database.raw('ncats_idg_list.protein_id'))
+                .andWhere('ncats_idg_list_type.id', this.database.raw('ncats_idg_list.idg_list'));
         } else if (facet.type == "IMPC Phenotype") {
-            query.andWhere('ortholog.geneid', db.db.raw('nhprotein.geneid'))
-                .andWhere('ortholog.taxid', db.db.raw('nhprotein.taxid'))
-                .andWhere('nhprotein.id', db.db.raw('phenotype.nhprotein_id'))
-                .andWhere('protein.id', db.db.raw('ortholog.protein_id'));
+            query.andWhere('ortholog.geneid', this.database.raw('nhprotein.geneid'))
+                .andWhere('ortholog.taxid', this.database.raw('nhprotein.taxid'))
+                .andWhere('nhprotein.id', this.database.raw('phenotype.nhprotein_id'))
+                .andWhere('protein.id', this.database.raw('ortholog.protein_id'));
         } else { // default is to use protein_id column from keyTable
-            query.andWhere('protein.id', db.db.raw(facet.dataTable + '.protein_id'));
+            query.andWhere('protein.id', this.database.raw(facet.dataTable + '.protein_id'));
         }
     }
 
-    getRequiredTablesForFacet(info: FacetInfo): string[] {
+    getRequiredTablesForFacet(info: FacetInfo): string[] {  // TODO this too
         let tableList = [];
         tableList.push(this.rootTable);
         if (info.dataTable == this.rootTable) {
@@ -82,7 +106,7 @@ export class TargetList extends DataModelList {
         return tableList;
     }
 
-    fetchProteinList(tcrd: any): any {
+    fetchProteinList(): any {
         if (this.term.length == 0 && this.ppiTarget.length == 0) {
             return null;
         }
@@ -91,9 +115,9 @@ export class TargetList extends DataModelList {
         }
         let proteinListQuery;
         if (this.term) {
-            proteinListQuery = tcrd.getProteinList(this.term);
+            proteinListQuery = this.tcrd.getProteinList(this.term);
         } else {
-            proteinListQuery = tcrd.getProteinListFromPPI(this.ppiTarget);
+            proteinListQuery = this.tcrd.getProteinListFromPPI(this.ppiTarget, this.ppiConfidence);
         }
         this.captureQueryPerformance(proteinListQuery, "protein list");
         return proteinListQuery;
@@ -140,8 +164,10 @@ export class TargetList extends DataModelList {
     AllFacets = Object.keys(TargetFacetType).filter(key => isNaN(Number(key)));
 
     DefaultPPIFacets = [
+        "PPI Data Source",
         "Target Development Level",
         "IDG Target Lists",
+        "Reactome Pathway",
         "GO Process",
         "GO Component",
         "GO Function",

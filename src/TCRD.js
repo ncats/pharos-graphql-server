@@ -1,3 +1,4 @@
+const {DatabaseConfig} = require("./models/databaseConfig");
 const {SQLDataSource} = require("datasource-sql");
 const CONSTANTS = require("./constants");
 const utils = require("./target_search_utils");
@@ -94,6 +95,7 @@ class TCRD extends SQLDataSource {
     constructor(config) {
         super(config);
         const _this = this;
+        this.tableInfo = new DatabaseConfig(this.db, config.connection.database);
 
         const root = {
             doid: 'DOID:4',
@@ -796,23 +798,32 @@ from pubmed`)).whereIn('id', pubs);
             });
     }
 
-    getPPICountsForTarget(target) {
+    getPPICountsForTarget(target, args) {
         //console.log('>>> getPPICount: '+target.tcrdid);
+        let confidence = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
+        if(args && args.filter && args.filter.ppiConfidence){
+            confidence = args.filter.ppiConfidence;
+        }
         return this.db.select(this.db.raw(`
-a.ppitype as name, count(*) as value 
-from ppi a, t2tc b
-where a.protein1_id = b.protein_id
+a.ppitypes as name, count(*) as value 
+from ncats_ppi a, t2tc b
+where a.protein_id = b.protein_id
+and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b.target_id = ?
-group by ppitype order by value desc`, [target.tcrdid]));
+group by ppitypes order by value desc`, [target.tcrdid]));
     }
 
     getPPIsForTarget(target, args) {
-        //console.log('>>> getPPIs: '+target.tcrdid);
+        //console.log('>>> getPPIs: ' + JSON.stringify(args));
+        let confidence = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
+        if(args && args.filter && args.filter.ppiConfidence){
+            confidence = args.filter.ppiConfidence;
+        }
         const PPI_SQL = `
-a.id as nid, ppitype as type, 
+a.id as nid, ppitypes as type, 
 p_int, p_ni, p_wrong, evidence, interaction_type, a.score as score,
-c.score as novelty, d.tdl as tdl, d.fam as fam, e.sym as sym
-from ppi a, target d, protein e, t2tc b1, t2tc b2
+c.score as novelty, d.tdl as tdl, d.fam as fam, e.sym as sym, ppiTypes
+from ncats_ppi a, target d, protein e, t2tc b1, t2tc b2
 left join tinx_novelty c use index(tinx_novelty_idx3)
 on c.protein_id = b2.protein_id
 `;
@@ -830,8 +841,11 @@ and f.itype = ?`, [filter.order]));
             for (var i in args.filter.facets) {
                 let f = args.filter.facets[i];
                 if ('type' == f.facet)
-                    f.facet = 'ppitype';
-                q = q.whereIn(f.facet, f.values);
+                {
+                    q.whereRaw(`ppitypes REGEXP '${f.values.join("|")}'`);
+                }else {
+                    q = q.whereIn(f.facet, f.values);
+                }
             }
 
             let sort = true;
@@ -844,33 +858,35 @@ match(e.name,e.description) against(? in boolean mode))`, [args.filter.term,
             }
 
             q = q.andWhere(this.db.raw(`
-a.protein2_id = b2.protein_id
-and a.protein1_id = b1.protein_id
+a.other_id = b2.protein_id
+and a.protein_id = b1.protein_id
 and d.id = b2.target_id
 and e.id = b2.protein_id
+and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ?`, [target.tcrdid]));
 
             if (sort) {
-                q = q.orderBy([{column: 'novelty', order: 'desc'},
-                    {column: filter.sortColumn, order: filter.dir}]);
+                q = q.orderBy([{column: 'a.p_int', order: 'desc'},{column: 'a.score', order: 'desc'},
+                    ]);
             }
 
             if(args.top){
                 q.limit(args.top);
             }
             if(args.skip){
-                q.limit(args.skip);
+                q.offset(args.skip);
             }
         } else {
             q = this.db.select(this.db.raw(PPI_SQL + `
-where a.protein2_id = b2.protein_id
-and a.protein1_id = b1.protein_id
+where a.other_id = b2.protein_id
+and a.protein_id = b1.protein_id
 and d.id = b2.target_id
 and e.id = b2.protein_id
-and b1.target_id = ? order by c.score desc
+and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
+and b1.target_id = ? order by a.p_int desc, a.score desc
 limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
         }
-        //console.log('>>> getPPIsForTarget: '+q);
+       //console.log('>>> getPPIsForTarget: '+q);
         return q;
     }
 
@@ -879,19 +895,19 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
         return this.db.select(this.db.raw(`
 a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid, e.score as novelty, 
 b.description as name, f.string_value as description
-from target a, protein b, ppi d, t2tc c
+from target a, protein b, ncats_ppi d, t2tc c
 left join tinx_novelty e use index(tinx_novelty_idx3)
 on e.protein_id = c.protein_id
 left join tdl_info f on f.protein_id = c.protein_id 
 and f.itype = '${CONSTANTS.DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
-and b.id = d.protein2_id and d.id = ?`, [neighbor.nid]));
+and b.id = d.other_id and d.id = ?`, [neighbor.nid]));
     }
 
     getPPIPropsForNeighbor(neighbor) {
         //console.log('>>> getPropsForNeighbor: '+neighbor.nid);
         return this.db.select(this.db.raw(`
-* from ppi where id = ?`, [neighbor.nid]));
+* from ncats_ppi where id = ?`, [neighbor.nid]));
     }
 
     getDiseasesForTarget(target, args) {
@@ -1088,7 +1104,7 @@ and d.name = ?`, [disease.name]));
                 q.limit(args.top);
             }
             if(args.skip){
-                q.limit(args.skip);
+                q.offset(args.skip);
             }
         } else {
             q = this.db.select(this.db.raw(DISEASE_SQL + `
@@ -1209,7 +1225,7 @@ and f.pubmed_id = ?`, [pubmed.pmid]));
                 q.limit(args.top);
             }
             if(args.skip){
-                q.limit(args.skip);
+                q.offset(args.skip);
             }
         } else {
             q = this.db.select(this.db.raw(PUBMED_SQL + `
@@ -1286,7 +1302,7 @@ and f.pwtype = ? and f.name = ?`, [pathway.type, pathway.name]));
                 q.limit(args.top);
             }
             if(args.skip){
-                q.limit(args.skip);
+                q.offset(args.skip);
             }
         } else {
             q = this.db.select(this.db.raw(PATHWAY_SQL + `
@@ -1398,7 +1414,7 @@ and b1.target_id = ?`, [target.tcrdid]));
                 q.limit(args.top);
             }
             if(args.skip){
-                q.limit(args.skip);
+                q.offset(args.skip);
             }
         } else {
             q = this.db.select(this.db.raw(KEGG_SQL + `
@@ -1462,7 +1478,7 @@ and c.target_id = ?`, [target.tcrdid]));
             q.limit(args.top);
         }
         if(args.skip){
-            q.limit(args.skip);
+            q.offset(args.skip);
         }
 
         //console.log('>>> getExpressionForTarget: '+q);
@@ -2037,7 +2053,7 @@ and c.target_id = ?`, [target.tcrdid]));
             q.limit(args.top);
         }
         if(args.skip){
-            q.limit(args.skip);
+            q.offset(args.skip);
         }
         if (sort) {
             q = q.orderBy('b.score', 'desc');
