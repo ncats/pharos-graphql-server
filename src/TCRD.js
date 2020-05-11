@@ -733,7 +733,7 @@ and c.target_id = ?`, [target.tcrdid]));
         //console.log('>>> getPubs: '+target.tcrdid+' '+args);
         if (args.term !== '') {
             return this.db.select(this.db.raw(`
-a.id as pmid, title, journal, date, abstract
+a.id as pmid, title, journal, date, abstract, substring(date,1,4) as 'year'
 from pubmed a, protein2pubmed b, t2tc c 
 where match(a.title,a.abstract) against(? in boolean mode) 
 and a.id = b.pubmed_id and b.protein_id = c.protein_id 
@@ -743,7 +743,7 @@ limit ? offset ?`, [args.term, target.tcrdid, args.top, args.skip]));
         }
 
         return this.db.select(this.db.raw(`
-a.id as pmid, title, journal, date, abstract
+a.id as pmid, title, journal, date, abstract, substring(date,1,4) as 'year'
 from pubmed a, protein2pubmed b, t2tc c 
 where a.id = b.pubmed_id and b.protein_id = c.protein_id 
 and c.target_id = ? order by date desc, pmid desc limit ? offset ?`,
