@@ -15,21 +15,21 @@ export class TargetList extends DataModelList {
         if(this.term){
             return [{column:'min_score', order:'asc'},{column:'name', order:'asc'}];
         }
-        else if(this.ppiTarget){
+        else if(this.associatedTarget){
             return [{column:'p_int', order:'desc'},{column:'score', order:'desc'}];
         }
         return [{column:'novelty', order:'desc'}];
     }
 
     constructor(tcrd: any, json: any) {
-        super(tcrd,"protein", new TargetFacetFactory(), json);
+        super(tcrd,"protein", "id", new TargetFacetFactory(), json);
         if (json && json.batch) {
             this.batch = json.batch;
         }
 
         let facetList: string[];
         if (!json || !json.facets || json.facets.length == 0) {
-            if(this.ppiTarget){
+            if(this.associatedTarget){
                 facetList = this.DefaultPPIFacets;
             }
             else {
@@ -50,7 +50,7 @@ export class TargetList extends DataModelList {
     }
 
     listQueryKey() {
-        if(this.ppiTarget){
+        if(this.associatedTarget){
             return ConfigKeys.Target_List_PPI;
         }
         return ConfigKeys.Target_List_Default;
@@ -60,7 +60,7 @@ export class TargetList extends DataModelList {
         if(list && this.term.length > 0) {
             query.join(this.tcrd.getScoredProteinList(this.term).as("searchQuery"), 'searchQuery.protein_id', 'protein.id');
         } else {
-            if(!list || !this.ppiTarget) {
+            if(!list || !this.associatedTarget) {
                 this.addProteinListConstraint(query, this.fetchProteinList());
             }
         }
@@ -107,7 +107,7 @@ export class TargetList extends DataModelList {
     }
 
     fetchProteinList(): any {
-        if (this.term.length == 0 && this.ppiTarget.length == 0) {
+        if (this.term.length == 0 && this.associatedTarget.length == 0) {
             return null;
         }
         if (this.proteinListCached) {
@@ -117,7 +117,7 @@ export class TargetList extends DataModelList {
         if (this.term) {
             proteinListQuery = this.tcrd.getProteinList(this.term);
         } else {
-            proteinListQuery = this.tcrd.getProteinListFromPPI(this.ppiTarget, this.ppiConfidence);
+            proteinListQuery = this.tcrd.getProteinListFromPPI(this.associatedTarget, this.ppiConfidence);
         }
         this.captureQueryPerformance(proteinListQuery, "protein list");
         return proteinListQuery;
@@ -152,7 +152,7 @@ export class TargetList extends DataModelList {
         if (this.term.length > 0) {
             return false;
         }
-        if(this.ppiTarget.length > 0) {
+        if(this.associatedTarget.length > 0) {
             return false;
         }
         if (this.filteringFacets.length > 0) {

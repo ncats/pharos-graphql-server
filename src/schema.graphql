@@ -70,7 +70,7 @@ input IFilter {
      irange: [IRangeInt]
      frange: [IRangeFloat]
      order: String
-     ppiTarget: String
+     associatedTarget: String
      ppiConfidence: Int = 400
 }
 

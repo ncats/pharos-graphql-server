@@ -533,36 +533,6 @@ where name = ?`, [name]));
         return q;
     }
 
-    getDiseases(args) {
-        let q = this.db.select(this.db.raw(`
-name,count(*) as associationCount
-from disease`));
-
-        if (args.filter) {
-            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('id', subq);
-            });
-
-            let t = args.filter.term;
-            if (t != undefined && t != '') {
-                q = q.andWhere(this.db.raw(`
-match(name, description, drug_name) against(? in boolean mode)`, [t]));
-            }
-        }
-
-        q = q.groupBy('name')
-            .orderBy('associationCount', 'desc');
-        if (args.top)
-            q = q.limit(args.top);
-
-        if (args.skip)
-            q = q.offset(args.skip);
-
-        //console.log('>>> getDiseases: '+q);
-        return q;
-    }
-
     getDiseaseCountsForTarget(target) {
         return this.db.select(this.db.raw(`
 a.name, count(*) as value
@@ -733,7 +703,7 @@ and c.target_id = ?`, [target.tcrdid]));
         //console.log('>>> getPubs: '+target.tcrdid+' '+args);
         if (args.term !== '') {
             return this.db.select(this.db.raw(`
-a.id as pmid, title, journal, date, abstract
+a.id as pmid, title, journal, date, abstract, substring(date,1,4) as 'year'
 from pubmed a, protein2pubmed b, t2tc c 
 where match(a.title,a.abstract) against(? in boolean mode) 
 and a.id = b.pubmed_id and b.protein_id = c.protein_id 
@@ -743,7 +713,7 @@ limit ? offset ?`, [args.term, target.tcrdid, args.top, args.skip]));
         }
 
         return this.db.select(this.db.raw(`
-a.id as pmid, title, journal, date, abstract
+a.id as pmid, title, journal, date, abstract, substring(date,1,4) as 'year'
 from pubmed a, protein2pubmed b, t2tc c 
 where a.id = b.pubmed_id and b.protein_id = c.protein_id 
 and c.target_id = ? order by date desc, pmid desc limit ? offset ?`,

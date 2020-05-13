@@ -6,7 +6,7 @@ import {ConfigKeys} from "../config";
 
 export class DiseaseList extends DataModelList{
     constructor(tcrd: any, json: any) {
-        super(tcrd,"disease" ,new DiseaseFacetFactory(), json);
+        super(tcrd, "disease" , "name", new DiseaseFacetFactory(), json);
         this.facetsToFetch = FacetInfo.deduplicate(
             this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, this.DefaultFacets)));
     }
@@ -15,7 +15,7 @@ export class DiseaseList extends DataModelList{
 
     defaultSortParameters(): {column: string; order: string}[]
     {
-        return [{column: 'associationCount', order: 'desc'}]
+        return [{column: 'count', order: 'desc'}]
     };
 
     listQueryKey() {return ConfigKeys.Disease_List_Default};
@@ -28,6 +28,12 @@ export class DiseaseList extends DataModelList{
     }
 
     addModelSpecificFiltering(query: any): void {
+        if(this.associatedTarget){
+            let associatedTargetQuery = this.database({disease:"disease", protein:"protein"})
+                .select("disease.name").whereRaw(this.database.raw(`match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode)`)).
+            andWhere(this.database.raw(`disease.protein_id = protein.id`));
+            query.whereIn('disease.name', associatedTargetQuery);
+        }
         if(this.term.length == 0){
             return;
         }

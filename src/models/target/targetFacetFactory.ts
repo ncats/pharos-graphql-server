@@ -148,12 +148,12 @@ export class TargetFacetFactory extends FacetFactory{
                     whereClause: `pathway.pwtype = '${TargetFacetFactory.getExtraParam(typeName)}'`
                 } as FacetInfo);
             case TargetFacetType["PPI Data Source"]:
-                if(!parent.ppiTarget) { return this.unknownFacet();}
+                if(!parent.associatedTarget) { return this.unknownFacet();}
                 return new FacetInfo({
                     ...partialReturn,
                     dataTable:"ncats_ppi",
                     dataColumn: "ppitypes",
-                    whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.ppiTarget}' in boolean mode))`,
+                    whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.associatedTarget}' in boolean mode))`,
                     valuesDelimited: true
                 } as FacetInfo);
         }
