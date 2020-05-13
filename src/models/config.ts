@@ -40,6 +40,9 @@ export class Config {
                 dataFields.push({table: "ncats_ppi", data: "p_int"});
                 dataFields.push({table: "ncats_ppi", data: "p_wrong"});
                 break;
+            case ConfigKeys.Disease_List_Default:
+                dataFields.push({table: "disease", data: "name"});
+                break;
         }
         if (sortColumn && !dataFields.find(field => {return field.data == sortColumn}) && !dataFields.find(field => {return field.alias == sortColumn})) {
             dataFields.push({table: sortTable, data: sortColumn, alias: sortColumn});

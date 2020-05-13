@@ -22,7 +22,7 @@ export abstract class DataModelList {
     filteringFacets: FacetInfo[] = [];
     facetsToFetch: FacetInfo[] = [];
 
-    ppiTarget: string = "";
+    associatedTarget: string = "";
     ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
     skip: number = 0;
     top: number = 10;
@@ -35,12 +35,12 @@ export abstract class DataModelList {
     sortColumn: string = "";
     direction: string = "";
 
-    constructor(tcrd: any, rootTable: string, facetFactory: FacetFactory, json: any, extra?: any) {
+    constructor(tcrd: any, rootTable: string, keyColumn: string, facetFactory: FacetFactory, json: any, extra?: any) {
         this.tcrd = tcrd;
         this.database = tcrd.db;
         this.databaseConfig = tcrd.tableInfo;
         this.rootTable = rootTable;
-        this.keyColumn = this.databaseConfig.getPrimaryKey(this.rootTable);
+        this.keyColumn = keyColumn || this.databaseConfig.getPrimaryKey(this.rootTable);
         this.facetFactory = facetFactory;
 
         if (json){
@@ -52,8 +52,8 @@ export abstract class DataModelList {
             if(json.filter.term){
                 this.term = json.filter.term;
             }
-            if(json.filter.ppiTarget){
-                this.ppiTarget = json.filter.ppiTarget;
+            if(json.filter.associatedTarget){
+                this.associatedTarget = json.filter.associatedTarget;
             }
             if(json.filter.ppiConfidence){
                 this.ppiConfidence = json.filter.ppiConfidence;
@@ -111,11 +111,16 @@ export abstract class DataModelList {
         if(rootTableObject == undefined){
             return;
         }
+        let aggregateAll = (this.databaseConfig.getPrimaryKey(this.rootTable) != this.keyColumn);
+
         let leftJoins = queryDefinition.getLeftJoinTables();
         let innerJoins = queryDefinition.getInnerJoinTables();
 
         let query = this.database(queryDefinition.getTablesAsObjectArray(innerJoins))
             .select(queryDefinition.getColumnList());
+        if(aggregateAll){
+            query.count({count: this.databaseConfig.getPrimaryKey(this.rootTable)});
+        }
         for (let i = 0; i < leftJoins.length; i++) {
             let linkInfo = this.databaseConfig.getLinkInformation(rootTableObject.tableName, leftJoins[i].tableName);
             if(!linkInfo) throw new Error("bad table configuration: " + rootTableObject?.tableName + " + " + leftJoins[i].tableName);
@@ -151,6 +156,9 @@ export abstract class DataModelList {
         }
         this.addModelSpecificFiltering(query, true);
         this.addFacetConstraints(query, this.filteringFacets);
+        if(aggregateAll){
+            query.groupBy(this.keyColumn);
+        }
         this.addSort(query, queryDefinition);
         if(this.skip){
             query.offset(this.skip);

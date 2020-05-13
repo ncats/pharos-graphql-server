@@ -348,17 +348,16 @@ const resolvers = {
             return q.then(rows => {
                 let returnArray = [];
                 let total = 0;
-                for(let i = 0 ; i < rows.length ; i++){
+                for (let i = 0; i < rows.length; i++) {
                     let sources = rows[i].name;
                     let value = rows[i].value;
                     total += value;
                     let sourceArray = sources.split(',');
-                    for(let j = 0 ; j < sourceArray.length ; j++){
+                    for (let j = 0; j < sourceArray.length; j++) {
                         let ix = returnArray.findIndex(rr => rr.name == sourceArray[j]);
-                        if(ix >= 0) {
+                        if (ix >= 0) {
                             returnArray[ix].value += value;
-                        }
-                        else{
+                        } else {
                             returnArray.push({name: sourceArray[j], value: value});
                         }
                     }
@@ -378,11 +377,11 @@ const resolvers = {
                 console.error(error);
             });
         },
-        ppiTargetInteractionDetails: async function(target, args, {dataSources}){
-            if(!dataSources.ppiTarget){
+        ppiTargetInteractionDetails: async function (target, args, {dataSources}) {
+            if (!dataSources.associatedTarget) {
                 return null;
             }
-            if(dataSources.listResults && dataSources.listResults.length > 0) {
+            if (dataSources.listResults && dataSources.listResults.length > 0) {
                 theRow = dataSources.listResults.find(rowData => {
                     return rowData.tcrdid == target.tcrdid;
                 });
@@ -399,7 +398,7 @@ const resolvers = {
             t2tc.target_id = ?
             AND (ncats_ppi.protein_id = t2tc.protein_id
             AND ncats_ppi.other_id = (select id from protein where match(uniprot,sym,stringid) against(? in boolean mode)))`,
-                    [target.tcrdid, dataSources.ppiTarget]));
+                    [target.tcrdid, dataSources.associatedTarget]));
             return q.then(rows => {
                 return rows[0];
             });
@@ -876,9 +875,9 @@ const resolvers = {
                     });
                 }
                 if (neighbor.score) {
-                    props.push({'name': 'Score', 'value': neighbor.score/1000});
+                    props.push({'name': 'Score', 'value': neighbor.score / 1000});
                 }
-                if (neighbor.ppiTypes){
+                if (neighbor.ppiTypes) {
                     props.push({'name': 'Data Source', 'value': neighbor.ppiTypes});
                 }
             }
@@ -1057,10 +1056,11 @@ const resolvers = {
         facets: async (result, args, _) => filterResultFacets(result, args),
         diseases: async function (result, args, {dataSources}) {
             args.filter = result.filter;
-            return dataSources.tcrd.getDiseases(args)
+            return new DiseaseList(dataSources.tcrd, args).getListQuery()
                 .then(diseases => {
                     diseases.forEach(x => {
                         x.filter = result.filter;
+                        x.associationCount = x.count;
                     });
                     return diseases;
                 }).catch(function (error) {
@@ -1275,7 +1275,7 @@ function getTargetResult(args, dataSources) {
     //console.log(JSON.stringify(args));
     args.batch = args.targets;
     const targetList = new TargetList(dataSources.tcrd, args);
-    dataSources.ppiTarget = targetList.ppiTarget;
+    dataSources.associatedTarget = targetList.associatedTarget;
     const proteinListQuery = targetList.fetchProteinList();
     if (!!proteinListQuery) {
         return proteinListQuery.then(rows => {
@@ -1287,20 +1287,19 @@ function getTargetResult(args, dataSources) {
         return doFacetQuery();
     }
 
-    function splitOnDelimiters(rowData){
+    function splitOnDelimiters(rowData) {
         let returnArray = [];
         let total = 0;
-        for(let i = 0 ; i < rowData.length ; i++){
+        for (let i = 0; i < rowData.length; i++) {
             let sources = rowData[i].name;
             let value = rowData[i].value;
             total += value;
             let sourceArray = sources.split(',');
-            for(let j = 0 ; j < sourceArray.length ; j++){
+            for (let j = 0; j < sourceArray.length; j++) {
                 let ix = returnArray.findIndex(rr => rr.name == sourceArray[j]);
-                if(ix >= 0) {
+                if (ix >= 0) {
                     returnArray[ix].value += value;
-                }
-                else{
+                } else {
                     returnArray.push({name: sourceArray[j], value: value});
                 }
             }
@@ -1359,6 +1358,8 @@ function getDiseaseResult(args, tcrd) {
             count: count,
             facets: facets
         };
+    }).catch(function (error) {
+        console.error(error);
     });
 }
 
