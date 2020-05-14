@@ -13,7 +13,7 @@ export abstract class DataModelList {
     abstract addLinkToRootTable(query: any, facet: FacetInfo): void;
     abstract getRequiredTablesForFacet(info: FacetInfo): string[];
     abstract listQueryKey(): ConfigKeys;
-    abstract defaultSortParameters(): {column:string,order:string}[];
+    abstract defaultSortParameters(): { column: string, order: string }[];
 
     facetFactory: FacetFactory;
     term: string = "";
@@ -43,24 +43,28 @@ export abstract class DataModelList {
         this.keyColumn = keyColumn || this.databaseConfig.getPrimaryKey(this.rootTable);
         this.facetFactory = facetFactory;
 
-        if (json){
-            if(json.skip) {this.skip = json.skip;}
-            if(json.top) {this.top = json.top;}
+        if (json) {
+            if (json.skip) {
+                this.skip = json.skip;
+            }
+            if (json.top) {
+                this.top = json.top;
+            }
         }
 
-        if (json && json.filter){
-            if(json.filter.term){
+        if (json && json.filter) {
+            if (json.filter.term) {
                 this.term = json.filter.term;
             }
-            if(json.filter.associatedTarget){
+            if (json.filter.associatedTarget) {
                 this.associatedTarget = json.filter.associatedTarget;
             }
-            if(json.filter.ppiConfidence){
+            if (json.filter.ppiConfidence) {
                 this.ppiConfidence = json.filter.ppiConfidence;
             }
-            if(json.filter.order){
+            if (json.filter.order) {
                 this.sortColumn = json.filter.order.substring(1);
-                if(this.sortColumn.indexOf('.') > 0){
+                if (this.sortColumn.indexOf('.') > 0) {
                     this.sortTable = this.sortColumn.split('.')[0];
                     this.sortColumn = this.sortColumn.split('.')[1];
                 }
@@ -96,7 +100,7 @@ export abstract class DataModelList {
 
     getCountQuery(): any {
         let query = this.database(this.rootTable)
-            .select(this.database.raw('count(distinct ' + this.keyColumn + ') as count'));
+            .select(this.database.raw('count(distinct ' + this.keyString() + ') as count'));
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query);
         this.captureQueryPerformance(query, "list count");
@@ -108,7 +112,7 @@ export abstract class DataModelList {
         let dataFields = Config.GetDataFields(this.listQueryKey(), this.sortTable, this.sortColumn);
         const queryDefinition = QueryDefinition.GenerateQueryDefinition(this.rootTable, dataFields);
         let rootTableObject = queryDefinition.getRootTable();
-        if(rootTableObject == undefined){
+        if (rootTableObject == undefined) {
             return;
         }
         let aggregateAll = (this.databaseConfig.getPrimaryKey(this.rootTable) != this.keyColumn);
@@ -118,52 +122,52 @@ export abstract class DataModelList {
 
         let query = this.database(queryDefinition.getTablesAsObjectArray(innerJoins))
             .select(queryDefinition.getColumnList());
-        if(aggregateAll){
+        if (aggregateAll) {
             query.count({count: this.databaseConfig.getPrimaryKey(this.rootTable)});
         }
+        this.addFacetConstraints(query, this.filteringFacets);
         for (let i = 0; i < leftJoins.length; i++) {
             let linkInfo = this.databaseConfig.getLinkInformation(rootTableObject.tableName, leftJoins[i].tableName);
-            if(!linkInfo) throw new Error("bad table configuration: " + rootTableObject?.tableName + " + " + leftJoins[i].tableName);
-            query.leftJoin(leftJoins[i].tableName + (leftJoins[i].alias ? ' as ' + leftJoins[i].alias : ''), function(this: any) {
+            if (!linkInfo) throw new Error("bad table configuration: " + rootTableObject?.tableName + " + " + leftJoins[i].tableName);
+            query.leftJoin(leftJoins[i].tableName + (leftJoins[i].alias ? ' as ' + leftJoins[i].alias : ''), function (this: any) {
                 // @ts-ignore
-                this.on(rootTableObject.tableName + "." +  linkInfo.fromCol, '=', leftJoins[i].alias + "." + linkInfo.toCol);
-                if(leftJoins[i].joinConstraint) {
+                this.on(rootTableObject.tableName + "." + linkInfo.fromCol, '=', leftJoins[i].alias + "." + linkInfo.toCol);
+                if (leftJoins[i].joinConstraint) {
                     this.andOn(that.database.raw(leftJoins[i].joinConstraint));
                 }
             });
         }
-        for(let i = 0 ; i < innerJoins.length; i++){
-            if(rootTableObject !== innerJoins[i]){
+        for (let i = 0; i < innerJoins.length; i++) {
+            if (rootTableObject !== innerJoins[i]) {
                 let leftTable = rootTableObject;
-                for(let j = 0 ; j < innerJoins[i].linkingTables.length; j++){
+                for (let j = 0; j < innerJoins[i].linkingTables.length; j++) {
                     let linkInfo = this.databaseConfig.getLinkInformation(leftTable.tableName, innerJoins[i].linkingTables[j]);
-                    if(!linkInfo) throw new Error("bad table configuration: " + leftTable.tableName + " + " + innerJoins[i].linkingTables[j]);
+                    if (!linkInfo) throw new Error("bad table configuration: " + leftTable.tableName + " + " + innerJoins[i].linkingTables[j]);
                     query.whereRaw(leftTable.alias + "." + linkInfo.fromCol + "=" + innerJoins[i].linkingTables[j] + "." + linkInfo.toCol);
                     const addtJoinConstraint = DatabaseTable.additionalJoinConstraints(innerJoins[i].tableName, innerJoins[i].alias, this);
-                    if(addtJoinConstraint){
+                    if (addtJoinConstraint) {
                         query.andWhere(this.database.raw(addtJoinConstraint));
                     }
                     leftTable = new SqlTable(innerJoins[i].linkingTables[j]);
                 }
                 let linkInfo = this.databaseConfig.getLinkInformation(leftTable.tableName, innerJoins[i].tableName);
-                if(!linkInfo) throw new Error("bad table configuration: " + leftTable.tableName + " + " + innerJoins[i].tableName);
+                if (!linkInfo) throw new Error("bad table configuration: " + leftTable.tableName + " + " + innerJoins[i].tableName);
                 query.whereRaw(leftTable.alias + "." + linkInfo.fromCol + "=" + innerJoins[i].alias + "." + linkInfo.toCol);
                 const addtJoinConstraint = DatabaseTable.additionalJoinConstraints(innerJoins[i].tableName, innerJoins[i].alias, this);
-                if(addtJoinConstraint){
+                if (addtJoinConstraint) {
                     query.andWhere(this.database.raw(addtJoinConstraint));
                 }
             }
         }
         this.addModelSpecificFiltering(query, true);
-        this.addFacetConstraints(query, this.filteringFacets);
-        if(aggregateAll){
+        if (aggregateAll) {
             query.groupBy(this.keyColumn);
         }
         this.addSort(query, queryDefinition);
-        if(this.skip){
+        if (this.skip) {
             query.offset(this.skip);
         }
-        if(this.top){
+        if (this.top) {
             query.limit(this.top);
         }
         //console.log(query.toString());
@@ -171,8 +175,8 @@ export abstract class DataModelList {
         return query;
     }
 
-    addSort(query: any, queryDefinition: QueryDefinition){
-        if(!this.sortColumn){
+    addSort(query: any, queryDefinition: QueryDefinition) {
+        if (!this.sortColumn) {
             query.orderBy(this.defaultSortParameters());
             return;
         }
@@ -184,8 +188,9 @@ export abstract class DataModelList {
     addFacetConstraints(query: any, filteringFacets: FacetInfo[], facetToIgnore?: string) {
         for (let i = 0; i < filteringFacets.length; i++) {
             if (facetToIgnore == null || facetToIgnore != filteringFacets[i].type) {
-                let subQuery = filteringFacets[i].getFacetConstraintQuery();
-                query.whereIn(this.keyString(), subQuery);
+                const sqAlias = filteringFacets[i].type;
+                let subQuery = filteringFacets[i].getFacetConstraintQuery().as(sqAlias);
+                query.join(subQuery, sqAlias + '.' + this.keyColumn, this.keyString());
             }
         }
     }
@@ -211,11 +216,14 @@ export abstract class DataModelList {
         return -1;
     }
 
-    static listToObject(list: string[]) {
+    static listToObject(list: string[], lastTable: string) {
         let obj: any = {};
         for (let i = 0; i < list.length; i++) {
-            obj[list[i]] = list[i];
+            if (lastTable != list[i]) {
+                obj[list[i]] = list[i];
+            }
         }
+        obj[lastTable] = lastTable; // because apparently it matters the order you add fields to an object, somehow knex adds tables in this order
         return obj;
     }
 }

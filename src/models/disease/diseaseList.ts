@@ -30,9 +30,9 @@ export class DiseaseList extends DataModelList{
     addModelSpecificFiltering(query: any): void {
         if(this.associatedTarget){
             let associatedTargetQuery = this.database({disease:"disease", protein:"protein"})
-                .select("disease.name").whereRaw(this.database.raw(`match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode)`)).
-            andWhere(this.database.raw(`disease.protein_id = protein.id`));
-            query.whereIn('disease.name', associatedTargetQuery);
+                .distinct("disease.name").whereRaw(this.database.raw(`match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode)`)).
+            andWhere(this.database.raw(`disease.protein_id = protein.id`)).as('assocTarget');
+            query.join(associatedTargetQuery, 'assocTarget.name', 'disease.name');
         }
         if(this.term.length == 0){
             return;

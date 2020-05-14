@@ -36,8 +36,8 @@ export class FacetInfo {
 
 
     getFacetConstraintQuery() {
-        let query = this.parent.database(DataModelList.listToObject(this.tables))
-            .select(this.parent.keyString());
+        let query = this.parent.database(DataModelList.listToObject(this.tables, this.parent.rootTable))
+            .distinct(this.parent.keyString());
         if(this.valuesDelimited){
             query.where(this.parent.database.raw(`${this.select} REGEXP '${this.allowedValues.join('|')}'`));
         }else{
@@ -65,12 +65,12 @@ export class FacetInfo {
             this.parent.captureQueryPerformance(query, this.type);
             return query;
         }
-        let query = this.parent.database(DataModelList.listToObject(this.tables))
+        let query = this.parent.database(DataModelList.listToObject(this.tables, this.parent.rootTable))
             .select(this.parent.database.raw(this.select + " as name, count(distinct " + this.parent.keyString() + ") as value"));
+        this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.type);
         if (this.whereClause.length > 0) {
             query.whereRaw(this.whereClause);
         }
-        this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.type);
         this.parent.addModelSpecificFiltering(query);
         this.parent.addLinkToRootTable(query, this);
         query.groupBy(this.groupBy).orderBy('value', 'desc');
