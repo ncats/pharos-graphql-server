@@ -1,3 +1,4 @@
+const {LigandList} = require("./models/ligand/ligandList");
 const {DiseaseList} = require("./models/disease/diseaseList");
 const {TargetList} = require("./models/target/targetList");
 const {performance} = require('perf_hooks');
@@ -692,80 +693,48 @@ const resolvers = {
         },
 
         ligandCounts: async function (target, args, {dataSources}) {
-            return Promise.all([
-                dataSources.tcrd.getLigandCountForTarget(target),
-                dataSources.tcrd.getDrugCountForTarget(target)
-            ]).then(results => {
+            let ligandArgs = args;
+            ligandArgs.filter = ligandArgs.filter || {};
+            ligandArgs.filter.associatedTarget = target.uniprot;
+            let ligandList = new LigandList(dataSources.tcrd, ligandArgs);
+            ligandList.facetsToFetch = [ligandList.facetFactory.GetFacet(ligandList,"Type")];
+            return ligandList.getFacetQueries()[0]
+                .then(results => {
+                    let ligandCount = getCount(results, "Ligand");
+                    let drugCount = getCount(results, "Drug");
                 return [{
                     name: "ligand",
-                    value: sumAllRows(results[0])
+                    value: ligandCount + drugCount
                 }, {
                     name: "drug",
-                    value: sumAllRows(results[1])
+                    value: drugCount
                 }];
             }).catch(function (error) {
                 console.error(error);
             });
 
-            function sumAllRows(array) {
-                let count = 0;
-                array.forEach(row => {
-                    count += row.cnt;
-                });
-                return count;
+            function getCount(results, rowName) {
+                let row = results.find(row => row.name === rowName);
+                if (row) return row.value;
+                return 0;
             }
         },
 
         ligands: async function (target, args, {dataSources}) {
-            /*
-             * TODO: need to rework to use the ncats_ligand_labels table
-             */
-            return Promise.all([
-                dataSources.tcrd.getLigandLabelsForTarget(target),
-                dataSources.tcrd.getDrugLabelsForTarget(target)
-            ]).then(allResults => {
-                let labelMap = combineResultsIntoUniqueMap(allResults);
-                return Array.from(labelMap.keys());
-            }).then(labelArray => {
-                return Promise.all([
-                    dataSources.tcrd.getLigandsForTarget(target, args, labelArray),
-                    dataSources.tcrd.getDrugsForTarget(target, args, labelArray)
-                ]).then(rows => {
-                    const ligs = new Map();
-                    if (args.isdrug == false) {
-                        addAllLigands(ligs, rows[0]);
-                    } else {
-                        addAllLigands(ligs, rows[1]);
-                    }
-                    return Array.from(ligs.values());
-                });
-            }).catch(function (error) {
+            let ligandArgs = args;
+            ligandArgs.filter = ligandArgs.filter || {};
+            ligandArgs.filter.associatedTarget = target.uniprot;
+            if(ligandArgs.isdrug){
+                ligandArgs.filter.facets = ligandArgs.filter.facets || [];
+                ligandArgs.filter.facets.push({facet:"Type", values:["Drug"]});
+            }
+            return new LigandList(dataSources.tcrd, ligandArgs).getListQuery()
+                .then(allResults => {
+                    return allResults;
+                })
+                .catch(function (error) {
                 console.error(error);
             });
-
-            function combineResultsIntoUniqueMap(allResults) {
-                let labelMap = new Map();
-                allResults.forEach(resultSet => {
-                    resultSet.forEach(row => {
-                        addOrUpdateMap(labelMap, row.label, row.cnt);
-                    });
-                });
-                return labelMap;
-            }
-
-            function addOrUpdateMap(labelMap, label, count) {
-                let currentCount = labelMap.get(label);
-                currentCount = (!!currentCount) ? (currentCount + count) : count;
-                labelMap.set(label, currentCount);
-            }
-
-            function addAllLigands(ligands, queryResults) {
-                queryResults.forEach(dataRow => {
-                    let ligandObj = toLigand(dataRow);
-                    ligandObj.parent = target;
-                    ligands.set(ligandObj.ligid, ligandObj);
-                });
-            }
         },
 
         tinxCount: async function (target, args, {dataSources}) {
@@ -1073,37 +1042,22 @@ const resolvers = {
         facets: async (result, args, _) => filterResultFacets(result, args),
         ligands: async function (result, args, {dataSources}) {
             args.filter = result.filter;
-            return dataSources.tcrd.getLigandLabels(args)
-                .then(rows => {
-                    let values = new Map();
-                    rows.forEach(r => {
-                        //console.log('~~~~~ ' + r.label + ' ' + r.count);
-                        values.set(r.label, r.count);
-                    });
-                    return values;
-                }).then(values => {
-                    let labels = Array.from(values.keys());
-                    return Promise.all([
-                        dataSources.tcrd.getDrugsForLabels(labels, args),
-                        dataSources.tcrd.getLigandsForLabels(labels, args)
-                    ]).then(rows => {
-                        let ligs = new Map();
-                        rows.forEach(r => {
-                            r.forEach(rr => {
-                                let l = toLigand(rr);
-                                l.actcnt = values.get(l.ligid);
-                                if (!ligs.has(l.ligid) || l.isdrug)
-                                    ligs.set(l.ligid, l);
-                            });
-                        });
-
-                        return Array.from(ligs.values());
-                    }).catch(function (error) {
-                        console.error(error);
-                    });
-                }).catch(function (error) {
-                    console.error(error);
-                });
+            let ligandList = new LigandList(dataSources.tcrd, args);
+            return ligandList.getListQuery().then(
+                ligands => {
+                    for (let i = 0; i < ligands.length; i++) {
+                        ligands[i].synonyms = [];
+                        for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
+                            if (ligands[i][field]) {
+                                ligands[i].synonyms.push({name: field, value: ligands[i][field]});
+                            }
+                        }
+                    }
+                    return ligands;
+                }
+            ).catch(function (error) {
+                console.error(error);
+            });
         }
     },
 
@@ -1224,25 +1178,15 @@ const resolvers = {
 
     Ligand: {
         activities: async function (ligand, args, {dataSources}) {
-            return Promise.all([
-                dataSources.tcrd.getDrugActivities(ligand, args),
-                dataSources.tcrd.getLigandActivities(ligand, args)
-            ]).then(rows => {
-                let ligact = [];
-                rows.forEach(r => {
-                    r.forEach(rr => {
-                        let act = {
-                            actid: rr.id,
-                            type: rr.act_type,
-                            value: rr.act_value,
-                            moa: rr.action_type,
-                            target_id: rr.target_id,
-                            parent: ligand
-                        };
-                        ligact.push(act);
-                    });
-                });
-                return ligact;
+            let query = dataSources.tcrd.db({ncats_ligand_activity:'ncats_ligand_activity', ncats_ligands:'ncats_ligands'})
+                .select({actid: 'ncats_ligand_activity.id', type: 'act_type', value: 'act_value', moa:'action_type', target_id:'target_id' })
+                .whereRaw(`ncats_ligands.identifier = '${ligand.ligid}'`)
+                .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`));
+            return query.then(rows => {
+                for(let i = 0 ; i < rows.length ; i++){
+                    rows[i].parent = ligand;
+                }
+                return rows;
             }).catch(function (error) {
                 console.error(error);
             });
@@ -1285,26 +1229,6 @@ function getTargetResult(args, dataSources) {
         });
     } else {
         return doFacetQuery();
-    }
-
-    function splitOnDelimiters(rowData) {
-        let returnArray = [];
-        let total = 0;
-        for (let i = 0; i < rowData.length; i++) {
-            let sources = rowData[i].name;
-            let value = rowData[i].value;
-            total += value;
-            let sourceArray = sources.split(',');
-            for (let j = 0; j < sourceArray.length; j++) {
-                let ix = returnArray.findIndex(rr => rr.name == sourceArray[j]);
-                if (ix >= 0) {
-                    returnArray[ix].value += value;
-                } else {
-                    returnArray.push({name: sourceArray[j], value: value});
-                }
-            }
-        }
-        return returnArray;
     }
 
     function doFacetQuery() {
@@ -1363,61 +1287,47 @@ function getDiseaseResult(args, tcrd) {
     });
 }
 
-function getLigandResult(args, tcrd) {
-    return Promise.all([
-        tcrd.getLigandCounts(args),
-        tcrd.getDrugCounts(args),
-        tcrd.getActivityCounts(args)
-    ]).then(rows => {
-        let facets = [];
-        let ligcnt = 0;
-        rows[0].forEach(r => {
-            ligcnt += r.cnt;
-        });
-        let drugcnt = 0;
-        rows[1].forEach(r => {
-            drugcnt += r.cnt;
-        });
-
-        facets.push({
-            facet: 'type',
-            count: ligcnt + drugcnt,
-            values: [
-                {
-                    name: 'Ligand',
-                    value: ligcnt
-                },
-                {
-                    name: 'Drug',
-                    value: drugcnt
-                }
-            ]
-        });
-
-        let acttypes = new Map();
-        let actcnt = 0;
-        rows[2].forEach(r => {
-            let t = r.act_type;
-            let v = acttypes.get(t);
-            if (v) {
-                acttypes.set(t, v + r.cnt);
+function splitOnDelimiters(rowData) {
+    let returnArray = [];
+    let total = 0;
+    for (let i = 0; i < rowData.length; i++) {
+        let sources = rowData[i].name;
+        let value = rowData[i].value;
+        total += value;
+        let sourceArray = sources.split(',');
+        for (let j = 0; j < sourceArray.length; j++) {
+            let ix = returnArray.findIndex(rr => rr.name == sourceArray[j]);
+            if (ix >= 0) {
+                returnArray[ix].value += value;
             } else {
-                acttypes.set(t, r.cnt);
+                returnArray.push({name: sourceArray[j], value: value});
             }
-            actcnt += r[1];
-        });
+        }
+    }
+    return returnArray;
+}
 
-        facets.push({
-            facet: 'activity',
-            count: actcnt,
-            values: Array.from(acttypes)
-                .map(x => ({name: x[0], value: x[1]}))
-                .sort((x, y) => y.value - x.value)
-        });
-
+function getLigandResult(args, tcrd) {
+    let ligandList = new LigandList(tcrd, args);
+    const countQuery = ligandList.getCountQuery();
+    const facetQueries = ligandList.getFacetQueries();
+    facetQueries.unshift(countQuery);
+    return Promise.all(Array.from(facetQueries.values())).then(rows => {
+        let count = rows.shift()[0].count;
+        let facets = [];
+        for (var i in rows) {
+            let rowData = splitOnDelimiters(rows[i]);
+            facets.push({
+                facet: ligandList.facetsToFetch[i].type,
+                count: rowData.length,
+                values: rowData,
+                sql: facetQueries[i].toString(),
+                elapsedTime: ligandList.getElapsedTime(ligandList.facetsToFetch[i].type)
+            });
+        }
         return {
             filter: args.filter,
-            count: ligcnt + drugcnt,
+            count: count,
             facets: facets
         };
     }).catch(function (error) {
