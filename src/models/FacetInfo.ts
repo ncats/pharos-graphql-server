@@ -46,7 +46,9 @@ export class FacetInfo {
         if (this.whereClause.length > 0) {
             query.whereRaw(this.whereClause);
         }
-        this.parent.addLinkToRootTable(query, this);
+        if(this.dataTable != this.parent.rootTable) {
+            this.parent.addLinkToRootTable(query, this);
+        }
         return query;
     }
 
@@ -72,7 +74,9 @@ export class FacetInfo {
             query.whereRaw(this.whereClause);
         }
         this.parent.addModelSpecificFiltering(query);
-        this.parent.addLinkToRootTable(query, this);
+        if(this.dataTable != this.parent.rootTable) {
+            this.parent.addLinkToRootTable(query, this);
+        }
         query.groupBy(this.groupBy).orderBy('value', 'desc');
 
         this.parent.captureQueryPerformance(query, this.type);

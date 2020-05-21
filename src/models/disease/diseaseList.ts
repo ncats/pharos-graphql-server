@@ -34,10 +34,9 @@ export class DiseaseList extends DataModelList{
             andWhere(this.database.raw(`disease.protein_id = protein.id`)).as('assocTarget');
             query.join(associatedTargetQuery, 'assocTarget.name', 'disease.name');
         }
-        if(this.term.length == 0){
-            return;
+        if(this.term.length > 0){
+            query.andWhere(this.database.raw(`match(disease.name, disease.description, disease.drug_name) against('${this.term}' in boolean mode)`));
         }
-        query.andWhere(this.database.raw(`match(disease.name, disease.description, disease.drug_name) against('${this.term}' in boolean mode)`));
     }
 
     getRequiredTablesForFacet(info: FacetInfo): string[] {

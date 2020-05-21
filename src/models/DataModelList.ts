@@ -93,7 +93,6 @@ export abstract class DataModelList {
         let facetQueries = [];
         for (let i = 0; i < this.facetsToFetch.length; i++) {
             facetQueries.push(this.facetsToFetch[i].getFacetQuery());
-
         }
         return facetQueries;
     }
@@ -161,7 +160,7 @@ export abstract class DataModelList {
         }
         this.addModelSpecificFiltering(query, true);
         if (aggregateAll) {
-            query.groupBy(this.keyColumn);
+            query.groupBy(this.keyString());
         }
         this.addSort(query, queryDefinition);
         if (this.skip) {

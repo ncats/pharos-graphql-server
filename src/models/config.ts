@@ -43,6 +43,18 @@ export class Config {
             case ConfigKeys.Disease_List_Default:
                 dataFields.push({table: "disease", data: "name"});
                 break;
+            case ConfigKeys.Ligand_List_Default:
+                dataFields.push({table: "ncats_ligands", data: "identifier", alias: "ligid"});
+                dataFields.push({table: "ncats_ligands", data: "isDrug", alias: "isdrug"});
+                dataFields.push({table: "ncats_ligands", data: "name"});
+                dataFields.push({table: "ncats_ligands", data: "smiles"});
+                dataFields.push({table: "ncats_ligands", data: "actCnt", alias: "actcnt"});
+                dataFields.push({table: "ncats_ligands", data: "PubChem"});
+                dataFields.push({table: "ncats_ligands", data: "ChEMBL"});
+                dataFields.push({table: "ncats_ligands", data: "Guide to Pharmacology"});
+                dataFields.push({table: "ncats_ligands", data: "DrugCentral"});
+                dataFields.push({table: "ncats_ligands", data: "description"});
+                break;
         }
         if (sortColumn && !dataFields.find(field => {return field.data == sortColumn}) && !dataFields.find(field => {return field.alias == sortColumn})) {
             dataFields.push({table: sortTable, data: sortColumn, alias: sortColumn});
@@ -229,5 +241,6 @@ export class SqlColumns {
 export enum ConfigKeys {
     Target_List_Default,
     Target_List_PPI,
-    Disease_List_Default
+    Disease_List_Default,
+    Ligand_List_Default
 }
