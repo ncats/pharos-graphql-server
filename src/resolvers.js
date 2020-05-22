@@ -1045,14 +1045,6 @@ const resolvers = {
             let ligandList = new LigandList(dataSources.tcrd, args);
             return ligandList.getListQuery().then(
                 ligands => {
-                    for (let i = 0; i < ligands.length; i++) {
-                        ligands[i].synonyms = [];
-                        for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
-                            if (ligands[i][field]) {
-                                ligands[i].synonyms.push({name: field, value: ligands[i][field]});
-                            }
-                        }
-                    }
                     return ligands;
                 }
             ).catch(function (error) {
@@ -1190,6 +1182,15 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
+        },
+        synonyms: async function (ligand, args, {dataSources}){
+            let synonyms = [];
+            for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
+                if (ligand[field]) {
+                    synonyms.push({name: field, value: ligand[field]});
+                }
+            }
+            return synonyms;
         }
     },
 
