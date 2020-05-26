@@ -7,11 +7,22 @@ import {ConfigKeys} from "../config";
 export class DiseaseList extends DataModelList{
     constructor(tcrd: any, json: any) {
         super(tcrd, "disease" , "name", new DiseaseFacetFactory(), json);
+
+        let facetList: string[];
+        if(this.associatedTarget){
+            facetList = this.DefaultFacetsWithTarget;
+        }
+        else {
+            facetList = this.DefaultFacets;
+        }
         this.facetsToFetch = FacetInfo.deduplicate(
-            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, this.DefaultFacets)));
+            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
     }
     AllFacets = Object.keys(DiseaseFacetType).filter(key => isNaN(Number(key)));
     DefaultFacets = this.AllFacets;
+    DefaultFacetsWithTarget = [
+        "Data Source",
+        "Drug"];
 
     defaultSortParameters(): {column: string; order: string}[]
     {
