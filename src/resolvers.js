@@ -697,21 +697,19 @@ const resolvers = {
             ligandArgs.filter = ligandArgs.filter || {};
             ligandArgs.filter.associatedTarget = target.uniprot;
             let ligandList = new LigandList(dataSources.tcrd, ligandArgs);
-            ligandList.facetsToFetch = [ligandList.facetFactory.GetFacet(ligandList,"Type")];
+            ligandList.facetsToFetch = [ligandList.facetFactory.GetFacet(ligandList, "Type")];
             return ligandList.getFacetQueries()[0]
                 .then(results => {
-                    let ligandCount = getCount(results, "Ligand");
-                    let drugCount = getCount(results, "Drug");
-                return [{
-                    name: "ligand",
-                    value: ligandCount + drugCount
-                }, {
-                    name: "drug",
-                    value: drugCount
-                }];
-            }).catch(function (error) {
-                console.error(error);
-            });
+                    return [{
+                        name: "ligand",
+                        value: getCount(results, "Ligand")
+                    }, {
+                        name: "drug",
+                        value: getCount(results, "Drug")
+                    }];
+                }).catch(function (error) {
+                    console.error(error);
+                });
 
             function getCount(results, rowName) {
                 let row = results.find(row => row.name === rowName);
@@ -724,17 +722,20 @@ const resolvers = {
             let ligandArgs = args;
             ligandArgs.filter = ligandArgs.filter || {};
             ligandArgs.filter.associatedTarget = target.uniprot;
-            if(ligandArgs.isdrug){
-                ligandArgs.filter.facets = ligandArgs.filter.facets || [];
-                ligandArgs.filter.facets.push({facet:"Type", values:["Drug"]});
+            ligandArgs.filter.facets = ligandArgs.filter.facets || [];
+            if (ligandArgs.isdrug) {
+                ligandArgs.filter.facets.push({facet: "Type", values: ["Drug"]});
+            }
+            else{
+                ligandArgs.filter.facets.push({facet: "Type", values: ["Ligand"]});
             }
             return new LigandList(dataSources.tcrd, ligandArgs).getListQuery()
                 .then(allResults => {
                     return allResults;
                 })
                 .catch(function (error) {
-                console.error(error);
-            });
+                    console.error(error);
+                });
         },
 
         tinxCount: async function (target, args, {dataSources}) {
@@ -1170,12 +1171,21 @@ const resolvers = {
 
     Ligand: {
         activities: async function (ligand, args, {dataSources}) {
-            let query = dataSources.tcrd.db({ncats_ligand_activity:'ncats_ligand_activity', ncats_ligands:'ncats_ligands'})
-                .select({actid: 'ncats_ligand_activity.id', type: 'act_type', value: 'act_value', moa:'action_type', target_id:'target_id' })
+            let query = dataSources.tcrd.db({
+                ncats_ligand_activity: 'ncats_ligand_activity',
+                ncats_ligands: 'ncats_ligands'
+            })
+                .select({
+                    actid: 'ncats_ligand_activity.id',
+                    type: 'act_type',
+                    value: 'act_value',
+                    moa: 'action_type',
+                    target_id: 'target_id'
+                })
                 .whereRaw(`ncats_ligands.identifier = '${ligand.ligid}'`)
                 .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`));
             return query.then(rows => {
-                for(let i = 0 ; i < rows.length ; i++){
+                for (let i = 0; i < rows.length; i++) {
                     rows[i].parent = ligand;
                 }
                 return rows;
@@ -1183,7 +1193,7 @@ const resolvers = {
                 console.error(error);
             });
         },
-        synonyms: async function (ligand, args, {dataSources}){
+        synonyms: async function (ligand, args, {dataSources}) {
             let synonyms = [];
             for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
                 if (ligand[field]) {
@@ -1242,7 +1252,10 @@ function getTargetResult(args, dataSources) {
 
             let facets = [];
             for (var i in rows) {
-                let rowData = splitOnDelimiters(rows[i]);
+                let rowData = rows[i];
+                if(targetList.facetsToFetch[i].valuesDelimited){
+                    rowData = splitOnDelimiters(rows[i]);
+                }
                 facets.push({
                     facet: targetList.facetsToFetch[i].type,
                     count: rowData.length,
@@ -1394,15 +1407,17 @@ function getOrthologResult(args, tcrd) {
 function filterResultFacets(result, args) {
     let facets = result.facets;
     if (args.include) {
-        facets = filter(facets, f =>
-            find(args.include, x => {
-                var matched = x == f.facet;
-                if (!matched) {
-                    var re = new RegExp(x, 'i');
-                    matched = re.test(f.facet);
-                }
-                return matched;
-            }));
+        if (args.include != "all") {
+            facets = filter(facets, f =>
+                find(args.include, x => {
+                    var matched = x == f.facet;
+                    if (!matched) {
+                        var re = new RegExp(x, 'i');
+                        matched = re.test(f.facet);
+                    }
+                    return matched;
+                }));
+        }
     }
 
     if (args.exclude) {

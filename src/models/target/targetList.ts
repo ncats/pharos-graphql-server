@@ -166,6 +166,7 @@ export class TargetList extends DataModelList {
     DefaultPPIFacets = [
         "PPI Data Source",
         "Target Development Level",
+        'Family',
         "IDG Target Lists",
         "Reactome Pathway",
         "GO Process",
