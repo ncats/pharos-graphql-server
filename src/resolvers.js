@@ -1252,7 +1252,10 @@ function getTargetResult(args, dataSources) {
 
             let facets = [];
             for (var i in rows) {
-                let rowData = splitOnDelimiters(rows[i]);
+                let rowData = rows[i];
+                if(targetList.facetsToFetch[i].valuesDelimited){
+                    rowData = splitOnDelimiters(rows[i]);
+                }
                 facets.push({
                     facet: targetList.facetsToFetch[i].type,
                     count: rowData.length,
