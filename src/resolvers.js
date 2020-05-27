@@ -700,14 +700,12 @@ const resolvers = {
             ligandList.facetsToFetch = [ligandList.facetFactory.GetFacet(ligandList, "Type")];
             return ligandList.getFacetQueries()[0]
                 .then(results => {
-                    let ligandCount = getCount(results, "Ligand");
-                    let drugCount = getCount(results, "Drug");
                     return [{
                         name: "ligand",
-                        value: ligandCount + drugCount
+                        value: getCount(results, "Ligand")
                     }, {
                         name: "drug",
-                        value: drugCount
+                        value: getCount(results, "Drug")
                     }];
                 }).catch(function (error) {
                     console.error(error);
@@ -724,9 +722,12 @@ const resolvers = {
             let ligandArgs = args;
             ligandArgs.filter = ligandArgs.filter || {};
             ligandArgs.filter.associatedTarget = target.uniprot;
+            ligandArgs.filter.facets = ligandArgs.filter.facets || [];
             if (ligandArgs.isdrug) {
-                ligandArgs.filter.facets = ligandArgs.filter.facets || [];
                 ligandArgs.filter.facets.push({facet: "Type", values: ["Drug"]});
+            }
+            else{
+                ligandArgs.filter.facets.push({facet: "Type", values: ["Ligand"]});
             }
             return new LigandList(dataSources.tcrd, ligandArgs).getListQuery()
                 .then(allResults => {
