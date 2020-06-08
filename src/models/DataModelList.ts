@@ -23,6 +23,7 @@ export abstract class DataModelList {
     facetsToFetch: FacetInfo[] = [];
 
     associatedTarget: string = "";
+    associatedDisease: string = "";
     ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
     skip: number = 0;
     top: number = 10;
@@ -58,6 +59,9 @@ export abstract class DataModelList {
             }
             if (json.filter.associatedTarget) {
                 this.associatedTarget = json.filter.associatedTarget;
+            }
+            if (json.filter.associatedDisease) {
+                this.associatedDisease = json.filter.associatedDisease;
             }
             if (json.filter.ppiConfidence) {
                 this.ppiConfidence = json.filter.ppiConfidence;

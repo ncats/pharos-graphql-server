@@ -71,6 +71,7 @@ input IFilter {
      frange: [IRangeFloat]
      order: String
      associatedTarget: String
+     associatedDisease: String
      ppiConfidence: Int = 400
 }
 
@@ -148,6 +149,20 @@ type Disease {
      name: String!
      associationCount: Int!
      associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
+     uniprotDescription: String
+     doDescription: String
+     dids: [DiseaseID]
+     targetCounts: [IntProp]
+     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
+     parents: [Disease]
+     children: [Disease]
+}
+
+type DiseaseID{
+     id: String!
+     dataSources: [String]
+     doName: String
+     doDefinition: String
 }
 
 type DiseaseAssociation {
@@ -166,8 +181,8 @@ type DiseaseAssociation {
      score: Float
      source: String
 
-     targetCounts: [IntProp]
-     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
+     targetCounts: [IntProp] @deprecated(reason: "use Disease.targetCounts")
+     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target] @deprecated(reason:"use Disease.targets - each association only has one target anyway")
 }
 
 """Target relationships such as PPI"""

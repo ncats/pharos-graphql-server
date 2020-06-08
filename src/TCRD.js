@@ -337,7 +337,7 @@ protein_id from target a, t2tc b`));
                 case 'DrugCentral Indication': {
                     let q = this.db.select(this.db.raw(`
 distinct protein_id from disease`))
-                        .whereIn('name', f.values)
+                        .whereIn('ncats_name', f.values)
                         .andWhere(this.db.raw(`dtype = ?`, [fn]));
                     subqueries.push(q);
                 }
@@ -527,20 +527,10 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
 
     getDisease(name) {
         let q = this.db.select(this.db.raw(`
-name,count(*) as associationCount
+ncats_name as name, count(*) as associationCount
 from disease
-where name = ?`, [name]));
+where ncats_name = "${name}"`));
         return q;
-    }
-
-    getDiseaseCountsForTarget(target) {
-        return this.db.select(this.db.raw(`
-a.name, count(*) as value
-from disease a, t2tc b
-where a.protein_id = b.protein_id
-and b.target_id = ?
-group by a.name 
-order by value desc`, [target.tcrdid]));
     }
 
     getDiseaseAssociations(args, constraints) {
@@ -556,7 +546,7 @@ from disease`));
             let t = args.filter.term;
             if (t != undefined && t !== '') {
                 q = q.andWhere(this.db.raw(`
-match(name, description, drug_name) against(? in boolean mode)`, [t]));
+match(ncats_name, description, drug_name) against("${t}" in boolean mode)`));
             }
         }
 
@@ -576,7 +566,7 @@ match(name, description, drug_name) against(? in boolean mode)`, [t]));
     getDiseaseAssociationsForDisease(disease, args) {
         //console.log('~~~~ disease: '+JSON.stringify(disease));
         return this.getDiseaseAssociations(args, q => {
-            q = q.andWhere(this.db.raw(`name = ?`, [disease.name]));
+            q = q.andWhere(this.db.raw(`ncats_name = "${disease.name}"`));
             if (disease.parent) {
                 if (disease.parent.tcrdid) {
                     let subq = this.db.select(this.db.raw(`
@@ -880,40 +870,6 @@ and b.id = d.other_id and d.id = ?`, [neighbor.nid]));
 * from ncats_ppi where id = ?`, [neighbor.nid]));
     }
 
-    getDiseasesForTarget(target, args) {
-        let q = this.db.select(this.db.raw(`
-a.name,count(*) as associationCount
-from disease a, t2tc b`));
-
-        let sort = true;
-        if (args.filter) {
-            let sub = this.getDiseaseFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('id', subq);
-            });
-
-            let t = args.filter.term;
-            if (t != undefined && t !== '') {
-                q = q.andWhere(this.db.raw(`
-match(a.name, a.description, a.drug_name) against(? in boolean mode)`, [t]));
-                sort = false;
-            }
-        }
-
-        q = q.andWhere(this.db.raw(`a.protein_id = b.protein_id
-and b.target_id = ?`, [target.tcrdid]))
-            .groupBy('a.name')
-            .orderBy('associationCount', 'desc');
-
-        if (args.top)
-            q = q.limit(args.top);
-        if (args.skip)
-            q = q.offset(args.skip);
-
-        //console.log('>>> getDiseasesForTarget: '+q);
-        return q;
-    }
-
     getGeneAttributesForTarget(target, args) {
         let q = this.db.select(this.db.raw(`
 id as gaid, type as _type, attr_count as count, attr_cdf as cdf
@@ -1011,21 +967,12 @@ where ortholog_id = ?`, [ortho.orid]));
 
     getDiseasesForOrthologDisease(ortho, args) {
         return this.db.select(this.db.raw(`
-a.name,count(*) as associationCount
+a.ncats_name as name,count(*) as associationCount
 from disease a, ortholog_disease b
 where a.did = b.did
 and b.id = ? 
-group by a.name
+group by a.ncats_name
 order by associationCount desc, zscore desc`, [ortho.ordid]));
-    }
-
-    getTargetCountsForDiseaseAssociation(disease) {
-        return this.db.select(this.db.raw(`
-tdl as name, count(*) as value 
-from target a, t2tc b, disease c
-where a.id=b.target_id and c.protein_id=b.protein_id
-and c.name = ? group by tdl
-order by value desc`, [disease.name]));
     }
 
     getTargetsForDiseaseAssociation(disease, args) {
@@ -1065,7 +1012,7 @@ match(b.name,b.description) against(? in boolean mode))`, [args.filter.term,
             q = q.andWhere(this.db.raw(`
 a.id = c.target_id and b.id = c.protein_id
 and d.protein_id = c.protein_id
-and d.name = ?`, [disease.name]));
+and d.ncats_name = "${disease.name}"`));
             if (sort) {
                 q = q.orderBy(filter.sortColumn, filter.dir);
             }
@@ -1080,8 +1027,8 @@ and d.name = ?`, [disease.name]));
             q = this.db.select(this.db.raw(DISEASE_SQL + `
 where a.id = c.target_id and b.id = c.protein_id
 and d.protein_id = c.protein_id
-and d.name = ? order by e.score desc
-limit ? offset ?`, [disease.name, args.top, args.skip]));
+and d.ncats_name = "${disease.name}" order by e.score desc
+limit ? offset ?`, [args.top, args.skip]));
         }
         //console.log('>>> getTargetsForDisease: '+q);
         return q;

@@ -6,7 +6,7 @@ import {ConfigKeys} from "../config";
 
 export class DiseaseList extends DataModelList{
     constructor(tcrd: any, json: any) {
-        super(tcrd, "disease" , "name", new DiseaseFacetFactory(), json);
+        super(tcrd, "disease" , "ncats_name", new DiseaseFacetFactory(), json);
 
         let facetList: string[];
         if(this.associatedTarget){
@@ -40,14 +40,20 @@ export class DiseaseList extends DataModelList{
 
     addModelSpecificFiltering(query: any): void {
         if(this.associatedTarget){
-            let associatedTargetQuery = this.database({disease:"disease", protein:"protein"})
-                .distinct("disease.name").whereRaw(this.database.raw(`match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode)`)).
-            andWhere(this.database.raw(`disease.protein_id = protein.id`)).as('assocTarget');
-            query.join(associatedTargetQuery, 'assocTarget.name', 'disease.name');
+            query.join(this.getAssociatedTargetQuery().as('assocTarget'), 'assocTarget.name', this.keyString());
         }
         if(this.term.length > 0){
-            query.andWhere(this.database.raw(`match(disease.name, disease.description, disease.drug_name) against('${this.term}' in boolean mode)`));
+            query.andWhere(this.database.raw(`match(disease.ncats_name, disease.description, disease.drug_name) against("${this.term}" in boolean mode)`));
         }
+    }
+
+    getAssociatedTargetQuery(): any {
+        return this.database({disease:"disease", protein:"protein"})
+            .distinct({name:this.keyString()}).count('* as associationCount')
+            .whereRaw(this.database.raw(`match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode)`))
+            .andWhere(this.database.raw(`disease.protein_id = protein.id`))
+            .groupBy('name')
+            .orderBy("associationCount","desc");
     }
 
     getRequiredTablesForFacet(info: FacetInfo): string[] {

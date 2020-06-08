@@ -107,7 +107,7 @@ export class TargetList extends DataModelList {
     }
 
     fetchProteinList(): any {
-        if (this.term.length == 0 && this.associatedTarget.length == 0) {
+        if (this.term.length == 0 && this.associatedTarget.length == 0 && this.associatedDisease.length == 0) {
             return null;
         }
         if (this.proteinListCached) {
@@ -116,8 +116,14 @@ export class TargetList extends DataModelList {
         let proteinListQuery;
         if (this.term) {
             proteinListQuery = this.tcrd.getProteinList(this.term);
-        } else {
+        } else if (this.associatedTarget) {
             proteinListQuery = this.tcrd.getProteinListFromPPI(this.associatedTarget, this.ppiConfidence);
+        }
+        else{
+            proteinListQuery = this.database({protein:"protein",disease:"disease"})
+                .distinct({protein_id:"protein.id"})
+                .where(this.database.raw(`disease.ncats_name = "${this.associatedDisease}"`))
+                .andWhere(this.database.raw(`disease.protein_id = protein.id`));
         }
         this.captureQueryPerformance(proteinListQuery, "protein list");
         return proteinListQuery;
@@ -153,6 +159,9 @@ export class TargetList extends DataModelList {
             return false;
         }
         if(this.associatedTarget.length > 0) {
+            return false;
+        }
+        if(this.associatedDisease.length > 0){
             return false;
         }
         if (this.filteringFacets.length > 0) {
