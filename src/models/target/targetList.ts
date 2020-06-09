@@ -120,10 +120,24 @@ export class TargetList extends DataModelList {
             proteinListQuery = this.tcrd.getProteinListFromPPI(this.associatedTarget, this.ppiConfidence);
         }
         else{
-            proteinListQuery = this.database({protein:"protein",disease:"disease"})
-                .distinct({protein_id:"protein.id"})
-                .where(this.database.raw(`disease.ncats_name = "${this.associatedDisease}"`))
-                .andWhere(this.database.raw(`disease.protein_id = protein.id`));
+            proteinListQuery = this.database.select(this.database.raw(` 
+distinct protein_id
+FROM
+    disease as d
+JOIN (SELECT "${this.associatedDisease}" AS name UNION SELECT 
+            lst.name
+        FROM
+            ncats_do lst,
+            (SELECT 
+                MIN(lft) AS 'lft', MIN(rght) AS 'rght'
+            FROM
+                ncats_do
+            WHERE
+                name = "${this.associatedDisease}") AS finder
+        WHERE
+            finder.lft + 1 <= lst.lft
+                AND finder.rght >= lst.rght) as diseaseList
+ON diseaseList.name = d.ncats_name`));
         }
         this.captureQueryPerformance(proteinListQuery, "protein list");
         return proteinListQuery;

@@ -527,9 +527,23 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
 
     getDisease(name) {
         let q = this.db.select(this.db.raw(`
-ncats_name as name, count(*) as associationCount
-from disease
-where ncats_name = "${name}"`));
+"${name}" as name,	count(distinct protein_id) as associationCount
+FROM
+    disease as d
+JOIN (SELECT "${name}" AS name UNION SELECT 
+            lst.name
+        FROM
+            ncats_do lst,
+            (SELECT 
+                MIN(lft) AS 'lft', MIN(rght) AS 'rght'
+            FROM
+                ncats_do
+            WHERE
+                name = "${name}") AS finder
+        WHERE
+            finder.lft + 1 <= lst.lft
+                AND finder.rght >= lst.rght) as diseaseList
+ON diseaseList.name = d.ncats_name`));
         return q;
     }
 
