@@ -3,6 +3,7 @@
 //
 const DBHOST = 'tcrd.ncats.io';
 const DBNAME = 'tcrd610';
+const USER = 'tcrd';
 const PWORD = '';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,7 +28,7 @@ const tcrdConfig = {
     client: 'mysql',
     connection: {
         host: DBHOST,
-        user: 'tcrd',
+        user: USER,
         password: PWORD,
         database: DBNAME
     },

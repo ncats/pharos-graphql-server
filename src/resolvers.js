@@ -77,8 +77,9 @@ const resolvers = {
         disease: async function (_, args, {dataSources}) {
             return dataSources.tcrd.getDisease(args.name)
                 .then(rows => {
-                    if (rows) return rows[0];
-                    return rows;
+                    rows = filter(rows, r => r.name != null && r.associationCount > 0);
+                    if (rows.length > 0) return rows[0];
+                    return {name: args.name, associationCount: 0};
                 }).catch(function (error) {
                     console.error(error);
                 });
@@ -405,18 +406,32 @@ const resolvers = {
             });
         },
 
-        diseaseCounts: async function (target, _, {dataSources}) {
-            const q = dataSources.tcrd.getDiseaseCountsForTarget(target);
-            return q.then(rows => {
+        diseaseCounts: async function (target, args, {dataSources}) {
+            let diseaseArgs = args;
+            diseaseArgs.filter = diseaseArgs.filter || {};
+            diseaseArgs.filter.associatedTarget = target.uniprot;
+            let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
+            const q = diseaseList.getAssociatedTargetQuery();
+            return q.then( rows => {
+                rows.forEach(x => {
+                    x.value = x.associationCount;
+                });
                 return rows;
-            }).catch(function (error) {
-                console.error(error);
             });
         },
 
-        diseases: async function (target, args, {dataSources}, info) {
-            //console.log('##### info: '+JSON.stringify(info));
-            const q = dataSources.tcrd.getDiseasesForTarget(target, args);
+        diseases: async function (target, args, {dataSources}) {
+            let diseaseArgs = args;
+            diseaseArgs.filter = diseaseArgs.filter || {};
+            diseaseArgs.filter.associatedTarget = target.uniprot;
+            let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
+            const q = diseaseList.getAssociatedTargetQuery();
+            if(args.top){
+                q.limit(args.top);
+            }
+            if(args.skip){
+                q.offset(args.skip);
+            }
             return q.then(rows => {
                 let diseases = filter(rows, r => r.name != null
                     && r.associationCount > 0);
@@ -881,24 +896,70 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
-        }
-    },
-
-    DiseaseAssociation: {
-        targetCounts: async function (disease, _, {dataSources}) {
-            const q = dataSources.tcrd
-                .getTargetCountsForDiseaseAssociation(disease);
+        },
+        uniprotDescription: async function (disease, args, {dataSources}){
+            const q = dataSources.tcrd.db('disease')
+                .select('description')
+                .whereRaw(`ncats_name = "${disease.name}" and dtype = "UniProt Disease"`)
+                .limit(1);
             return q.then(rows => {
+                if(rows.length){
+                    return rows[0].description;
+                }
+                return '';
+            }).catch(function (error) {
+                console.error(error);
+            });
+        },
+        doDescription: async function (disease, args, {dataSources}){
+            const q = dataSources.tcrd.db({disease:'disease', do:'do'})
+                .select({description: 'do.def'})
+                .whereRaw(`ncats_name = "${disease.name}" and do.doid = disease.did`)
+                .limit(1);
+            return q.then(rows => {
+                if(rows.length){
+                    return rows[0].description;
+                }
+                return '';
+            }).catch(function (error) {
+                console.error(error);
+            });
+        },
+        dids: async function (disease, args, {dataSources}){
+            const q = dataSources.tcrd.db('disease')
+                .select({dataSources: dataSources.tcrd.db.raw(`group_concat(distinct dtype)`), id:'did', doName: 'do.name', doDefinition: 'do.def'})
+                .leftJoin('do','disease.did','do.doid')
+                .whereRaw(`disease.ncats_name = "${disease.name}"`)
+                .whereNotNull('disease.did')
+                .groupBy('did');
+            return q.then(rows => {
+                for(let i = 0 ; i < rows.length ; i++){
+                    rows[i].dataSources = rows[i].dataSources.split(',');
+                }
                 return rows;
             }).catch(function (error) {
                 console.error(error);
             });
         },
-
+        targetCounts: async function (disease, _, {dataSources}) {
+            let targetArgs = {};
+            targetArgs.filter = {};
+            targetArgs.filter.associatedDisease = disease.name;
+            let targetList = new TargetList(dataSources.tcrd, targetArgs);
+            targetList.facetsToFetch = [targetList.facetFactory.GetFacet(targetList, "Target Development Level")];
+            return targetList.getFacetQueries()[0]
+                .then(rows => {
+                    return rows;
+                }).catch(function (error) {
+                    console.error(error);
+                });
+        },
         targets: async function (disease, args, {dataSources}) {
-            const q = dataSources.tcrd
-                .getTargetsForDiseaseAssociation(disease, args);
-            return q.then(rows => {
+            let targetArgs = args || {};
+            targetArgs.filter = targetArgs.filter || {};
+            targetArgs.filter.associatedDisease = disease.name;
+            let targetList = new TargetList(dataSources.tcrd, targetArgs);
+            return targetList.getListQuery().then(rows => {
                 rows.forEach(x => {
                     x.parent = disease;
                 });
@@ -906,6 +967,49 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
+        },
+        parents: async function(disease, args, {dataSources}){
+            let query = dataSources.tcrd.db({do_child:'do',relationship:'do_parent',do_par:'do'})
+                .select(dataSources.tcrd.db.raw(`do_par.name, count(distinct protein_id) as 'associationCount'`))
+                .leftJoin('disease','disease.ncats_name','do_par.name')
+                .whereRaw(`do_child.name = "${disease.name}"`)
+                .whereRaw('do_child.doid = relationship.doid')
+                .whereRaw('do_par.doid = relationship.parent_id')
+                .groupBy('name')
+                .orderBy('associationCount','desc');
+            return query.then(rows => {
+                return rows;
+            }).catch(function (error) {
+                console.error(error);
+            });
+        },
+        children: async function(disease, args, {dataSources}){
+            let query = dataSources.tcrd.db({do_par:'do',relationship:'do_parent',do_child:'do'})
+                .select(dataSources.tcrd.db.raw(`do_child.name, count(distinct protein_id) as 'associationCount'`))
+                .leftJoin('disease','disease.ncats_name','do_child.name')
+                .whereRaw(`do_par.name = "${disease.name}"`)
+                .whereRaw('do_child.doid = relationship.doid')
+                .whereRaw('do_par.doid = relationship.parent_id')
+                .groupBy('name')
+                .orderBy('associationCount','desc');
+            return query.then(rows => {
+                return rows;
+            }).catch(function (error) {
+                console.error(error);
+            });
+        }
+    },
+
+    DiseaseAssociation: {
+        targetCounts: async function (disease, _, {dataSources}) { // TODO: this really doesn't belong here, it recalculates the same thing for all the associations, I left a stub so that it doesn't break with the client, please delete it, oh great and powerful future developer
+            return resolvers.Disease.targetCounts(disease, _, {dataSources})
+                .then(rows => {return rows;})
+                .catch(function (error) {console.error(error);});
+        },
+        targets: async function (disease, args, {dataSources}) { // TODO: this too
+            return resolvers.Disease.targets(disease,args,{dataSources})
+                .then( rows=>{return rows;})
+                .catch(function (error) {console.error(error);});
         }
     },
 
@@ -1231,6 +1335,7 @@ function getTargetResult(args, dataSources) {
     args.batch = args.targets;
     const targetList = new TargetList(dataSources.tcrd, args);
     dataSources.associatedTarget = targetList.associatedTarget;
+    dataSources.associatedDisease = targetList.associatedDisease;
     const proteinListQuery = targetList.fetchProteinList();
     if (!!proteinListQuery) {
         return proteinListQuery.then(rows => {

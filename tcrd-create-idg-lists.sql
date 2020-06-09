@@ -449,7 +449,7 @@ INSERT INTO _TEMP VALUES
 
 # update list type table
 Insert into ncats_idg_list_type values
-(1,'Year 1');
+(1,'Original (2017)');
 
 # update list table
 Insert into ncats_idg_list
@@ -802,7 +802,7 @@ INSERT INTO _TEMP VALUES
 
 # update list type table
 Insert into ncats_idg_list_type values
-(2,'Year 3');
+(2,'Refined (2019)');
 
 # update list table
 Insert into ncats_idg_list
