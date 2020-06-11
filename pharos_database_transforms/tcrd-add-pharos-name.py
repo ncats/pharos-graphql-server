@@ -1,8 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
-from credentials import *  # loads variables for DBHOST, DBNAME, USER, PWORD
-
-
+from pharos_database_transforms.credentials import *  # loads variables for DBHOST, DBNAME, USER, PWORD
 
 def addColumn(cursor):
     print "adding column"
