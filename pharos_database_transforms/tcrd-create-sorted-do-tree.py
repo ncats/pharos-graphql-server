@@ -1,6 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
-from pharos_database_transforms.credentials import *  # loads variables for DBHOST, DBNAME, USER, PWORD
+from credentials import *  # loads variables for DBHOST, DBNAME, USER, PWORD
 
 id = 1
 
@@ -37,7 +37,6 @@ def doNode(cursor, doid):
     name, definition = getDoDetails(cursor,doid)
     sql = "INSERT INTO ncats_do (lft, rght, doid, name, def) VALUES (%s,%s,%s,%s,%s)"
     values = (left, right, doid, name, definition)
-    print(sql,values)
     cursor.execute(sql, values)
 
 def parseDoTree(cursor):

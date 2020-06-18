@@ -1,30 +1,39 @@
 TCRD Update Instructions :smiley_cat:
 =====================
 
-1. Download the new base TCRD database
+1. Download and unpack the new base TCRD database
     * http://juniper.health.unm.edu/tcrd/download/
-
-2. Unzip it somewhere
-3. Install it on your database server
-    * Here's how to do that for our AWS server for tcrd6.6.0 (it takes a while)
+    * Here's how we do it here
     ```
-    terminal > mysql -uncats -htcrd-cluster-instance-1-us-east-1a.ceyknq0yekb3.us-east-1.rds.amazonaws.com -p
-                    <prompt for password>
+   terminal > ssh ifxdev.ncats.nih.gov
+        <enter password>
+   [ifxdev] $ curl -o tcrd6.6.0.sql.gz http://juniper.health.unm.edu/tcrd/download/TCRDv6.6.0.sql.gz
+        (about 12 minutes)
+   [ifxdev] $ gunzip tcrd6.6.0.sql.gz
+        (about 2 minutes)
+    ```
+
+2. Install it on your database server
+    * Here's how to do that for our AWS server for tcrd6.6.0
+    ```
+    [ifxdev] $ mysql -uncats -htcrd-cluster-instance-1-us-east-1a.ceyknq0yekb3.us-east-1.rds.amazonaws.com -p
+                    <enter password>
     mysql > create database tcrd660;
     mysql > GRANT SELECT ON `tcrd660`.* TO 'tcrd'@'%';
     mysql > use tcrd660;
-    mysql > \. ../tcrd6.6.0.sql   # this takes forever (16 hours ish)   
+    mysql > \. tcrd6.6.0.sql
+        (about 4 hours)  
     ```
-4. Create a file called credentials.py in the 'pharos_database_transforms' directory.
+3. Create a file called credentials.py in the 'pharos_database_transforms' directory.
 Set these variables in that credentials file.
 Here's what that looks like for our AWS server
     ```
     DBHOST = 'tcrd.ncats.io'
-    DBNAME = 'tcrd610'
+    DBNAME = 'tcrd660'
     USER = 'ncats'
-    PWORD = '<set to the actual password, don't commit it to a repo!>'
+    PWORD = '<set password, don't commit it to a repo!>'
     ```
-5. Run the pharos specific transformations
+4. Run the pharos specific transformations
     * Run these python files at the terminal, they will use credentials from credentials.py to update the database
 
     * First
@@ -34,11 +43,31 @@ Here's what that looks like for our AWS server
         ```
     * Second
         * Populate lychi_h4 keys for all ligands and drugs
-        ```
-        TODO: get lychis when Trung tells me how, and then save them, check them against old version
-        ```
-
-    * Later (whatever order)
+            * write smiles to files
+            ```
+            python lychi-write-smiles.py
+            ```
+            * upload smiles and script to ifxdev.ncats.nih.gov
+            ```
+            scp *.smiles  kelleherkj@ifxdev.ncats.nih.gov:.
+            scp run_all.sh  kelleherkj@ifxdev.ncats.nih.gov:.
+            ```
+            * run scripts on ifxdev (make sure you have the lib folder with lychi-all-fe2ea2a.jar (maybe these too? ojdbc8.jar  tripod_2.11-play_2_6-20181017-37d3106.jar) it takes a long time
+            ```
+            screen
+            bash run_all.sh
+            ctrl-a, ctrl-d
+            ``` 
+            * download .lychi files
+            ```
+            scp kelleherkj@ifxdev.ncats.nih.gov:*.lychi .
+            ```
+            * run script to load lychis to database
+            ```
+            python lychi-set.py
+            ```
+            
+    * Later
         * create and populate the table that hold the lists of IDG targets
         ```
         python executeSQLfile.py tcrd-create-idg-lists.sql
@@ -63,5 +92,5 @@ Here's what that looks like for our AWS server
         ```
         * create nested set table for querying the DO disease heirarchy
         ```
-        tcrd-create-sorted-do-tree.py
+        python tcrd-create-sorted-do-tree.py
         ```

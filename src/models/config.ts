@@ -40,6 +40,20 @@ export class Config {
                 dataFields.push({table: "ncats_ppi", data: "p_int"});
                 dataFields.push({table: "ncats_ppi", data: "p_wrong"});
                 break;
+            case ConfigKeys.Target_List_Disease:
+
+                dataFields.push({table: "target", data: "id", alias: "tcrdid"});
+                dataFields.push({table: "target", data: "tdl"});
+                dataFields.push({table: "target", data: "fam"});
+
+                dataFields.push({table: "protein", data: "description", alias: "name"});
+                dataFields.push({table: "protein", data: "sym"});
+                dataFields.push({table: "protein", data: "uniprot"});
+                dataFields.push({table: "protein", data: "seq"});
+
+                dataFields.push({table: "tinx_novelty", data: "score", alias: "novelty"});
+
+                dataFields.push({table: "disease", data: "dtype"});
             case ConfigKeys.Disease_List_Default:
                 dataFields.push({table: "disease", data: "name"});
                 break;
@@ -155,6 +169,7 @@ export class QueryDefinition {
 
     getLeftJoinTables(): SqlTable[] {
         return this.tables.filter(table => {
+            if(this.rootTable === table.tableName) return false;
             return table.allowUnmatchedRows == true;
         });
     }
@@ -241,6 +256,7 @@ export class SqlColumns {
 export enum ConfigKeys {
     Target_List_Default,
     Target_List_PPI,
+    Target_List_Disease,
     Disease_List_Default,
     Ligand_List_Default
 }

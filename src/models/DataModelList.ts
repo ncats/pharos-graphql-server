@@ -147,18 +147,18 @@ export abstract class DataModelList {
                     let linkInfo = this.databaseConfig.getLinkInformation(leftTable.tableName, innerJoins[i].linkingTables[j]);
                     if (!linkInfo) throw new Error("bad table configuration: " + leftTable.tableName + " + " + innerJoins[i].linkingTables[j]);
                     query.whereRaw(leftTable.alias + "." + linkInfo.fromCol + "=" + innerJoins[i].linkingTables[j] + "." + linkInfo.toCol);
-                    const addtJoinConstraint = DatabaseTable.additionalJoinConstraints(innerJoins[i].tableName, innerJoins[i].alias, this);
-                    if (addtJoinConstraint) {
-                        query.andWhere(this.database.raw(addtJoinConstraint));
+                    const additionalWhereClause = DatabaseTable.additionalWhereClause(innerJoins[i].tableName, innerJoins[i].alias, this);
+                    if (additionalWhereClause) {
+                        query.andWhere(this.database.raw(additionalWhereClause));
                     }
                     leftTable = new SqlTable(innerJoins[i].linkingTables[j]);
                 }
                 let linkInfo = this.databaseConfig.getLinkInformation(leftTable.tableName, innerJoins[i].tableName);
                 if (!linkInfo) throw new Error("bad table configuration: " + leftTable.tableName + " + " + innerJoins[i].tableName);
                 query.whereRaw(leftTable.alias + "." + linkInfo.fromCol + "=" + innerJoins[i].alias + "." + linkInfo.toCol);
-                const addtJoinConstraint = DatabaseTable.additionalJoinConstraints(innerJoins[i].tableName, innerJoins[i].alias, this);
-                if (addtJoinConstraint) {
-                    query.andWhere(this.database.raw(addtJoinConstraint));
+                const additionalWhereClause = DatabaseTable.additionalWhereClause(innerJoins[i].tableName, innerJoins[i].alias, this);
+                if (additionalWhereClause) {
+                    query.andWhere(this.database.raw(additionalWhereClause));
                 }
             }
         }

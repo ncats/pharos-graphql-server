@@ -2,7 +2,7 @@
 // Edit as appropriate
 //
 const DBHOST = 'tcrd.ncats.io';
-const DBNAME = 'tcrd610';
+const DBNAME = 'tcrd660';
 const USER = 'tcrd';
 const PWORD = '';
 

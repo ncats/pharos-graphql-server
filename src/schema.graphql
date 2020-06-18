@@ -451,6 +451,23 @@ type Target {
      tinx(skip: Int=0, top: Int, filter: IFilter): [TINXDisease]
 
      ppiTargetInteractionDetails: InteractionDetails
+     diseaseAssociationDetails: [AssociationDetails]
+}
+
+type AssociationDetails{
+     name: String
+     dataType: String
+     evidence: String
+     zscore: Float
+     conf: Float
+     reference: String
+     drug_name: String
+     log2foldchange: Float
+     pvalue: Float
+     score: Float
+     source: String
+     O2S: Float
+     S2O: Float
 }
 
 type InteractionDetails{

@@ -109,7 +109,7 @@ export class DatabaseTable {
         ]
     );
 
-    static additionalJoinConstraints(table: string, alias: string, dataModelListObj: DataModelList){
+    static additionalWhereClause(table: string, alias: string, dataModelListObj: DataModelList){
         if(table == "ncats_ppi"){
             return `${alias}.other_id = (select id from protein where match(uniprot,sym,stringid) against('${dataModelListObj.associatedTarget}' in boolean mode))
             and NOT (${alias}.ppitypes = 'STRINGDB' AND ${alias}.score < ${dataModelListObj.ppiConfidence})`;

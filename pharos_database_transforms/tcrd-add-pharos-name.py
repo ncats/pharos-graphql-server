@@ -1,13 +1,15 @@
 import mysql.connector
 from mysql.connector import Error
-from pharos_database_transforms.credentials import *  # loads variables for DBHOST, DBNAME, USER, PWORD
+from credentials import *  # loads variables for DBHOST, DBNAME, USER, PWORD
 
 def addColumn(cursor):
     print "adding column"
     sql = """ALTER TABLE `disease` 
             DROP INDEX `disease_text_idx` ,
+            DROP INDEX `disease_idx4`,
             -- DROP COLUMN `ncats_name`,
             ADD COLUMN `ncats_name` text CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL AFTER `name`,
+            ADD INDEX disease_idx4(`ncats_name`(256)),
             ADD FULLTEXT INDEX `disease_text_idx` (`ncats_name`, `description`, `drug_name`);"""
     cursor.execute(sql)
     return
@@ -22,7 +24,7 @@ def populateColumn(cursor):
                         ELSE (SELECT `name` FROM `do` WHERE doid = did) END
                     )
 		            ELSE `name` END"""
-    cursor.execute(sql);
+    cursor.execute(sql)
     return
 
 def connect():
