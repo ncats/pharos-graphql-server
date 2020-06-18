@@ -1,3 +1,4 @@
+const {DiseaseList} = require("./models/disease/diseaseList");
 const {DatabaseConfig} = require("./models/databaseConfig");
 const {SQLDataSource} = require("datasource-sql");
 const CONSTANTS = require("./constants");
@@ -272,14 +273,14 @@ protein_id from target a, t2tc b`))
                 }
                     break;
 
-                case 'IDG Target Lists':{
-                    let q = this.db({list:'ncats_idg_list', type:'ncats_idg_list_type'})
+                case 'IDG Target Lists': {
+                    let q = this.db({list: 'ncats_idg_list', type: 'ncats_idg_list_type'})
                         .select('list.protein_id')
                         .whereIn('type.list_type', f.values)
                         .andWhere(this.db.raw(`list.idg_list = type.id`));
                     subqueries.push(q);
                 }
-                break;
+                    break;
 
                 case 'fam': {
                     let q = this.db.select(this.db.raw(`
@@ -360,7 +361,7 @@ distinct protein_id from ortholog`))
                     //console.log(q.toString());
                     subqueries.push(q);
                 }
-                break;
+                    break;
 
                 case 'IMPC': {
                     let q = this.db.select(this.db.raw(`
@@ -436,7 +437,7 @@ and b.id = c.target_id`));
                             .whereIn('drug_name', f.values);
                         subqueries.push(q);
                     }
-                    break;
+                        break;
                 }
             });
         }
@@ -526,24 +527,12 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
     }
 
     getDisease(name) {
-        let q = this.db.select(this.db.raw(`
-"${name}" as name,	count(distinct protein_id) as associationCount
-FROM
-    disease as d
-JOIN (SELECT "${name}" AS name UNION SELECT 
-            lst.name
-        FROM
-            ncats_do lst,
-            (SELECT 
-                MIN(lft) AS 'lft', MIN(rght) AS 'rght'
-            FROM
-                ncats_do
-            WHERE
-                name = "${name}") AS finder
-        WHERE
-            finder.lft + 1 <= lst.lft
-                AND finder.rght >= lst.rght) as diseaseList
-ON diseaseList.name = d.ncats_name`));
+        let descendentQuery = this.db("disease").select(this.db.raw(`'${name}' as name`))
+            .union(DiseaseList.getDescendentsQuery(this.db,name));
+        let q = this.db("disease")
+            .select(this.db.raw(`'${name}' as name`))
+            .count({associationCount: this.db.raw("distinct protein_id")})
+            .join(descendentQuery.as("diseaseList"),"diseaseList.name",this.db.raw("disease.ncats_name"));
         return q;
     }
 
@@ -775,7 +764,7 @@ from pubmed`)).whereIn('id', pubs);
     getPPICountsForTarget(target, args) {
         //console.log('>>> getPPICount: '+target.tcrdid);
         let confidence = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
-        if(args && args.filter && args.filter.ppiConfidence){
+        if (args && args.filter && args.filter.ppiConfidence) {
             confidence = args.filter.ppiConfidence;
         }
         return this.db.select(this.db.raw(`
@@ -790,7 +779,7 @@ group by ppitypes order by value desc`, [target.tcrdid]));
     getPPIsForTarget(target, args) {
         //console.log('>>> getPPIs: ' + JSON.stringify(args));
         let confidence = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
-        if(args && args.filter && args.filter.ppiConfidence){
+        if (args && args.filter && args.filter.ppiConfidence) {
             confidence = args.filter.ppiConfidence;
         }
         const PPI_SQL = `
@@ -814,10 +803,9 @@ and f.itype = ?`, [filter.order]));
 
             for (var i in args.filter.facets) {
                 let f = args.filter.facets[i];
-                if ('type' == f.facet)
-                {
+                if ('type' == f.facet) {
                     q.whereRaw(`ppitypes REGEXP '${f.values.join("|")}'`);
-                }else {
+                } else {
                     q = q.whereIn(f.facet, f.values);
                 }
             }
@@ -840,14 +828,14 @@ and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ?`, [target.tcrdid]));
 
             if (sort) {
-                q = q.orderBy([{column: 'a.p_int', order: 'desc'},{column: 'a.score', order: 'desc'},
-                    ]);
+                q = q.orderBy([{column: 'a.p_int', order: 'desc'}, {column: 'a.score', order: 'desc'},
+                ]);
             }
 
-            if(args.top){
+            if (args.top) {
                 q.limit(args.top);
             }
-            if(args.skip){
+            if (args.skip) {
                 q.offset(args.skip);
             }
         } else {
@@ -860,7 +848,7 @@ and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ? order by a.p_int desc, a.score desc
 limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
         }
-       //console.log('>>> getPPIsForTarget: '+q);
+        //console.log('>>> getPPIsForTarget: '+q);
         return q;
     }
 
@@ -1031,10 +1019,10 @@ and d.ncats_name = "${disease.name}"`));
                 q = q.orderBy(filter.sortColumn, filter.dir);
             }
 
-            if(args.top){
+            if (args.top) {
                 q.limit(args.top);
             }
-            if(args.skip){
+            if (args.skip) {
                 q.offset(args.skip);
             }
         } else {
@@ -1152,10 +1140,10 @@ and f.pubmed_id = ?`, [pubmed.pmid]));
             if (sort) {
                 q = q.orderBy(filter.sortColumn, filter.dir);
             }
-            if(args.top){
+            if (args.top) {
                 q.limit(args.top);
             }
-            if(args.skip){
+            if (args.skip) {
                 q.offset(args.skip);
             }
         } else {
@@ -1229,10 +1217,10 @@ and f.pwtype = ? and f.name = ?`, [pathway.type, pathway.name]));
             if (sort) {
                 q = q.orderBy(filter.sortColumn, filter.dir);
             }
-            if(args.top){
+            if (args.top) {
                 q.limit(args.top);
             }
-            if(args.skip){
+            if (args.skip) {
                 q.offset(args.skip);
             }
         } else {
@@ -1341,10 +1329,10 @@ and b1.target_id = ?`, [target.tcrdid]));
                 q = q.orderBy([{column: 'distance', order: 'asc'},
                     {column: filter.sortColumn, order: filter.dir}]);
             }
-            if(args.top){
+            if (args.top) {
                 q.limit(args.top);
             }
-            if(args.skip){
+            if (args.skip) {
                 q.offset(args.skip);
             }
         } else {
@@ -1405,10 +1393,10 @@ match(d.tissue) against(? in boolean mode)`, [args.filter.term]));
         q = q.andWhere(this.db.raw(`            
 d.protein_id = c.protein_id
 and c.target_id = ?`, [target.tcrdid]));
-        if(args.top){
+        if (args.top) {
             q.limit(args.top);
         }
-        if(args.skip){
+        if (args.skip) {
             q.offset(args.skip);
         }
 
@@ -1639,7 +1627,7 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
     }
 
     getDTOHierarchy() {
-        return this.db.select(this.db.raw(`* from dto`));
+        return this.db.select(this.db.raw(`dtoid as id, name, replace(parent_id, ':', '_') as parent from dto`));
     }
 
     getDTO(args) {
@@ -1687,10 +1675,10 @@ match(b.name,b.summary) against(? in boolean mode)`, [t]));
 and a.protein_id = c.protein_id
 and c.target_id = ?`, [target.tcrdid]));
 
-        if(args.top){
+        if (args.top) {
             q.limit(args.top);
         }
-        if(args.skip){
+        if (args.skip) {
             q.offset(args.skip);
         }
         if (sort) {

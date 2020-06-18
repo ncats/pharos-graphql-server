@@ -2,6 +2,7 @@ import {TargetFacetType} from "./targetFacetType";
 import {DataModelList} from "../DataModelList";
 import {FacetInfo} from "../FacetInfo";
 import {FacetFactory} from "../FacetFactory";
+import {DiseaseList} from "../disease/diseaseList";
 
 export class TargetFacetFactory extends FacetFactory{
 
@@ -102,7 +103,7 @@ export class TargetFacetFactory extends FacetFactory{
                         ...partialReturn,
                         dataTable: "phenotype",
                         dataColumn: "term_name",
-                        whereClause: "phenotype.ptype = 'IMPC'"
+                        whereClause: "phenotype.ptype = 'IMPC' and phenotype.p_value < 0.05"
                     } as FacetInfo);
                 }
             case TargetFacetType["Expression: CCLE"]:
@@ -155,6 +156,24 @@ export class TargetFacetFactory extends FacetFactory{
                     dataColumn: "ppitypes",
                     whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.associatedTarget}' in boolean mode))`,
                     valuesDelimited: true
+                } as FacetInfo);
+            case TargetFacetType["Disease Data Source"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "dtype",
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`,
+                    // valuesDelimited: true
+                } as FacetInfo);
+            case TargetFacetType["Linked Disease"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "ncats_name",
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`,
+                    // valuesDelimited: true
                 } as FacetInfo);
         }
         return this.unknownFacet();

@@ -1,5 +1,5 @@
---create user `tcrd`@'%';
---grant select on tcrd610.* to `tcrd`;
+# --create user `tcrd`@'%';
+# --grant select on tcrd610.* to `tcrd`;
 
 alter table `xref`
 add fulltext index xref_text_idx(`value`, xtra)
@@ -163,7 +163,7 @@ where  a.geneid = c.geneid
 and a.taxid = c.taxid
 and c.id = d.nhprotein_id
 and a.protein_id = b.id
-and d.ptype = 'IMPC'
+and d.ptype = 'IMPC' and d.p_value < 0.05
 group by `d`.`term_name`
 order by `value` desc
 ;

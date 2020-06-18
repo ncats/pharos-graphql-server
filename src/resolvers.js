@@ -405,7 +405,15 @@ const resolvers = {
                 return rows[0];
             });
         },
-
+        diseaseAssociationDetails: async function (target, args, {dataSources}) {
+            if (!dataSources.associatedDisease) {
+                return null;
+            }
+            const q = DiseaseList.getAssociationDetails(dataSources.tcrd.db, dataSources.associatedDisease, target.tcrdid);
+            return q.then(rows => {
+                return rows;
+            });
+        },
         diseaseCounts: async function (target, args, {dataSources}) {
             let diseaseArgs = args;
             diseaseArgs.filter = diseaseArgs.filter || {};
@@ -945,8 +953,8 @@ const resolvers = {
             let targetArgs = {};
             targetArgs.filter = {};
             targetArgs.filter.associatedDisease = disease.name;
+            targetArgs.facets = ["Target Development Level"];
             let targetList = new TargetList(dataSources.tcrd, targetArgs);
-            targetList.facetsToFetch = [targetList.facetFactory.GetFacet(targetList, "Target Development Level")];
             return targetList.getFacetQueries()[0]
                 .then(rows => {
                     return rows;
@@ -1354,6 +1362,7 @@ function getTargetResult(args, dataSources) {
 
         return Promise.all(Array.from(facetQueries.values())).then(rows => {
             let count = rows.shift()[0].count;
+            facetQueries.shift();
 
             let facets = [];
             for (var i in rows) {

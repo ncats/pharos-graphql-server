@@ -32,6 +32,9 @@ export class TargetList extends DataModelList {
             if(this.associatedTarget){
                 facetList = this.DefaultPPIFacets;
             }
+            else if(this.associatedDisease){
+                facetList = this.DefaultDiseaseFacets;
+            }
             else {
                 facetList = this.DefaultFacets;
             }
@@ -186,18 +189,26 @@ ON diseaseList.name = d.ncats_name`));
 
     AllFacets = Object.keys(TargetFacetType).filter(key => isNaN(Number(key)));
 
+    assocationFacets = [
+    "Target Development Level",
+    'Family',
+    "IDG Target Lists",
+    "Reactome Pathway",
+    "GO Process",
+    "GO Component",
+    "GO Function",
+    "UniProt Disease",
+    "Expression: UniProt Tissue",
+    "Ortholog"];
+
     DefaultPPIFacets = [
         "PPI Data Source",
-        "Target Development Level",
-        'Family',
-        "IDG Target Lists",
-        "Reactome Pathway",
-        "GO Process",
-        "GO Component",
-        "GO Function",
-        "UniProt Disease",
-        "Expression: UniProt Tissue",
-        "Ortholog"];
+        ...this.assocationFacets];
+
+    DefaultDiseaseFacets = [
+        "Disease Data Source",
+        "Linked Disease",
+        ...this.assocationFacets];
 
     DefaultFacets =
         [

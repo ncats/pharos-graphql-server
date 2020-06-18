@@ -37,7 +37,6 @@ def doNode(cursor, doid):
     name, definition = getDoDetails(cursor,doid)
     sql = "INSERT INTO ncats_do (lft, rght, doid, name, def) VALUES (%s,%s,%s,%s,%s)"
     values = (left, right, doid, name, definition)
-    print(sql,values)
     cursor.execute(sql, values)
 
 def parseDoTree(cursor):
