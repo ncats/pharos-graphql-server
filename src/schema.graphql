@@ -233,6 +233,7 @@ type Expression {
      cellid: String
      uberon: Uberon
      pub: PubMed
+     url: String
 }
 
 type GO {

@@ -1372,7 +1372,7 @@ group by etype order by value desc`, [target.tcrdid]));
     getExpressionsForTarget(target, args) {
         const EXPRESSION_SQL = `
 d.*,f.*, d.id as expid, d.etype as type, 
-d.cell_id as cellid, d.oid as btoid
+d.cell_id as cellid, d.oid as btoid, d.qual_value as qual
 from t2tc c, expression d 
 left join uberon f on f.uid = d.uberon_id`;
         let q = this.db.select(this.db.raw(EXPRESSION_SQL));
@@ -1627,7 +1627,7 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
     }
 
     getDTOHierarchy() {
-        return this.db.select(this.db.raw(`dtoid as id, name, replace(parent_id, ':', '_') as parent from dto`));
+        return this.db.select(this.db.raw(`dtoid as id, name, parent_id as parent from dto`));
     }
 
     getDTO(args) {
