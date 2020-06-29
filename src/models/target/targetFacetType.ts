@@ -35,5 +35,7 @@ export enum TargetFacetType {
     "KEGG Pathway",
     "PPI Data Source",
     "Disease Data Source",
-    "Linked Disease"
+    "Linked Disease",
+    "Interacting Viral Protein (Virus)",
+    "Interacting Virus"
 }

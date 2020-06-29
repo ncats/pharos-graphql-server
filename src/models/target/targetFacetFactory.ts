@@ -175,6 +175,19 @@ export class TargetFacetFactory extends FacetFactory{
                     whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`,
                     // valuesDelimited: true
                 } as FacetInfo);
+            case TargetFacetType["Interacting Viral Protein (Virus)"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "viral_protein",
+                    dataColumn: "ncbi",
+                    select: `concat(viral_protein.name, ' (', virus.name, ')')`
+                } as FacetInfo);
+            case TargetFacetType["Interacting Virus"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "virus",
+                    dataColumn: "name"
+                } as FacetInfo);
         }
         return this.unknownFacet();
     }

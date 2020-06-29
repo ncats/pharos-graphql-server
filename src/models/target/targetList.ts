@@ -82,6 +82,10 @@ export class TargetList extends DataModelList {
                 .andWhere('ortholog.taxid', this.database.raw('nhprotein.taxid'))
                 .andWhere('nhprotein.id', this.database.raw('phenotype.nhprotein_id'))
                 .andWhere('protein.id', this.database.raw('ortholog.protein_id'));
+        } else if (facet.dataTable === 'viral_protein' || facet.dataTable === 'virus') {
+            query.andWhere('protein.id', this.database.raw('viral_ppi.protein_id'))
+                .andWhere('viral_ppi.viral_protein_id', this.database.raw('viral_protein.id'))
+                .andWhere('virus.virusTaxid', this.database.raw('viral_protein.virus_id'));
         } else { // default is to use protein_id column from keyTable
             query.andWhere('protein.id', this.database.raw(facet.dataTable + '.protein_id'));
         }
@@ -100,6 +104,12 @@ export class TargetList extends DataModelList {
                 break;
             case "ncats_idg_list_type":
                 tableList.push("ncats_idg_list");
+                break;
+            case "viral_protein":
+            case "virus":
+                tableList.push("viral_ppi");
+                tableList.push("viral_protein");
+                tableList.push("virus");
                 break;
         }
         if (info.type == "IMPC Phenotype") {
@@ -190,16 +200,16 @@ ON diseaseList.name = d.ncats_name`));
     AllFacets = Object.keys(TargetFacetType).filter(key => isNaN(Number(key)));
 
     assocationFacets = [
-    "Target Development Level",
-    'Family',
-    "IDG Target Lists",
-    "Reactome Pathway",
-    "GO Process",
-    "GO Component",
-    "GO Function",
-    "UniProt Disease",
-    "Expression: UniProt Tissue",
-    "Ortholog"];
+        "Target Development Level",
+        'Family',
+        "IDG Target Lists",
+        "Reactome Pathway",
+        "GO Process",
+        "GO Component",
+        "GO Function",
+        "UniProt Disease",
+        "Expression: UniProt Tissue",
+        "Ortholog"];
 
     DefaultPPIFacets = [
         "PPI Data Source",
@@ -210,16 +220,16 @@ ON diseaseList.name = d.ncats_name`));
         "Linked Disease",
         ...this.assocationFacets];
 
-    DefaultFacets =
-        [
-            'Target Development Level',
-            'IDG Target Lists',
-            'Family',
-            'IMPC Phenotype',
-            'GWAS',
-            'Expression: Consensus',
-            'Ortholog',
-            'UniProt Disease',
-            'UniProt Keyword'
-        ];
+    DefaultFacets = [
+        'Target Development Level',
+        'IDG Target Lists',
+        'Family',
+        'Interacting Virus',
+        'Interacting Viral Protein (Virus)',
+        "JAX/MGI Phenotype",
+        'GWAS',
+        'Expression: Consensus',
+        'Ortholog',
+        'UniProt Disease',
+        'UniProt Keyword'];
 }

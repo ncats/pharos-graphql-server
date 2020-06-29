@@ -148,7 +148,9 @@ export class DatabaseTable {
 
     static requiredLinks: Map<string, string[]> = new Map(
         [
-            ["protein-target", ["t2tc"]]
+            ["protein-target", ["t2tc"]],
+            ["protein-viral_protein", ["viral_ppi", "virus"]],
+            ["protein-virus", ["viral_ppi", "viral_protein"]]
         ]);
 
     static getRequiredLinks(table1: string, table2: string): string[] | undefined {
