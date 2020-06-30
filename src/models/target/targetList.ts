@@ -18,6 +18,9 @@ export class TargetList extends DataModelList {
         else if(this.associatedTarget){
             return [{column:'p_int', order:'desc'},{column:'score', order:'desc'}];
         }
+        else if(this.associatedDisease){
+            return [{column: 'dtype', order:'desc'}];
+        }
         return [{column:'novelty', order:'desc'}];
     }
 
@@ -55,6 +58,9 @@ export class TargetList extends DataModelList {
     listQueryKey() {
         if(this.associatedTarget){
             return ConfigKeys.Target_List_PPI;
+        }
+       if(this.associatedDisease){
+            return ConfigKeys.Target_List_Disease;
         }
         return ConfigKeys.Target_List_Default;
     }

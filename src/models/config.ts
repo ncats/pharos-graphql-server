@@ -53,7 +53,8 @@ export class Config {
 
                 dataFields.push({table: "tinx_novelty", data: "score", alias: "novelty"});
 
-                dataFields.push({table: "disease", data: "dtype"});
+                dataFields.push({table: "disease", data: `dtype`, group_method: `count`});
+                break;
             case ConfigKeys.Disease_List_Default:
                 dataFields.push({table: "disease", data: "name"});
                 break;
@@ -70,8 +71,18 @@ export class Config {
                 dataFields.push({table: "ncats_ligands", data: "description"});
                 break;
         }
-        if (sortColumn && !dataFields.find(field => {return field.data == sortColumn}) && !dataFields.find(field => {return field.alias == sortColumn})) {
-            dataFields.push({table: sortTable, data: sortColumn, alias: sortColumn});
+        if (sortTable && sortColumn && !dataFields.find(field => {
+            return field.data === sortColumn && field.table === sortTable
+        }) && !dataFields.find(field => {
+            return field.alias === sortColumn && field.table === sortTable
+        })) {
+            dataFields.push({table: sortTable, data: sortColumn, alias: sortColumn, group_method:"max"});
+        } else if (sortColumn && !dataFields.find(field => {
+            return field.data === sortColumn
+        }) && !dataFields.find(field => {
+            return field.alias === sortColumn
+        })) {
+            dataFields.push({table: sortTable, data: sortColumn, alias: sortColumn, group_method:"max"});
         }
         return dataFields;
     }
@@ -84,6 +95,7 @@ export class RequestedData {
     table: string = "";
     data: string = "";
     alias?: string = "";
+    group_method?: string = "";
 }
 
 /**
@@ -114,7 +126,7 @@ export class QueryDefinition {
             return table.tableName == reqData.table;
         });
         if (existingTable) {
-            existingTable.columns.push(new SqlColumns(reqData.data, reqData.alias));
+            existingTable.columns.push(new SqlColumns(reqData.data, reqData.alias, reqData.group_method));
             return;
         }
         this.addRequestedDataToNewTable(reqData);
@@ -147,15 +159,30 @@ export class QueryDefinition {
         }
 
         const newTable = new SqlTable(table, {}, links);
-        newTable.columns.push(new SqlColumns(reqData.data, reqData.alias));
+        newTable.columns.push(new SqlColumns(reqData.data, reqData.alias, reqData.group_method));
         this.tables.push(newTable);
     }
 
-    getColumnList() {
+    getColumnObj(table: string, column: string) {
+        let matchingTables = this.tables.filter(t => {return t.tableName == table;});
+        for(let i = 0 ; i < matchingTables.length ; i++){
+            let matchingColumns = matchingTables[i].columns.filter(c => {return c.column === column});
+            if(matchingColumns.length > 0){
+                return matchingColumns[0];
+            }
+        }
+        return null;
+    }
+
+    getColumnList(db: any) {
         const columnList: any = {};
         for (let tableIndex = 0; tableIndex < this.tables.length; tableIndex++) {
             for (let columnIndex = 0; columnIndex < this.tables[tableIndex].columns.length; columnIndex++) {
-                columnList[this.tables[tableIndex].columns[columnIndex].alias] = this.tables[tableIndex].alias + "." + this.tables[tableIndex].columns[columnIndex].column;
+                if (this.tables[tableIndex].columns[columnIndex].group_method) {
+                    columnList[this.tables[tableIndex].columns[columnIndex].alias] = db.raw(this.tables[tableIndex].columns[columnIndex].group_method + '(distinct `' + this.tables[tableIndex].alias + "`.`" + this.tables[tableIndex].columns[columnIndex].column + '`)');
+                } else {
+                    columnList[this.tables[tableIndex].columns[columnIndex].alias] = db.raw("`" + this.tables[tableIndex].alias + "`.`" + this.tables[tableIndex].columns[columnIndex].column + "`");
+                }
             }
         }
         return columnList;
@@ -169,7 +196,7 @@ export class QueryDefinition {
 
     getLeftJoinTables(): SqlTable[] {
         return this.tables.filter(table => {
-            if(this.rootTable === table.tableName) return false;
+            if (this.rootTable === table.tableName) return false;
             return table.allowUnmatchedRows == true;
         });
     }
@@ -183,7 +210,7 @@ export class QueryDefinition {
     getTablesAsObjectArray(tableList: SqlTable[]): any {
         let obj: any = {};
         for (let i = 0; i < tableList.length; i++) {
-            if(tableList[i].tableName != this.rootTable) {
+            if (tableList[i].tableName != this.rootTable) {
                 obj[tableList[i].alias] = tableList[i].tableName;
                 for (let j = 0; j < tableList[i].linkingTables.length; j++) {
                     obj[tableList[i].linkingTables[j]] = tableList[i].linkingTables[j];
@@ -240,13 +267,16 @@ export class SqlTable {
 export class SqlColumns {
     column: string;
     private _alias?: string = "";
+    group_method?: string = "";
+
     get alias(): string {
         if (this._alias) return this._alias;
         return this.column;
     }
 
-    constructor(column: string, alias: string = "") {
+    constructor(column: string, alias: string = "", group_method: string = "") {
         this.column = column;
+        this.group_method = group_method;
         if (alias) {
             this._alias = alias;
         }

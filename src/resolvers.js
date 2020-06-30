@@ -1124,8 +1124,9 @@ const resolvers = {
         targets: async function (result, args, {dataSources}) {
             args.filter = result.filter;
             args.batch = result.batch;
-            return new TargetList(dataSources.tcrd, args).getListQuery()
-                .then(targets => {
+            let q = new TargetList(dataSources.tcrd, args).getListQuery();
+            //console.log(q.toString());
+            return q.then(targets => {
                     dataSources.listResults = targets;
                     return targets;
                 }).catch(function (error) {
