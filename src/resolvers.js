@@ -1,6 +1,7 @@
 const {LigandList} = require("./models/ligand/ligandList");
 const {DiseaseList} = require("./models/disease/diseaseList");
 const {TargetList} = require("./models/target/targetList");
+const {Virus} = require("./models/virus/virusQuery");
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 
@@ -224,6 +225,13 @@ const resolvers = {
     },
 
     Target: {
+        interactingViruses: async function (target, args, {dataSources}) {
+            let query = Virus.getQuery(dataSources.tcrd.db, target.tcrdid);
+            return query.then(rows => {
+                return Virus.parseResult(rows);
+            });
+        },
+
         dto: async function (target, args, {dataSources}) {
             return dataSources.tcrd.getDTO(target);
 
@@ -1124,8 +1132,9 @@ const resolvers = {
         targets: async function (result, args, {dataSources}) {
             args.filter = result.filter;
             args.batch = result.batch;
-            return new TargetList(dataSources.tcrd, args).getListQuery()
-                .then(targets => {
+            let q = new TargetList(dataSources.tcrd, args).getListQuery();
+            //console.log(q.toString());
+            return q.then(targets => {
                     dataSources.listResults = targets;
                     return targets;
                 }).catch(function (error) {

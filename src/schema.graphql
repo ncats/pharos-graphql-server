@@ -453,6 +453,28 @@ type Target {
 
      ppiTargetInteractionDetails: InteractionDetails
      diseaseAssociationDetails: [AssociationDetails]
+
+     interactingViruses: [VirusDetails]
+}
+
+type ViralInteractionDetails {
+     finalLR: Float!
+     protein_name: String!
+     protein_ncbi: String
+     dataSource: String
+}
+
+type VirusDetails{
+     taxonomyID: String!
+     name: String!
+     nucleic1: String
+     nucleic2: String
+     order: String
+     family: String
+     subfamily: String
+     genus: String
+     species: String
+     interactionDetails: [ViralInteractionDetails]
 }
 
 type AssociationDetails{

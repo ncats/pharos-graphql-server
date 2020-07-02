@@ -57,6 +57,7 @@ export class DatabaseTable {
     tableName: string;
     primaryKey?: string;
     links: TableLink[] = [];
+    dataTypes: Map<string, string> = new Map<string, string>();
     isSparse: boolean;
     isTypeTable: boolean;
 
@@ -65,6 +66,27 @@ export class DatabaseTable {
         this.isSparse = DatabaseTable.sparseTables.includes(name);
         this.isTypeTable = DatabaseTable.typeTables.includes(name);
         this.getKeys(database, dbname);
+        this.getColumnInfo(database, dbname);
+    }
+
+    getColumnInfo(database: any, dbname: string){
+        let query = database('INFORMATION_SCHEMA.COLUMNS')
+            .select(['column_name', 'data_type'])
+            .where('table_schema', dbname)
+            .andWhere('table_name', this.tableName);
+        query.then((rows: any) => {
+            for(let rowKey in rows){
+                this.dataTypes.set(rows[rowKey]['column_name'], rows[rowKey]['data_type']);
+            }
+        });
+    }
+
+    columnIsNumeric(column: string){
+        let dataType = this.dataTypes.get(column)?.toLowerCase();
+        if (dataType){
+            return ['bigint', 'int', 'tinyint', 'decimal', 'double', 'float'].includes(dataType);
+        }
+        return null
     }
 
     getKeys(database: any, dbname: string) {
@@ -148,7 +170,9 @@ export class DatabaseTable {
 
     static requiredLinks: Map<string, string[]> = new Map(
         [
-            ["protein-target", ["t2tc"]]
+            ["protein-target", ["t2tc"]],
+            ["protein-viral_protein", ["viral_ppi", "virus"]],
+            ["protein-virus", ["viral_ppi", "viral_protein"]]
         ]);
 
     static getRequiredLinks(table1: string, table2: string): string[] | undefined {

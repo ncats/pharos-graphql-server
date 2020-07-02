@@ -5,6 +5,7 @@ import {Config, ConfigKeys, QueryDefinition, SqlTable} from "./config";
 import {DatabaseConfig, DatabaseTable} from "./databaseConfig";
 // @ts-ignore
 import * as CONSTANTS from "../constants";
+import {DiseaseList} from "./disease/diseaseList";
 
 export abstract class DataModelList {
     abstract AllFacets: string[];
@@ -124,7 +125,7 @@ export abstract class DataModelList {
         let innerJoins = queryDefinition.getInnerJoinTables();
 
         let query = this.database(queryDefinition.getTablesAsObjectArray(innerJoins))
-            .select(queryDefinition.getColumnList());
+            .select(queryDefinition.getColumnList(this.database));
         if (aggregateAll) {
             query.count({count: this.databaseConfig.getPrimaryKey(this.rootTable)});
         }
@@ -139,6 +140,9 @@ export abstract class DataModelList {
                     this.andOn(that.database.raw(leftJoins[i].joinConstraint));
                 }
             });
+        }
+        if (this.associatedDisease){
+            query.where('disease.ncats_name', 'in', DiseaseList.getDescendentsQuery(this.database, this.associatedDisease));
         }
         for (let i = 0; i < innerJoins.length; i++) {
             if (rootTableObject !== innerJoins[i]) {
@@ -163,9 +167,9 @@ export abstract class DataModelList {
             }
         }
         this.addModelSpecificFiltering(query, true);
-        if (aggregateAll) {
-            query.groupBy(this.keyString());
-        }
+
+        query.groupBy(this.keyString());
+
         this.addSort(query, queryDefinition);
         if (this.skip) {
             query.offset(this.skip);
@@ -183,9 +187,29 @@ export abstract class DataModelList {
             query.orderBy(this.defaultSortParameters());
             return;
         }
-        let col = this.sortColumn;
+        const columnObj = queryDefinition.getColumnObj(this.sortTable, this.sortColumn);
+
+        let col = "";
+        if(columnObj){
+            if (columnObj.group_method) {
+                col = columnObj.group_method + "(" + this.sortTable + "." + columnObj.alias + ")";
+            } else {
+                col = this.sortTable + "." + columnObj.alias;
+            }
+        }
+        else{
+            col = this.sortColumn;
+        }
         let dir = this.direction;
-        query.orderBy(col, dir);
+        if(this.sortTable === "disease" && this.sortColumn === "pvalue"){ // workaround TCRD bug  https://github.com/unmtransinfo/TCRD/issues/3
+            query.orderByRaw((dir === "asc" ? "-" : "") + col + " + 0.0 desc")
+        }
+        else if( this.databaseConfig.tables.find(t => {return t.tableName === this.sortTable})?.columnIsNumeric(this.sortColumn)){
+            query.orderByRaw((dir === "asc" ? "-" : "") + col + " desc");
+        }
+        else{
+            query.orderBy(col, dir);
+        }
     }
 
     addFacetConstraints(query: any, filteringFacets: FacetInfo[], facetToIgnore?: string) {
