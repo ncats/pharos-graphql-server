@@ -179,9 +179,12 @@ export class QueryDefinition {
         for (let tableIndex = 0; tableIndex < this.tables.length; tableIndex++) {
             for (let columnIndex = 0; columnIndex < this.tables[tableIndex].columns.length; columnIndex++) {
                 if (this.tables[tableIndex].columns[columnIndex].group_method) {
-                    columnList[this.tables[tableIndex].columns[columnIndex].alias] = db.raw(this.tables[tableIndex].columns[columnIndex].group_method + '(distinct `' + this.tables[tableIndex].alias + "`.`" + this.tables[tableIndex].columns[columnIndex].column + '`)');
+                    columnList[this.tables[tableIndex].columns[columnIndex].alias] =
+                        db.raw(this.tables[tableIndex].columns[columnIndex].group_method
+                            + '(distinct `' + this.tables[tableIndex].alias + "`.`" + this.tables[tableIndex].columns[columnIndex].column + '`)');
                 } else {
-                    columnList[this.tables[tableIndex].columns[columnIndex].alias] = db.raw("`" + this.tables[tableIndex].alias + "`.`" + this.tables[tableIndex].columns[columnIndex].column + "`");
+                    columnList[this.tables[tableIndex].columns[columnIndex].alias] =
+                        db.raw("`" + this.tables[tableIndex].alias + "`.`" + this.tables[tableIndex].columns[columnIndex].column + "`");
                 }
             }
         }
