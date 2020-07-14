@@ -1605,7 +1605,8 @@ from cmpd_activity`))
 drug, cmpd_chemblid, nlm_drug_info, cmpd_pubchem_cid, dcid,smiles,lychi_h4
 from drug_activity`))
             .where('lychi_h4', id)
-            .orWhere('drug', id);
+            .orWhere('drug', id)
+            .orWhere('cmpd_chemblid', id);
         return q;
     }
 
