@@ -143,6 +143,7 @@ alter table drug_activity
 add lychi_h4 varchar(15)
 ,add index drug_lychi_idx(lychi_h4)
 ,add index drug_drug_idx(drug)
+,add index drug_chembl_id(cmpd_chemblid)
 ;
 
 alter table cmpd_activity
