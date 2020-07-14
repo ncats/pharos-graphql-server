@@ -203,7 +203,11 @@ ON diseaseList.name = d.ncats_name`));
         return true;
     }
 
-    AllFacets = Object.keys(TargetFacetType).filter(key => isNaN(Number(key)));
+    static AllFacets(){
+        return Object.keys(TargetFacetType).filter(key => isNaN(Number(key)));
+    }
+
+    AllFacets = TargetList.AllFacets();
 
     assocationFacets = [
         "Target Development Level",
