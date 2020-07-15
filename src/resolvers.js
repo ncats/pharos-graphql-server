@@ -79,7 +79,10 @@ const resolvers = {
             return dataSources.tcrd.getDisease(args.name)
                 .then(rows => {
                     rows = filter(rows, r => r.name != null && r.associationCount > 0);
-                    if (rows.length > 0) return rows[0];
+                    if (rows.length > 0) {
+                        rows[0].name = args.name;
+                        return rows[0];
+                    }
                     return {name: args.name, associationCount: 0};
                 }).catch(function (error) {
                     console.error(error);
