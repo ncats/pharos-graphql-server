@@ -1,36 +1,47 @@
-type Xref {
+## Add below directive declaration if compilation fails for unknown directive cacheControl
+directive @cacheControl(
+     maxAge: Int,
+     scope: CacheControlScope
+) on OBJECT | FIELD_DEFINITION
+enum CacheControlScope {
+     PUBLIC
+     PRIVATE
+}
+##
+
+type Xref @cacheControl(maxAge: 604800) {
      source: String!
      name: String!
      value: String
      targets(tdl: String = "", fam: String = ""): [Target]
 }
 
-type Prop {
+type Prop @cacheControl(maxAge: 604800) {
      name: String!
      value: String!
 }
 
-type IntProp {
+type IntProp @cacheControl(maxAge: 604800) {
      name: String!
      value: Int!
 }
 
-type FloatProp {
+type FloatProp @cacheControl(maxAge: 604800) {
      name: String!
      value: Float!
 }
 
-type TemporalCount {
+type TemporalCount @cacheControl(maxAge: 604800) {
      year: Int!
      count: Int!
 }
 
-type TemporalScore {
+type TemporalScore @cacheControl(maxAge: 604800) {
      year: Int!
      score: Float!
 }
 
-type Facet {
+type Facet @cacheControl(maxAge: 604800) {
      facet: String!
      count: Int
      values (skip: Int=0, top: Int=20, name: String): [IntProp]
@@ -43,7 +54,7 @@ input IFilterFacet {
      values: [String]
 }
 
-type FilterFacet {
+type FilterFacet @cacheControl(maxAge: 604800) {
      facet: String!
      values: [String]
 }
@@ -75,24 +86,24 @@ input IFilter {
      ppiConfidence: Int = 400
 }
 
-type Filter {
+type Filter @cacheControl(maxAge: 604800) {
      term: String
      facets: [FilterFacet]
 }
 
-type PantherPath {
+type PantherPath @cacheControl(maxAge: 604800){
      pcid: String!
      name: String!
      parents: [PantherPath]
 }
 
-type PantherClass {
+type PantherClass @cacheControl(maxAge: 604800) {
      pcid: String!
      name: String!
      parents: [String]
 }
 
-type Pathway {
+type Pathway @cacheControl(maxAge: 604800) {
      pwid: Int!
      type: String!
      name: String!
@@ -108,7 +119,7 @@ input ITarget {
      stringid: String
 }
 
-type PubMed {
+type PubMed @cacheControl(maxAge: 604800) {
      pmid: String!
      title: String
      journal: String
@@ -119,7 +130,7 @@ type PubMed {
      targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
 
-type GeneRIF {
+type GeneRIF @cacheControl(maxAge: 604800) {
      rifid: Int!
      text: String
      target: Target!
@@ -127,7 +138,7 @@ type GeneRIF {
 }
 
 """Ortholog"""
-type Ortholog {
+type Ortholog @cacheControl(maxAge: 604800) {
      orid: Int!
      species: String!
      sym: String
@@ -138,14 +149,14 @@ type Ortholog {
      diseases: [OrthologDisease]
 }
 
-type OrthologDisease {
+type OrthologDisease @cacheControl(maxAge: 604800) {
      ordid: Int!
      score: Float!
      diseases: [Disease]
 }
 
 """Disease entity"""
-type Disease {
+type Disease @cacheControl(maxAge: 604800) {
      name: String!
      associationCount: Int!
      associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
@@ -158,14 +169,14 @@ type Disease {
      children: [Disease]
 }
 
-type DiseaseID{
+type DiseaseID @cacheControl(maxAge: 604800){
      id: String!
      dataSources: [String]
      doName: String
      doDefinition: String
 }
 
-type DiseaseAssociation {
+type DiseaseAssociation @cacheControl(maxAge: 604800) {
      disassid: Int!
      type: String!
      name: String!
@@ -186,7 +197,7 @@ type DiseaseAssociation {
 }
 
 """Target relationships such as PPI"""
-type TargetNeighbor {
+type TargetNeighbor @cacheControl(maxAge: 604800) {
      nid: Int!
      type: String!
      props: [Prop]
@@ -194,7 +205,7 @@ type TargetNeighbor {
 }
 
 """LocSigDB: database of protein localization signals"""
-type LocSig {
+type LocSig @cacheControl(maxAge: 604800) {
      locid: Int!
      location: String!
      signal: String!
@@ -202,7 +213,7 @@ type LocSig {
 }
 
 """LINCS: Library of Integrated Network-Based Cellular Signatures"""
-type LINCS {
+type LINCS @cacheControl(maxAge: 604800) {
      lncsid: Int!
      cellid: String!
      zscore: Float
@@ -210,7 +221,7 @@ type LINCS {
      targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
 
-type Uberon {
+type Uberon @cacheControl(maxAge: 604800) {
      uid: String!
      name: String!
      def: String
@@ -218,7 +229,7 @@ type Uberon {
 }
 
 """Expression entity"""
-type Expression {
+type Expression @cacheControl(maxAge: 604800) {
      expid: Int!
      type: String!
      tissue: String!
@@ -236,7 +247,7 @@ type Expression {
      url: String
 }
 
-type GO {
+type GO @cacheControl(maxAge: 604800) {
      goid: String!
      """type: 'C' - component, 'F' - function, 'P' - process"""
      type: String!
@@ -245,13 +256,13 @@ type GO {
      goeco: String
 }
 
-type MIM {
+type MIM @cacheControl(maxAge: 604800) {
      mimid: Int!
      term: String!
 }
 
 """GWAS catalog data"""
-type GWAS {
+type GWAS @cacheControl(maxAge: 604800) {
      gwasid: Int!
      trait: String!
      snps: [Prop]
@@ -260,7 +271,7 @@ type GWAS {
 }
 
 """Harmonizome"""
-type Harmonizome {
+type Harmonizome @cacheControl(maxAge: 604800) {
      target: Target!
      count: Int
      attrs: [GeneAttribute]
@@ -268,7 +279,7 @@ type Harmonizome {
      summary (which: String="type"): [FloatProp]
 }
 
-type GeneAttribute {
+type GeneAttribute @cacheControl(maxAge: 604800) {
      gaid: Int!
      gat: GeneAttributeType!
      count: Int!
@@ -276,7 +287,7 @@ type GeneAttribute {
 }
 
 """Gene attribute type associated with harmonizome entry"""
-type GeneAttributeType {
+type GeneAttributeType @cacheControl(maxAge: 604800) {
      gatid: Int!
      name: String!
      association: String
@@ -290,7 +301,7 @@ type GeneAttributeType {
 }
 
 """Ligand"""
-type Ligand {
+type Ligand @cacheControl(maxAge: 604800) {
      """identify associated with this ligand; for small molecule it's the lychi hash"""
      ligid: String
      """recognized name for the ligand"""
@@ -307,7 +318,7 @@ type Ligand {
      activities (all: Boolean = true): [LigandActivity]
 }
 
-type LigandActivity {
+type LigandActivity @cacheControl(maxAge: 604800) {
      actid: Int!
      """activity type; e.g., IC50"""
      type: String
@@ -320,7 +331,7 @@ type LigandActivity {
      pubs: [PubMed]
 }
 
-type DiseaseOntology {
+type DiseaseOntology @cacheControl(maxAge: 604800) {
      doid: String
      name: String
      def: String
@@ -328,14 +339,14 @@ type DiseaseOntology {
      children: [DiseaseOntology]
 }
 
-type DTO {
+type DTO @cacheControl(maxAge: 604800) {
      dtoid: String!
      name: String!
      parent: DTO
      children: [DTO]
 }
 
-type TINXDisease {
+type TINXDisease @cacheControl(maxAge: 604800) {
      tinxid: Int!
      """Disease novelty"""
      novelty: Float
@@ -344,7 +355,7 @@ type TINXDisease {
      disease: DiseaseOntology!
 }
 
-type TINXTarget {
+type TINXTarget @cacheControl(maxAge: 604800){
      """Target novelty"""
      novelty: Float
      """Importance of disease-target combination"""
@@ -353,7 +364,7 @@ type TINXTarget {
 }
 
 """Target entity"""
-type Target {
+type Target @cacheControl(maxAge: 604800){
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
      """UniProt Accession"""
@@ -457,14 +468,14 @@ type Target {
      interactingViruses: [VirusDetails]
 }
 
-type ViralInteractionDetails {
+type ViralInteractionDetails @cacheControl(maxAge: 604800) {
      finalLR: Float!
      protein_name: String!
      protein_ncbi: String
      dataSource: String
 }
 
-type VirusDetails{
+type VirusDetails @cacheControl(maxAge: 604800){
      taxonomyID: String!
      name: String!
      nucleic1: String
@@ -477,7 +488,7 @@ type VirusDetails{
      interactionDetails: [ViralInteractionDetails]
 }
 
-type AssociationDetails{
+type AssociationDetails @cacheControl(maxAge: 604800){
      name: String
      dataType: String
      evidence: String
@@ -493,7 +504,7 @@ type AssociationDetails{
      S2O: Float
 }
 
-type InteractionDetails{
+type InteractionDetails @cacheControl(maxAge: 604800){
      ppitypes: String
      score: Float
      interaction_type: String
@@ -503,14 +514,14 @@ type InteractionDetails{
      p_wrong: Float
 }
 
-type TargetResult {
+type TargetResult @cacheControl(maxAge: 604800){
      filter: Filter
      count: Int
      facets (include: [String], exclude: [String]): [Facet]
      targets(skip: Int=0, top: Int=10): [Target]
 }
 
-type SuggestionResults{
+type SuggestionResults @cacheControl(maxAge: 60){
      elapsedTime: Float
      genes: [Suggestion]
      targets: [Suggestion]
@@ -519,39 +530,39 @@ type SuggestionResults{
      phenotypes: [Suggestion]
 }
 
-type Suggestion{
+type Suggestion @cacheControl(maxAge: 60){
      key: String
 }
 
-type DiseaseResult {
+type DiseaseResult @cacheControl(maxAge: 604800) {
      filter: Filter
      count: Int
      facets (include: [String], exclude: [String]): [Facet]
      diseases(skip: Int=0, top: Int=10): [Disease]
 }
 
-type LigandResult {
+type LigandResult @cacheControl(maxAge: 604800) {
      filter: Filter
      count: Int
      facets (include: [String], exclude: [String]): [Facet]
      ligands(skip: Int=0, top: Int=10): [Ligand]
 }
 
-type PubResult {
+type PubResult @cacheControl(maxAge: 604800) {
      filter: Filter
      count: Int
      facets (include: [String], exclude: [String]): [Facet]
      pubs(skip: Int=0, top: Int=10): [PubMed]
 }
 
-type OrthologResult {
+type OrthologResult @cacheControl(maxAge: 604800) {
      filter: Filter
      count: Int
      facets (include: [String], exclude: [String]): [Facet]
      orthologs(skip: Int=0, top: Int=10): [Ortholog]
 }
 
-type Result {
+type Result @cacheControl(maxAge: 604800) {
      targetResult: TargetResult
      diseaseResult: DiseaseResult
      ligandResult: LigandResult
@@ -559,9 +570,9 @@ type Result {
      orthologResult: OrthologResult
 }
 
-type Query {
+type Query{
      autocomplete(name: String): SuggestionResults
-     targetFacets: [String!]
+     targetFacets: [String!] @cacheControl(maxAge: 604800)
      targets(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter, targets: [String]): TargetResult
      target(q: ITarget): Target
 
