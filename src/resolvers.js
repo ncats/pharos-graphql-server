@@ -1318,6 +1318,9 @@ const resolvers = {
             });
         },
         synonyms: async function (ligand, args, {dataSources}) {
+            if(ligand.synonyms){
+                return ligand.synonyms;
+            }
             let synonyms = [];
             for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
                 if (ligand[field]) {
