@@ -79,7 +79,10 @@ const resolvers = {
             return dataSources.tcrd.getDisease(args.name)
                 .then(rows => {
                     rows = filter(rows, r => r.name != null && r.associationCount > 0);
-                    if (rows.length > 0) return rows[0];
+                    if (rows.length > 0) {
+                        rows[0].name = args.name;
+                        return rows[0];
+                    }
                     return {name: args.name, associationCount: 0};
                 }).catch(function (error) {
                     console.error(error);
@@ -1315,6 +1318,9 @@ const resolvers = {
             });
         },
         synonyms: async function (ligand, args, {dataSources}) {
+            if(ligand.synonyms){
+                return ligand.synonyms;
+            }
             let synonyms = [];
             for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
                 if (ligand[field]) {

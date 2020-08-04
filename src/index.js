@@ -15,6 +15,7 @@ const { makeExecutableSchema } = require('graphql-tools');
 const TCRD = require('./TCRD');
 const fs = require('fs');
 require('typescript-require');
+const responseCachePlugin = require('apollo-server-plugin-response-cache');
 
 const typeDefs = fs.readFileSync(__dirname + '/schema.graphql','utf8');
 const resolvers = require('./resolvers');
@@ -46,6 +47,7 @@ const tcrdConfig = {
 
 const tcrd = new TCRD(tcrdConfig);
 const server = new ApolloServer({
+    plugins: [responseCachePlugin()],
     schema: schema,
     introspection: true,
     playground: true,
