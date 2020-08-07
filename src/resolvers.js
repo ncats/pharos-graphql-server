@@ -74,6 +74,7 @@ const resolvers = {
                 });
 
             return q.then(rows => {
+                console.log('returning target query,' + performance.now());
                 if (rows) return rows[0];
                 return rows;
             }).catch(function (error) {
@@ -281,9 +282,10 @@ const resolvers = {
         },
 
         props: async function (target, args, {dataSources}) {
+            console.log('reached props - ' + args.name + ',' + performance.now());
             const q = dataSources.tcrd.getPropsForTarget(target);
             let startTime;
-            let queryName = 'props - ' + target.tcrdid;
+            let queryName = 'props - ' + target.tcrdid + ' - ' + args.name;
             q.on('query', (data) => {
                 startTime = performance.now();
             })
@@ -291,7 +293,7 @@ const resolvers = {
                     let endTime = performance.now();
                     console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
                 });
-
+            console.log('starting props - ' + args.name + ',' + performance.now());
             return q.then(rows => {
                 if (args.name !== "" && args.name !== "*") {
                     rows = filter(rows, {itype: args.name});
