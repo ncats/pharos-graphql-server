@@ -74,6 +74,7 @@ const resolvers = {
                 });
 
             return q.then(rows => {
+                dataSources.associatedTargetTCRDID = rows[0].id;
                 console.log('returning target query,' + performance.now());
                 if (rows) return rows[0];
                 return rows;
@@ -1639,6 +1640,9 @@ const resolvers = {
                 })
                 .whereRaw(`ncats_ligands.identifier = '${ligand.ligid}'`)
                 .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`));
+            if(dataSources.associatedTargetTCRDID){
+                query.andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.target_id = ${dataSources.associatedTargetTCRDID}`));
+            }
             return query.then(rows => {
                 for (let i = 0; i < rows.length; i++) {
                     rows[i].parent = ligand;
