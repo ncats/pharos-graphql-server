@@ -63,19 +63,8 @@ const resolvers = {
 
         target: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getTarget(args.q);
-            let startTime;
-            let queryName = 'target query';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 dataSources.associatedTargetTCRDID = rows[0].id;
-                console.log('returning target query,' + performance.now());
                 if (rows) return rows[0];
                 return rows;
             }).catch(function (error) {
@@ -242,16 +231,6 @@ const resolvers = {
     Target: {
         interactingViruses: async function (target, args, {dataSources}) {
             let query = Virus.getQuery(dataSources.tcrd.db, target.tcrdid);
-            let startTime;
-            let queryName = 'interacting viruses';
-            query.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return query.then(rows => {
                 return Virus.parseResult(rows);
             });
@@ -263,16 +242,6 @@ const resolvers = {
 
         xrefs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getXrefsForTarget(target);
-            let startTime;
-            let queryName = 'xrefs';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 if (args.source !== "")
                     return filter(rows, {source: args.source});
@@ -283,18 +252,7 @@ const resolvers = {
         },
 
         props: async function (target, args, {dataSources}) {
-            console.log('reached props - ' + args.name + ',' + performance.now());
             const q = dataSources.tcrd.getPropsForTarget(target);
-            let startTime;
-            let queryName = 'props - ' + target.tcrdid + ' - ' + args.name;
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-            console.log('starting props - ' + args.name + ',' + performance.now());
             return q.then(rows => {
                 if (args.name !== "" && args.name !== "*") {
                     rows = filter(rows, {itype: args.name});
@@ -333,16 +291,6 @@ const resolvers = {
 
         synonyms: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getSynonymsForTarget(target);
-            let startTime;
-            let queryName = 'synonyms';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 if (args.name !== "") {
                     return filter(rows, x => {
@@ -362,16 +310,6 @@ const resolvers = {
 
         pubCount: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPubCountForTarget(target);
-            let startTime;
-            let queryName = 'pubCount';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 if (rows) return rows[0].cnt;
                 return 0;
@@ -382,16 +320,6 @@ const resolvers = {
 
         pubs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPubsForTarget(target, args);
-            let startTime;
-            let queryName = 'pubs';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -401,16 +329,6 @@ const resolvers = {
 
         generifCount: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getGeneRIFCount(target);
-            let startTime;
-            let queryName = 'generifCount';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 if (rows) return rows[0].cnt;
                 return 0;
@@ -421,16 +339,6 @@ const resolvers = {
 
         generifs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getGeneRIFs(target, args);
-            let startTime;
-            let queryName = 'generifs';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -440,16 +348,6 @@ const resolvers = {
 
         ppiCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPPICountsForTarget(target, args);
-            let startTime;
-            let queryName = 'ppiCounts';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 let returnArray = [];
                 let total = 0;
@@ -476,16 +374,6 @@ const resolvers = {
 
         ppis: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPPIsForTarget(target, args);
-            let startTime;
-            let queryName = 'ppis';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -514,16 +402,6 @@ const resolvers = {
             AND (ncats_ppi.protein_id = t2tc.protein_id
             AND ncats_ppi.other_id = (select id from protein where match(uniprot,sym,stringid) against(? in boolean mode)))`,
                     [target.tcrdid, dataSources.associatedTarget]));
-            let startTime;
-            let queryName = 'ppiDetails';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows[0];
             });
@@ -533,16 +411,6 @@ const resolvers = {
                 return null;
             }
             const q = DiseaseList.getAssociationDetails(dataSources.tcrd.db, dataSources.associatedDisease, target.tcrdid);
-            let startTime;
-            let queryName = 'disease assoc';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             });
@@ -553,16 +421,6 @@ const resolvers = {
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
             const q = diseaseList.getAssociatedTargetQuery();
-            let startTime;
-            let queryName = 'disease Counts';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then( rows => {
                 rows.forEach(x => {
                     x.value = x.associationCount;
@@ -577,16 +435,6 @@ const resolvers = {
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
             const q = diseaseList.getAssociatedTargetQuery();
-            let startTime;
-            let queryName = 'diseases';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             if(args.top){
                 q.limit(args.top);
             }
@@ -605,16 +453,6 @@ const resolvers = {
 
         patentCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPatentCounts(target, args);
-            let startTime;
-            let queryName = 'patentCounts';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -623,16 +461,6 @@ const resolvers = {
         },
         pubTatorScores: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPubTatorScores(target, args);
-            let startTime;
-            let queryName = 'pubTator';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -641,16 +469,6 @@ const resolvers = {
         },
         pubmedScores: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPubMedScores(target, args);
-            let startTime;
-            let queryName = 'pubmed';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -660,16 +478,6 @@ const resolvers = {
 
         pantherPaths: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPanther(target);
-            let startTime;
-            let queryName = 'panther';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 let classes = {};
                 let children = {};
@@ -712,16 +520,6 @@ const resolvers = {
 
         pantherClasses: async function (target, _, {dataSources}) {
             const q = dataSources.tcrd.getPanther(target);
-            let startTime;
-            let queryName = 'panther Classes';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 let classes = [];
                 for (var i in rows) {
@@ -750,16 +548,6 @@ const resolvers = {
 
         pathwayCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPathwayCounts(target);
-            let startTime;
-            let queryName = 'pathway counts';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -768,16 +556,6 @@ const resolvers = {
         },
         pathways: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPathways(target, args);
-            let startTime;
-            let queryName = 'pathways';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -787,16 +565,6 @@ const resolvers = {
 
         locsigs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getLocSigsForTarget(target);
-            let startTime;
-            let queryName = 'locsigs';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -806,16 +574,6 @@ const resolvers = {
 
         lincsCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getLINCSCountsForTarget(target);
-            let startTime;
-            let queryName = 'lincs counts';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -824,16 +582,6 @@ const resolvers = {
         },
         lincs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getLINCSForTarget(target, args);
-            let startTime;
-            let queryName = 'lincs';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -843,16 +591,6 @@ const resolvers = {
 
         kegg: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getKeggDistancesForTarget(target, args);
-            let startTime;
-            let queryName = 'kegg';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -862,16 +600,6 @@ const resolvers = {
 
         expressionCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getExpressionCountsForTarget(target);
-            let startTime;
-            let queryName = 'expression counts';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -880,16 +608,6 @@ const resolvers = {
         },
         expressions: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getExpressionsForTarget(target, args);
-            let startTime;
-            let queryName = 'expressions';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows.map(x => {
                     if (x.number_value)
@@ -907,16 +625,6 @@ const resolvers = {
 
         orthologCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologCountsForTarget(target);
-            let startTime;
-            let queryName = 'ortholog counts';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -925,16 +633,6 @@ const resolvers = {
         },
         orthologs: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologsForTarget(target, args);
-            let startTime;
-            let queryName = 'orthologs';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows.map(x => {
                     if (x.sources) {
@@ -949,16 +647,6 @@ const resolvers = {
 
         gwasCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getGWASCountsForTarget(target);
-            let startTime;
-            let queryName = 'gwas counts';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -967,16 +655,6 @@ const resolvers = {
         },
         gwas: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getGWASForTarget(target, args);
-            let startTime;
-            let queryName = 'gwas';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 rows.forEach(x => {
                     let snps = x._snps.split(';');
@@ -1018,16 +696,6 @@ const resolvers = {
 
         mimCount: async function (target, _, {dataSources}) {
             const q = dataSources.tcrd.getMIMCountForTarget(target);
-            let startTime;
-            let queryName = 'mimCount';
-            q.on('query', (data) => {
-                startTime = performance.now();
-            })
-                .on('query-response', (data) => {
-                    let endTime = performance.now();
-                    console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                });
-
             return q.then(rows => {
                 if (rows) return rows[0].cnt;
                 return 0;
@@ -1054,16 +722,6 @@ const resolvers = {
             ligandArgs.filter.associatedTarget = target.uniprot;
             let ligandList = new LigandList(dataSources.tcrd, ligandArgs);
             ligandList.facetsToFetch = [ligandList.facetFactory.GetFacet(ligandList, "Type")];
-            let startTime;
-            let queryName = 'ligandCounts';
-            ligandList.getFacetQueries()[0].on('query', (data) => {
-                            startTime = performance.now();
-                        })
-                            .on('query-response', (data) => {
-                                let endTime = performance.now();
-                                console.log(queryName + ', ' + startTime + ', ' + endTime + ', ' + (endTime - startTime));
-                            });
-
             return ligandList.getFacetQueries()[0]
                 .then(results => {
                     return [{
