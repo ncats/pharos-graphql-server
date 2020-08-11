@@ -94,3 +94,7 @@ Here's what that looks like for our AWS server
         ```
         python tcrd-create-sorted-do-tree.py
         ```
+        * create mapping between generif and pubmed to speed that up
+        ```
+        python tcrd-create-generif-pubmed-map.py
+        ```
