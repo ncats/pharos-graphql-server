@@ -64,6 +64,7 @@ const resolvers = {
         target: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getTarget(args.q);
             return q.then(rows => {
+                dataSources.associatedTargetTCRDID = rows[0].id;
                 if (rows) return rows[0];
                 return rows;
             }).catch(function (error) {
@@ -237,17 +238,6 @@ const resolvers = {
 
         dto: async function (target, args, {dataSources}) {
             return dataSources.tcrd.getDTO(target);
-
-            let nodes = [];
-            if (target.dtoid) {
-                //console.log('~~~~~ target: ' + target.tcrdid + ' ' + target.dtoid);
-                let n = dataSources.tcrd.dto[target.dtoid];
-                while (n) {
-                    nodes.push(n);
-                    n = n.parent;
-                }
-            }
-            return nodes;
         },
 
         xrefs: async function (target, args, {dataSources}) {
@@ -1308,6 +1298,9 @@ const resolvers = {
                 })
                 .whereRaw(`ncats_ligands.identifier = '${ligand.ligid}'`)
                 .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`));
+            if(dataSources.associatedTargetTCRDID){
+                query.andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.target_id = ${dataSources.associatedTargetTCRDID}`));
+            }
             return query.then(rows => {
                 for (let i = 0; i < rows.length; i++) {
                     rows[i].parent = ligand;

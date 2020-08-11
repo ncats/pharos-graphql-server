@@ -745,20 +745,13 @@ order by years desc, pubmed_ids desc limit ? offset ?`,
 
     getPubsForGeneRIF(generif) {
         //console.log('>>> getPubsForGeneRIF: '+generif.rifid);
-        return this.db.select(this.db.raw(`
-pubmed_ids from generif where id = ?`, [generif.rifid]))
-            .then(rows => {
-                let pubs = [];
-                for (var i in rows) {
-                    let toks = rows[i].pubmed_ids.split('|');
-                    for (var j in toks) {
-                        pubs.push(parseInt(toks[j]));
-                    }
-                }
-                return this.db.select(this.db.raw(`
-id as pmid, title, journal, date, abstract
-from pubmed`)).whereIn('id', pubs);
-            });
+
+        let q = this.db({pubmed:'pubmed', ncats_generif_pubmed_map:'ncats_generif_pubmed_map'})
+            .select({pmid:'id', title:'title', journal:'journal', date:'date', abstract:'abstract'})
+            .where('ncats_generif_pubmed_map.generif_id', generif.rifid)
+            .andWhere(this.db.raw('pubmed.id = ncats_generif_pubmed_map.pubmed_id'));
+        return q;
+
     }
 
     getPPICountsForTarget(target, args) {

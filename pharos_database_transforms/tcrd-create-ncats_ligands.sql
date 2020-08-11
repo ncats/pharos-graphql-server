@@ -82,6 +82,7 @@ CREATE TABLE `ncats_ligand_activity`
     UNIQUE KEY `id_UNIQUE` (`id`),
     KEY `fk_ncats_ligand_activity_target_idx` (`target_id`),
     KEY `fk_ncats_ligand_activity_ligand_idx` (`ncats_ligand_id`),
+    KEY `ligand_target_idx` (`target_id`,`ncats_ligand_id`),
     CONSTRAINT `fk_ncats_ligand_activity_ligand` FOREIGN KEY (`ncats_ligand_id`) REFERENCES `ncats_ligands` (`id`),
     CONSTRAINT `fk_ncats_ligand_activity_target` FOREIGN KEY (`target_id`) REFERENCES `target` (`id`)
 ) ENGINE = InnoDB
