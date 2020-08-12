@@ -3,6 +3,8 @@ import {DataModelList} from "../DataModelList";
 import {FacetInfo} from "../FacetInfo";
 import {FacetFactory} from "../FacetFactory";
 import {DiseaseList} from "../disease/diseaseList";
+// @ts-ignore
+import * as CONSTANTS from "../../constants";
 
 export class TargetFacetFactory extends FacetFactory{
 
@@ -180,13 +182,15 @@ export class TargetFacetFactory extends FacetFactory{
                     ...partialReturn,
                     dataTable: "viral_protein",
                     dataColumn: "ncbi",
+                    whereClause: `viral_ppi.finalLR >= ${CONSTANTS.VIRAL_LR_CUTOFFF}`,
                     select: `concat(viral_protein.name, ' (', virus.name, ')')`
                 } as FacetInfo);
             case TargetFacetType["Interacting Virus"]:
                 return new FacetInfo({
                     ...partialReturn,
                     dataTable: "virus",
-                    dataColumn: "name"
+                    dataColumn: "name",
+                    whereClause: `viral_ppi.finalLR >= ${CONSTANTS.VIRAL_LR_CUTOFFF}`
                 } as FacetInfo);
         }
         return this.unknownFacet();
