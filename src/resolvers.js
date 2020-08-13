@@ -1340,7 +1340,6 @@ const resolvers = {
                 let query = dataSources.tcrd.db('ncats_ligands')
                     .select(['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral'])
                     .where('identifier', ligand.ligid);
-                console.log(query.toString());
                 return query.then(rows => {
                     return parser(rows[0]);
                 })
