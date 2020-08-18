@@ -1011,6 +1011,32 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
+        },
+
+        tinx: async function (disease, args, {dataSources}){
+            let query = DiseaseList.getTinxQuery(dataSources.tcrd.db, disease.name);
+            return query.then(rows => {
+                let associationMap = new Map();
+                for(let i = 0 ; i < rows.length ; i++){
+                    if(associationMap.has(rows[i].targetID)){
+                        let details = associationMap.get(rows[i].targetID).details;
+                        details.push({doid: rows[i].doid, diseaseName: rows[i].name, importance: rows[i].importance});
+                    }
+                    else{
+                        let association = {};
+                        association.targetID = rows[i].targetID;
+                        association.targetName = rows[i].targetName;
+                        association.novelty = rows[i].novelty;
+                        association.tdl = rows[i].tdl;
+                        association.details = [];
+                        association.details.push({doid: rows[i].doid, diseaseName: rows[i].name, importance: rows[i].importance});
+                        associationMap.set(rows[i].targetID, association);
+                    }
+                }
+                return associationMap.values();
+            }).catch(function (error) {
+                console.error(error);
+            });
         }
     },
 
