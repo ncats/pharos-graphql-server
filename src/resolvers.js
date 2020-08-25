@@ -1,3 +1,4 @@
+const {FacetDataType} = require("./models/FacetInfo");
 const {LigandList} = require("./models/ligand/ligandList");
 const {DiseaseList} = require("./models/disease/diseaseList");
 const {TargetList} = require("./models/target/targetList");
@@ -1155,6 +1156,9 @@ const resolvers = {
                     return matched;
                 });
             }
+            if(facet.dataType == "Numeric"){
+                return values;
+            }
             return slice(values, args.skip, args.top + args.skip);
         }
     },
@@ -1429,7 +1433,12 @@ function getTargetResult(args, dataSources) {
                 if (targetList.facetsToFetch[i].valuesDelimited) {
                     rowData = splitOnDelimiters(rows[i]);
                 }
+                if (targetList.facetsToFetch[i].dataType == FacetDataType.numeric){
+                    rowData = rowData.map(p => {p.name = p.bin; return p})
+                }
                 facets.push({
+                    dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
+                    binSize: targetList.facetsToFetch[i].binSize,
                     facet: targetList.facetsToFetch[i].type,
                     count: rowData.length,
                     values: rowData,

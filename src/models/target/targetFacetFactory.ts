@@ -1,6 +1,6 @@
 import {TargetFacetType} from "./targetFacetType";
 import {DataModelList} from "../DataModelList";
-import {FacetInfo} from "../FacetInfo";
+import {FacetDataType, FacetInfo} from "../FacetInfo";
 import {FacetFactory} from "../FacetFactory";
 import {DiseaseList} from "../disease/diseaseList";
 // @ts-ignore
@@ -191,6 +191,25 @@ export class TargetFacetFactory extends FacetFactory{
                     dataTable: "virus",
                     dataColumn: "name",
                     whereClause: `viral_ppi.finalLR >= ${CONSTANTS.VIRAL_LR_CUTOFFF}`
+                } as FacetInfo);
+            case TargetFacetType["Log Novelty"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "tinx_novelty",
+                    dataColumn: "score",
+                    log: true,
+                    binSize: 0.5,
+                    dataType: FacetDataType.numeric
+                } as FacetInfo);
+            case TargetFacetType["Log PubMed Score"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "tdl_info",
+                    dataColumn: "number_value",
+                    log: true,
+                    binSize: 0.5,
+                    dataType: FacetDataType.numeric,
+                    whereClause: `itype = 'JensenLab PubMed Score'`
                 } as FacetInfo);
         }
         return this.unknownFacet();

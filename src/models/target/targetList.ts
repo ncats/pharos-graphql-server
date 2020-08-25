@@ -234,6 +234,8 @@ ON diseaseList.name = d.ncats_name`));
         'Target Development Level',
         'IDG Target Lists',
         'Family',
+        'Log Novelty',
+        'Log PubMed Score',
         'Interacting Virus',
         'Interacting Viral Protein (Virus)',
         "JAX/MGI Phenotype",

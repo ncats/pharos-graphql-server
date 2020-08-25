@@ -9,6 +9,11 @@ enum CacheControlScope {
 }
 ##
 
+enum FacetDataType {
+     Category
+     Numeric
+}
+
 type Xref @cacheControl(maxAge: 604800) {
      source: String!
      name: String!
@@ -45,6 +50,8 @@ type Facet @cacheControl(maxAge: 604800) {
      facet: String!
      count: Int
      values (skip: Int=0, top: Int=20, name: String): [IntProp]
+     dataType: FacetDataType
+     binSize: Float
      sql: String
      elapsedTime: Float
 }

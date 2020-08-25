@@ -37,5 +37,7 @@ export enum TargetFacetType {
     "Disease Data Source",
     "Linked Disease",
     "Interacting Viral Protein (Virus)",
-    "Interacting Virus"
+    "Interacting Virus",
+    "Log Novelty",
+    "Log PubMed Score"
 }
