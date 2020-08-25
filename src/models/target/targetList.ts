@@ -223,6 +223,8 @@ ON diseaseList.name = d.ncats_name`));
 
     DefaultPPIFacets = [
         "PPI Data Source",
+        "StringDB Interaction Score",
+        "BioPlex Interaction Probability",
         ...this.assocationFacets];
 
     DefaultDiseaseFacets = [

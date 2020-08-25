@@ -107,6 +107,9 @@ export class FacetInfo {
             if (this.log) {
                 query.where(this.dataString(), ">", 0);
             }
+            else{
+                query.whereNotNull(this.dataString());
+            }
             query.groupBy('bin');
             this.parent.captureQueryPerformance(query, this.type);
             return query;

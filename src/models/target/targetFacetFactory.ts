@@ -211,6 +211,27 @@ export class TargetFacetFactory extends FacetFactory{
                     dataType: FacetDataType.numeric,
                     whereClause: `itype = 'JensenLab PubMed Score'`
                 } as FacetInfo);
+            case TargetFacetType["StringDB Interaction Score"]:
+                if(!parent.associatedTarget) { return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "ncats_ppi",
+                    dataColumn: "score",
+                    binSize: .02,
+                    select: "score / 1000",
+                    dataType: FacetDataType.numeric,
+                    whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.associatedTarget}' in boolean mode))`
+                } as FacetInfo);
+            case TargetFacetType["BioPlex Interaction Probability"]:
+                if(!parent.associatedTarget) { return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "ncats_ppi",
+                    dataColumn: "p_int",
+                    binSize: 0.01,
+                    dataType: FacetDataType.numeric,
+                    whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.associatedTarget}' in boolean mode))`
+                } as FacetInfo);
         }
         return this.unknownFacet();
     }

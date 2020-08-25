@@ -39,5 +39,7 @@ export enum TargetFacetType {
     "Interacting Viral Protein (Virus)",
     "Interacting Virus",
     "Log Novelty",
-    "Log PubMed Score"
+    "Log PubMed Score",
+    "StringDB Interaction Score",
+    "BioPlex Interaction Probability"
 }
