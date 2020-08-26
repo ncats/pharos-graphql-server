@@ -41,5 +41,9 @@ export enum TargetFacetType {
     "Log Novelty",
     "Log PubMed Score",
     "StringDB Interaction Score",
-    "BioPlex Interaction Probability"
+    "BioPlex Interaction Probability",
+    "JensenLab TextMining zscore",
+    "JensenLab Confidence",
+    "Expression Atlas Log2 Fold Change",
+    "DisGeNET Score"
 }

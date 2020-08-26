@@ -232,6 +232,47 @@ export class TargetFacetFactory extends FacetFactory{
                     dataType: FacetDataType.numeric,
                     whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.associatedTarget}' in boolean mode))`
                 } as FacetInfo);
+            case TargetFacetType["JensenLab TextMining zscore"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "zscore",
+                    binSize: 0.1,
+                    dataType: FacetDataType.numeric,
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
+                } as FacetInfo);
+            case TargetFacetType["JensenLab Confidence"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "conf",
+                    binSize: 0.1,
+                    dataType: FacetDataType.numeric,
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
+                } as FacetInfo);
+            case TargetFacetType["Expression Atlas Log2 Fold Change"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "log2foldchange",
+                    binSize: 0.5,
+                    dataType: FacetDataType.numeric,
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
+                } as FacetInfo);
+
+            case TargetFacetType["DisGeNET Score"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "score",
+                    binSize: 0.02,
+                    dataType: FacetDataType.numeric,
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
+                } as FacetInfo);
         }
         return this.unknownFacet();
     }
