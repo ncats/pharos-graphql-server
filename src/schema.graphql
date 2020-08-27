@@ -48,6 +48,7 @@ type TemporalScore @cacheControl(maxAge: 604800) {
 
 type Facet @cacheControl(maxAge: 604800) {
      facet: String!
+     modifier: String
      count: Int
      values (skip: Int=0, top: Int=20, name: String): [IntProp]
      dataType: FacetDataType

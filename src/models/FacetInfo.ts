@@ -7,6 +7,7 @@ export enum FacetDataType {
 
 export class FacetInfo {
     type: string;
+    typeModifier: string;
     dataTable: string;
     dataColumn: string;
     countColumn: string; // for precalculated tables
@@ -26,6 +27,7 @@ export class FacetInfo {
         this.binSize = obj.binSize || 1;
         this.log = obj.log || false;
         this.type = obj.type || "";
+        this.typeModifier = obj.typeModifier || "";
         this.dataTable = obj.dataTable || "";
         this.dataColumn = obj.dataColumn || "";
         this.countColumn = obj.countColumn || "";
@@ -60,8 +62,8 @@ export class FacetInfo {
         return {
             min: scrubText(pieces[0]),
             max: scrubText(pieces[1]),
-            includeLower: pieces[0].includes('(') ? false : true,
-            includeUpper: pieces[1].includes(']') ? true : false
+            includeLower: pieces[0].includes('(') ? false : true, // default is to include the lower bound, unless overriden, because that's how a histogram would work
+            includeUpper: pieces[1].includes(']') ? true : false // default is to exclude the upper bound, unless overriden
         };
     }
 

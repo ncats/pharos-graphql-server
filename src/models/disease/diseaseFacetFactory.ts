@@ -23,16 +23,30 @@ export class DiseaseFacetFactory extends FacetFactory {
                 return new FacetInfo({
                     ...partialReturn,
                     dataTable: "disease",
-                    dataColumn: "dtype"
+                    dataColumn: "dtype",
+                    typeModifier: parent.associatedTarget,
+                    whereClause: this.getdiseaseWhereClause(parent.associatedTarget)
                 } as FacetInfo);
             case DiseaseFacetType.Drug:
                 return new FacetInfo({
                     ...partialReturn,
                     dataTable: "disease",
                     dataColumn: "drug_name",
-                    whereClause: "drug_name is not null"
+                    typeModifier: parent.associatedTarget,
+                    whereClause: this.getdiseaseWhereClause(parent.associatedTarget, "drug_name is not null")
                 } as FacetInfo);
         }
         return this.unknownFacet();
+    }
+
+    getdiseaseWhereClause(sym: string, extraClause?: string){
+        if (!sym) {
+            return extraClause;
+        }
+        let baseClause = `disease.protein_id = (select id from protein where MATCH (uniprot , sym , stringid) AGAINST ('${sym}' IN BOOLEAN MODE))`;
+        if(extraClause) {
+            return `${baseClause} and ${extraClause}`;
+        }
+        return baseClause;
     }
 }

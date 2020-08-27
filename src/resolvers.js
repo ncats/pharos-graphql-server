@@ -1443,6 +1443,7 @@ function getTargetResult(args, dataSources) {
                     dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                     binSize: targetList.facetsToFetch[i].binSize,
                     facet: targetList.facetsToFetch[i].type,
+                    modifier: targetList.facetsToFetch[i].typeModifier,
                     count: rowData.length,
                     values: rowData,
                     sql: facetQueries[i].toString(),
@@ -1471,6 +1472,7 @@ function getDiseaseResult(args, tcrd) {
         for (var i in rows) {
             facets.push({
                 facet: diseaseList.facetsToFetch[i].type,
+                modifier: diseaseList.facetsToFetch[i].typeModifier,
                 count: rows[i].length,
                 values: rows[i]
             })
@@ -1515,9 +1517,18 @@ function getLigandResult(args, tcrd) {
         let count = rows.shift()[0].count;
         let facets = [];
         for (var i in rows) {
-            let rowData = splitOnDelimiters(rows[i]);
+            let rowData = rows[i];
+            if (ligandList.facetsToFetch[i].valuesDelimited) {
+                rowData = splitOnDelimiters(rows[i]);
+            }
+            if (ligandList.facetsToFetch[i].dataType == FacetDataType.numeric) {
+                rowData = rowData.map(p => {p.name = p.bin; return p})
+            }
             facets.push({
+                dataType: ligandList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
+                binSize: ligandList.facetsToFetch[i].binSize,
                 facet: ligandList.facetsToFetch[i].type,
+                modifier: ligandList.facetsToFetch[i].typeModifier,
                 count: rowData.length,
                 values: rowData,
                 sql: facetQueries[i].toString(),
