@@ -108,13 +108,10 @@ export class TargetFacetFactory extends FacetFactory{
                         whereClause: "phenotype.ptype = 'IMPC' and phenotype.p_value < 0.05"
                     } as FacetInfo);
                 }
-            case TargetFacetType["Expression: CCLE"]:
             case TargetFacetType["Expression: Cell Surface Protein Atlas"]:
             case TargetFacetType["Expression: Consensus"]:
-            case TargetFacetType["Expression: HCA RNA"]:
             case TargetFacetType["Expression: HPA"]:
             case TargetFacetType["Expression: HPM Gene"]:
-            case TargetFacetType["Expression: HPM Protein"]:
             case TargetFacetType["Expression: JensenLab Experiment Cardiac proteome"]:
             case TargetFacetType["Expression: JensenLab Experiment Exon array"]:
             case TargetFacetType["Expression: JensenLab Experiment GNF"]:
@@ -290,20 +287,14 @@ export class TargetFacetFactory extends FacetFactory{
                 return "F";
             case "GO Process":
                 return "P";
-            case "Expression: CCLE":
-                return "CCLE";
             case "Expression: Cell Surface Protein Atlas":
                 return "Cell Surface Protein Atlas";
             case "Expression: Consensus":
                 return "Consensus";
-            case "Expression: HCA RNA":
-                return "HCA RNA";
             case "Expression: HPA":
                 return "HPA";
             case "Expression: HPM Gene":
                 return "HPM Gene";
-            case "Expression: HPM Protein":
-                return "HPM Protein";
             case "Expression: JensenLab Experiment Cardiac proteome":
                 return "JensenLab Experiment Cardiac proteome";
             case "Expression: JensenLab Experiment Exon array":

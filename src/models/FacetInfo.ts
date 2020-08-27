@@ -47,9 +47,9 @@ export class FacetInfo {
 
     numericBounds() {
         const scrubText = function (text: string): number | null {
-            if(!text) return null;
+            if (!text) return null;
             let retVal = text.replace(/[^0-9|\-|\.]/g, '');
-            if(!retVal) return null;
+            if (!retVal) return null;
             return +retVal;
         };
 
@@ -57,7 +57,12 @@ export class FacetInfo {
             return null;
         }
         let pieces = this.allowedValues[0].split(',');
-        return {min: scrubText(pieces[0]), max: scrubText(pieces[1])};
+        return {
+            min: scrubText(pieces[0]),
+            max: scrubText(pieces[1]),
+            includeLower: pieces[0].includes('(') ? false : true,
+            includeUpper: pieces[1].includes(']') ? true : false
+        };
     }
 
     getFacetConstraintQuery() {
@@ -67,10 +72,10 @@ export class FacetInfo {
             const bounds = this.numericBounds();
             if (bounds) {
                 if (bounds.min !== null) {
-                    query.where(this.parent.database.raw(this.select), ">=", bounds.min);
+                    query.where(this.parent.database.raw(this.select), (bounds.includeLower ? ">=" : ">"), bounds.min);
                 }
                 if (bounds.max !== null) {
-                    query.where(this.parent.database.raw(this.select), "<=", bounds.max);
+                    query.where(this.parent.database.raw(this.select), (bounds.includeUpper ? "<=" : "<"), bounds.max);
                 }
             }
         } else {
@@ -106,8 +111,7 @@ export class FacetInfo {
             }
             if (this.log) {
                 query.where(this.dataString(), ">", 0);
-            }
-            else{
+            } else {
                 query.whereNotNull(this.dataString());
             }
             query.groupBy('bin');

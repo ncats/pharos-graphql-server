@@ -13,9 +13,6 @@ export enum TargetFacetType {
     "GO Component",
     "GO Function",
     "GWAS",
-    "Expression: CCLE",//useless
-    "Expression: HCA RNA",//useless
-    "Expression: HPM Protein",//useless
     "Expression: HPA",
     "Expression: JensenLab Experiment HPA",
     "Expression: HPM Gene",
