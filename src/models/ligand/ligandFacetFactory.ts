@@ -50,7 +50,7 @@ export class LigandFacetFactory extends FacetFactory {
                         typeModifier: parent.associatedTarget,
                         dataTable: "ncats_ligand_activity",
                         dataColumn: "act_value",
-                        binSize: 0.2,
+                        binSize: 0.1,
                         dataType: FacetDataType.numeric,
                         whereClause: this.getActivityWhereClause(parent.associatedTarget, `act_type = '${typeName}'`)
                     } as FacetInfo);
