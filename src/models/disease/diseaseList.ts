@@ -28,6 +28,28 @@ export class DiseaseList extends DataModelList {
         return query;
     }
 
+    static getTinxQuery(knex: any, diseaseName: string) {
+        let doidList = knex("disease")
+            .distinct('did')
+            .whereIn('ncats_name', DiseaseList.getDescendentsQuery(knex, diseaseName));
+        let tinxQuery = knex({target: "target", t2tc:"t2tc", tinx_novelty:"tinx_novelty", tinx_importance:"tinx_importance", tinx_disease:"tinx_disease"})
+            .select({
+                targetID: 'target.id',
+                targetName: 'target.name',
+                tdl: 'target.tdl',
+                novelty:knex.raw('(tinx_novelty.score)'),
+                doid:knex.raw('(tinx_disease.doid)'),
+                name:knex.raw('(tinx_disease.name)'),
+                importance:knex.raw('(tinx_importance.score)')
+            })
+            .join(doidList.as('idList'), 'idList.did', 'tinx_disease.doid')
+            .where(knex.raw('tinx_importance.disease_id = tinx_disease.id'))
+            .andWhere(knex.raw('tinx_importance.protein_id = t2tc.protein_id'))
+            .andWhere(knex.raw('tinx_importance.protein_id = tinx_novelty.protein_id'))
+            .andWhere(knex.raw('t2tc.target_id = target.id'));
+        return tinxQuery;
+    }
+
     constructor(tcrd: any, json: any) {
         super(tcrd, "disease", "ncats_name", new DiseaseFacetFactory(), json);
 

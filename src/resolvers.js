@@ -1,3 +1,4 @@
+const {FacetDataType} = require("./models/FacetInfo");
 const {LigandList} = require("./models/ligand/ligandList");
 const {DiseaseList} = require("./models/disease/diseaseList");
 const {TargetList} = require("./models/target/targetList");
@@ -64,8 +65,11 @@ const resolvers = {
         target: async function (_, args, {dataSources}) {
             const q = dataSources.tcrd.getTarget(args.q);
             return q.then(rows => {
-                dataSources.associatedTargetTCRDID = rows[0].id;
-                if (rows) return rows[0];
+                if (rows) {
+                    if(rows.length > 0){
+                        dataSources.associatedTargetTCRDID = rows[0].id;
+                    }
+                    return rows[0];}
                 return rows;
             }).catch(function (error) {
                 console.error(error);
@@ -421,7 +425,7 @@ const resolvers = {
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
             const q = diseaseList.getAssociatedTargetQuery();
-            return q.then( rows => {
+            return q.then(rows => {
                 rows.forEach(x => {
                     x.value = x.associationCount;
                 });
@@ -435,10 +439,10 @@ const resolvers = {
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
             const q = diseaseList.getAssociatedTargetQuery();
-            if(args.top){
+            if (args.top) {
                 q.limit(args.top);
             }
-            if(args.skip){
+            if (args.skip) {
                 q.offset(args.skip);
             }
             return q.then(rows => {
@@ -750,7 +754,7 @@ const resolvers = {
             if (ligandArgs.isdrug) {
                 ligandArgs.filter.facets.push({facet: "Type", values: ["Drug"]});
             }
-            else{
+            else {
                 ligandArgs.filter.facets.push({facet: "Type", values: ["Ligand"]});
             }
             return new LigandList(dataSources.tcrd, ligandArgs).getListQuery()
@@ -906,13 +910,13 @@ const resolvers = {
                 console.error(error);
             });
         },
-        uniprotDescription: async function (disease, args, {dataSources}){
+        uniprotDescription: async function (disease, args, {dataSources}) {
             const q = dataSources.tcrd.db('disease')
                 .select('description')
                 .whereRaw(`ncats_name = "${disease.name}" and dtype = "UniProt Disease"`)
                 .limit(1);
             return q.then(rows => {
-                if(rows.length){
+                if (rows.length) {
                     return rows[0].description;
                 }
                 return '';
@@ -920,13 +924,13 @@ const resolvers = {
                 console.error(error);
             });
         },
-        doDescription: async function (disease, args, {dataSources}){
-            const q = dataSources.tcrd.db({disease:'disease', do:'do'})
+        doDescription: async function (disease, args, {dataSources}) {
+            const q = dataSources.tcrd.db({disease: 'disease', do: 'do'})
                 .select({description: 'do.def'})
                 .whereRaw(`ncats_name = "${disease.name}" and do.doid = disease.did`)
                 .limit(1);
             return q.then(rows => {
-                if(rows.length){
+                if (rows.length) {
                     return rows[0].description;
                 }
                 return '';
@@ -934,15 +938,20 @@ const resolvers = {
                 console.error(error);
             });
         },
-        dids: async function (disease, args, {dataSources}){
+        dids: async function (disease, args, {dataSources}) {
             const q = dataSources.tcrd.db('disease')
-                .select({dataSources: dataSources.tcrd.db.raw(`group_concat(distinct dtype)`), id:'did', doName: 'do.name', doDefinition: 'do.def'})
-                .leftJoin('do','disease.did','do.doid')
+                .select({
+                    dataSources: dataSources.tcrd.db.raw(`group_concat(distinct dtype)`),
+                    id: 'did',
+                    doName: 'do.name',
+                    doDefinition: 'do.def'
+                })
+                .leftJoin('do', 'disease.did', 'do.doid')
                 .whereRaw(`disease.ncats_name = "${disease.name}"`)
                 .whereNotNull('disease.did')
                 .groupBy('did');
             return q.then(rows => {
-                for(let i = 0 ; i < rows.length ; i++){
+                for (let i = 0; i < rows.length; i++) {
                     rows[i].dataSources = rows[i].dataSources.split(',');
                 }
                 return rows;
@@ -977,32 +986,58 @@ const resolvers = {
                 console.error(error);
             });
         },
-        parents: async function(disease, args, {dataSources}){
-            let query = dataSources.tcrd.db({do_child:'do',relationship:'do_parent',do_par:'do'})
+        parents: async function (disease, args, {dataSources}) {
+            let query = dataSources.tcrd.db({do_child: 'do', relationship: 'do_parent', do_par: 'do'})
                 .select(dataSources.tcrd.db.raw(`do_par.name, count(distinct protein_id) as 'associationCount'`))
-                .leftJoin('disease','disease.ncats_name','do_par.name')
+                .leftJoin('disease', 'disease.ncats_name', 'do_par.name')
                 .whereRaw(`do_child.name = "${disease.name}"`)
                 .whereRaw('do_child.doid = relationship.doid')
                 .whereRaw('do_par.doid = relationship.parent_id')
                 .groupBy('name')
-                .orderBy('associationCount','desc');
+                .orderBy('associationCount', 'desc');
             return query.then(rows => {
                 return rows;
             }).catch(function (error) {
                 console.error(error);
             });
         },
-        children: async function(disease, args, {dataSources}){
-            let query = dataSources.tcrd.db({do_par:'do',relationship:'do_parent',do_child:'do'})
+        children: async function (disease, args, {dataSources}) {
+            let query = dataSources.tcrd.db({do_par: 'do', relationship: 'do_parent', do_child: 'do'})
                 .select(dataSources.tcrd.db.raw(`do_child.name, count(distinct protein_id) as 'associationCount'`))
-                .leftJoin('disease','disease.ncats_name','do_child.name')
+                .leftJoin('disease', 'disease.ncats_name', 'do_child.name')
                 .whereRaw(`do_par.name = "${disease.name}"`)
                 .whereRaw('do_child.doid = relationship.doid')
                 .whereRaw('do_par.doid = relationship.parent_id')
                 .groupBy('name')
-                .orderBy('associationCount','desc');
+                .orderBy('associationCount', 'desc');
             return query.then(rows => {
                 return rows;
+            }).catch(function (error) {
+                console.error(error);
+            });
+        },
+
+        tinx: async function (disease, args, {dataSources}){
+            let query = DiseaseList.getTinxQuery(dataSources.tcrd.db, disease.name);
+            return query.then(rows => {
+                let associationMap = new Map();
+                for(let i = 0 ; i < rows.length ; i++){
+                    if(associationMap.has(rows[i].targetID)){
+                        let details = associationMap.get(rows[i].targetID).details;
+                        details.push({doid: rows[i].doid, diseaseName: rows[i].name, importance: rows[i].importance});
+                    }
+                    else{
+                        let association = {};
+                        association.targetID = rows[i].targetID;
+                        association.targetName = rows[i].targetName;
+                        association.novelty = rows[i].novelty;
+                        association.tdl = rows[i].tdl;
+                        association.details = [];
+                        association.details.push({doid: rows[i].doid, diseaseName: rows[i].name, importance: rows[i].importance});
+                        associationMap.set(rows[i].targetID, association);
+                    }
+                }
+                return associationMap.values();
             }).catch(function (error) {
                 console.error(error);
             });
@@ -1012,13 +1047,21 @@ const resolvers = {
     DiseaseAssociation: {
         targetCounts: async function (disease, _, {dataSources}) { // TODO: this really doesn't belong here, it recalculates the same thing for all the associations, I left a stub so that it doesn't break with the client, please delete it, oh great and powerful future developer
             return resolvers.Disease.targetCounts(disease, _, {dataSources})
-                .then(rows => {return rows;})
-                .catch(function (error) {console.error(error);});
+                .then(rows => {
+                    return rows;
+                })
+                .catch(function (error) {
+                    console.error(error);
+                });
         },
         targets: async function (disease, args, {dataSources}) { // TODO: this too
-            return resolvers.Disease.targets(disease,args,{dataSources})
-                .then( rows=>{return rows;})
-                .catch(function (error) {console.error(error);});
+            return resolvers.Disease.targets(disease, args, {dataSources})
+                .then(rows => {
+                    return rows;
+                })
+                .catch(function (error) {
+                    console.error(error);
+                });
         }
     },
 
@@ -1116,6 +1159,9 @@ const resolvers = {
                     return matched;
                 });
             }
+            if(facet.dataType == "Numeric"){
+                return values;
+            }
             return slice(values, args.skip, args.top + args.skip);
         }
     },
@@ -1128,11 +1174,11 @@ const resolvers = {
             let q = new TargetList(dataSources.tcrd, args).getListQuery();
             //console.log(q.toString());
             return q.then(targets => {
-                    dataSources.listResults = targets;
-                    return targets;
-                }).catch(function (error) {
-                    console.error(error);
-                });
+                dataSources.listResults = targets;
+                return targets;
+            }).catch(function (error) {
+                console.error(error);
+            });
         }
     },
 
@@ -1298,7 +1344,7 @@ const resolvers = {
                 })
                 .whereRaw(`ncats_ligands.identifier = '${ligand.ligid}'`)
                 .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`));
-            if(dataSources.associatedTargetTCRDID){
+            if (dataSources.associatedTargetTCRDID) {
                 query.andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.target_id = ${dataSources.associatedTargetTCRDID}`));
             }
             return query.then(rows => {
@@ -1311,16 +1357,28 @@ const resolvers = {
             });
         },
         synonyms: async function (ligand, args, {dataSources}) {
-            if(ligand.synonyms){
-                return ligand.synonyms;
-            }
-            let synonyms = [];
-            for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
-                if (ligand[field]) {
-                    synonyms.push({name: field, value: ligand[field]});
+            const parser = function(row){
+                let synonyms = [];
+                for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
+                    if (row[field]) {
+                        synonyms.push({name: field, value: row[field]});
+                    }
                 }
+                synonyms.push({name: "LyCHI", value: ligand.ligid});
+                return synonyms;
+            };
+
+            let synonyms = [];
+            if (!ligand['PubChem'] && !ligand['Guide to Pharmacology'] && !ligand['ChEMBL'] && !ligand['DrugCentral']) {
+                let query = dataSources.tcrd.db('ncats_ligands')
+                    .select(['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral'])
+                    .where('identifier', ligand.ligid);
+                return query.then(rows => {
+                    return parser(rows[0]);
+                })
             }
-            return synonyms;
+            return parser(ligand);
+
         }
     },
 
@@ -1375,11 +1433,17 @@ function getTargetResult(args, dataSources) {
             let facets = [];
             for (var i in rows) {
                 let rowData = rows[i];
-                if(targetList.facetsToFetch[i].valuesDelimited){
+                if (targetList.facetsToFetch[i].valuesDelimited) {
                     rowData = splitOnDelimiters(rows[i]);
                 }
+                if (targetList.facetsToFetch[i].dataType == FacetDataType.numeric){
+                    rowData = rowData.map(p => {p.name = p.bin; return p})
+                }
                 facets.push({
+                    dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
+                    binSize: targetList.facetsToFetch[i].binSize,
                     facet: targetList.facetsToFetch[i].type,
+                    modifier: targetList.facetsToFetch[i].typeModifier,
                     count: rowData.length,
                     values: rowData,
                     sql: facetQueries[i].toString(),
@@ -1408,6 +1472,7 @@ function getDiseaseResult(args, tcrd) {
         for (var i in rows) {
             facets.push({
                 facet: diseaseList.facetsToFetch[i].type,
+                modifier: diseaseList.facetsToFetch[i].typeModifier,
                 count: rows[i].length,
                 values: rows[i]
             })
@@ -1452,9 +1517,18 @@ function getLigandResult(args, tcrd) {
         let count = rows.shift()[0].count;
         let facets = [];
         for (var i in rows) {
-            let rowData = splitOnDelimiters(rows[i]);
+            let rowData = rows[i];
+            if (ligandList.facetsToFetch[i].valuesDelimited) {
+                rowData = splitOnDelimiters(rows[i]);
+            }
+            if (ligandList.facetsToFetch[i].dataType == FacetDataType.numeric) {
+                rowData = rowData.map(p => {p.name = p.bin; return p})
+            }
             facets.push({
+                dataType: ligandList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
+                binSize: ligandList.facetsToFetch[i].binSize,
                 facet: ligandList.facetsToFetch[i].type,
+                modifier: ligandList.facetsToFetch[i].typeModifier,
                 count: rowData.length,
                 values: rowData,
                 sql: facetQueries[i].toString(),

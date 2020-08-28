@@ -1,8 +1,10 @@
 import {TargetFacetType} from "./targetFacetType";
 import {DataModelList} from "../DataModelList";
-import {FacetInfo} from "../FacetInfo";
+import {FacetDataType, FacetInfo} from "../FacetInfo";
 import {FacetFactory} from "../FacetFactory";
 import {DiseaseList} from "../disease/diseaseList";
+// @ts-ignore
+import * as CONSTANTS from "../../constants";
 
 export class TargetFacetFactory extends FacetFactory{
 
@@ -106,13 +108,13 @@ export class TargetFacetFactory extends FacetFactory{
                         whereClause: "phenotype.ptype = 'IMPC' and phenotype.p_value < 0.05"
                     } as FacetInfo);
                 }
-            case TargetFacetType["Expression: CCLE"]:
+            // case TargetFacetType["Expression: CCLE"]:
             case TargetFacetType["Expression: Cell Surface Protein Atlas"]:
             case TargetFacetType["Expression: Consensus"]:
-            case TargetFacetType["Expression: HCA RNA"]:
+            // case TargetFacetType["Expression: HCA RNA"]:
             case TargetFacetType["Expression: HPA"]:
             case TargetFacetType["Expression: HPM Gene"]:
-            case TargetFacetType["Expression: HPM Protein"]:
+            // case TargetFacetType["Expression: HPM Protein"]:
             case TargetFacetType["Expression: JensenLab Experiment Cardiac proteome"]:
             case TargetFacetType["Expression: JensenLab Experiment Exon array"]:
             case TargetFacetType["Expression: JensenLab Experiment GNF"]:
@@ -154,6 +156,7 @@ export class TargetFacetFactory extends FacetFactory{
                     ...partialReturn,
                     dataTable:"ncats_ppi",
                     dataColumn: "ppitypes",
+                    typeModifier: parent.associatedTarget,
                     whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.associatedTarget}' in boolean mode))`,
                     valuesDelimited: true
                 } as FacetInfo);
@@ -163,6 +166,7 @@ export class TargetFacetFactory extends FacetFactory{
                     ...partialReturn,
                     dataTable: "disease",
                     dataColumn: "dtype",
+                    typeModifier: parent.associatedDisease,
                     whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`,
                     // valuesDelimited: true
                 } as FacetInfo);
@@ -180,13 +184,102 @@ export class TargetFacetFactory extends FacetFactory{
                     ...partialReturn,
                     dataTable: "viral_protein",
                     dataColumn: "ncbi",
+                    whereClause: `viral_ppi.finalLR >= ${CONSTANTS.VIRAL_LR_CUTOFFF}`,
                     select: `concat(viral_protein.name, ' (', virus.name, ')')`
                 } as FacetInfo);
             case TargetFacetType["Interacting Virus"]:
                 return new FacetInfo({
                     ...partialReturn,
                     dataTable: "virus",
-                    dataColumn: "name"
+                    dataColumn: "name",
+                    whereClause: `viral_ppi.finalLR >= ${CONSTANTS.VIRAL_LR_CUTOFFF}`
+                } as FacetInfo);
+            case TargetFacetType["Log Novelty"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "tinx_novelty",
+                    dataColumn: "score",
+                    log: true,
+                    binSize: 0.5,
+                    dataType: FacetDataType.numeric
+                } as FacetInfo);
+            case TargetFacetType["Log PubMed Score"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "tdl_info",
+                    dataColumn: "number_value",
+                    log: true,
+                    binSize: 0.5,
+                    dataType: FacetDataType.numeric,
+                    whereClause: `itype = 'JensenLab PubMed Score'`
+                } as FacetInfo);
+            case TargetFacetType["StringDB Interaction Score"]:
+                if(!parent.associatedTarget) { return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "ncats_ppi",
+                    dataColumn: "score",
+                    binSize: .02,
+                    select: "score / 1000",
+                    dataType: FacetDataType.numeric,
+                    typeModifier: parent.associatedTarget,
+                    whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.associatedTarget}' in boolean mode))`
+                } as FacetInfo);
+            case TargetFacetType["BioPlex Interaction Probability"]:
+                if(!parent.associatedTarget) { return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "ncats_ppi",
+                    dataColumn: "p_int",
+                    binSize: 0.01,
+                    dataType: FacetDataType.numeric,
+                    typeModifier: parent.associatedTarget,
+                    whereClause: `other_id = (select id from protein where match(uniprot,sym,stringid) against('${parent.associatedTarget}' in boolean mode))`
+                } as FacetInfo);
+            case TargetFacetType["JensenLab TextMining zscore"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "zscore",
+                    binSize: 0.1,
+                    dataType: FacetDataType.numeric,
+                    typeModifier: parent.associatedDisease,
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
+                } as FacetInfo);
+            case TargetFacetType["JensenLab Confidence"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "conf",
+                    binSize: 0.1,
+                    dataType: FacetDataType.numeric,
+                    typeModifier: parent.associatedDisease,
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
+                } as FacetInfo);
+            case TargetFacetType["Expression Atlas Log2 Fold Change"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "log2foldchange",
+                    binSize: 0.5,
+                    dataType: FacetDataType.numeric,
+                    typeModifier: parent.associatedDisease,
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
+                } as FacetInfo);
+
+            case TargetFacetType["DisGeNET Score"]:
+                if(!parent.associatedDisease) {return this.unknownFacet();}
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "disease",
+                    dataColumn: "score",
+                    binSize: 0.02,
+                    dataType: FacetDataType.numeric,
+                    typeModifier: parent.associatedDisease,
+                    whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
                 } as FacetInfo);
         }
         return this.unknownFacet();
@@ -205,20 +298,20 @@ export class TargetFacetFactory extends FacetFactory{
                 return "F";
             case "GO Process":
                 return "P";
-            case "Expression: CCLE":
-                return "CCLE";
+            // case "Expression: CCLE":
+            //     return "CCLE";
             case "Expression: Cell Surface Protein Atlas":
                 return "Cell Surface Protein Atlas";
             case "Expression: Consensus":
                 return "Consensus";
-            case "Expression: HCA RNA":
-                return "HCA RNA";
+            // case "Expression: HCA RNA":
+            //     return "HCA RNA";
             case "Expression: HPA":
                 return "HPA";
             case "Expression: HPM Gene":
                 return "HPM Gene";
-            case "Expression: HPM Protein":
-                return "HPM Protein";
+            // case "Expression: HPM Protein":
+            //     return "HPM Protein";
             case "Expression: JensenLab Experiment Cardiac proteome":
                 return "JensenLab Experiment Cardiac proteome";
             case "Expression: JensenLab Experiment Exon array":

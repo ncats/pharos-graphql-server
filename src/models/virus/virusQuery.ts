@@ -1,3 +1,6 @@
+// @ts-ignore
+import * as CONSTANTS from "../../constants";
+
 export class Virus {
     taxonomyID: string;
     name: string;
@@ -46,6 +49,7 @@ export class Virus {
         return knex(tableList).select(columnList)
             .where('protein.id', knex.raw('viral_ppi.protein_id'))
             .where('viral_ppi.viral_protein_id', knex.raw('viral_protein.id'))
+            .where('viral_ppi.finalLR','>=', CONSTANTS.VIRAL_LR_CUTOFFF)
             .where('viral_protein.virus_id', knex.raw('virus.virusTaxid'))
             .where('protein.id', knex.raw('t2tc.protein_id'))
             .where('t2tc.target_id', targetID)

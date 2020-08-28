@@ -9,6 +9,11 @@ enum CacheControlScope {
 }
 ##
 
+enum FacetDataType {
+     Category
+     Numeric
+}
+
 type Xref @cacheControl(maxAge: 604800) {
      source: String!
      name: String!
@@ -43,8 +48,11 @@ type TemporalScore @cacheControl(maxAge: 604800) {
 
 type Facet @cacheControl(maxAge: 604800) {
      facet: String!
+     modifier: String
      count: Int
      values (skip: Int=0, top: Int=20, name: String): [IntProp]
+     dataType: FacetDataType
+     binSize: Float
      sql: String
      elapsedTime: Float
 }
@@ -167,6 +175,7 @@ type Disease @cacheControl(maxAge: 604800) {
      targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
      parents: [Disease]
      children: [Disease]
+     tinx: [TINXTarget]
 }
 
 type DiseaseID @cacheControl(maxAge: 604800){
@@ -355,12 +364,21 @@ type TINXDisease @cacheControl(maxAge: 604800) {
      disease: DiseaseOntology!
 }
 
-type TINXTarget @cacheControl(maxAge: 604800){
+type TINXTargetDetails @cacheControl(maxAge: 604800) {
+     """Disease details of the reported association"""
+     doid: String
+     diseaseName: String
+     """Importance of disease-target combination"""
+     importance: Float
+}
+
+type TINXTarget @cacheControl(maxAge: 604800) {
+     targetID: Int!
+     targetName: String
      """Target novelty"""
      novelty: Float
-     """Importance of disease-target combination"""
-     score: Float
-     target: Target!
+     tdl: String
+     details: [TINXTargetDetails]
 }
 
 """Target entity"""

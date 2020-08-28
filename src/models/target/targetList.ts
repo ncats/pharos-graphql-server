@@ -222,10 +222,15 @@ ON diseaseList.name = d.ncats_name`));
         "Ortholog"];
 
     DefaultPPIFacets = [
+        "StringDB Interaction Score",
+        "BioPlex Interaction Probability",
         "PPI Data Source",
         ...this.assocationFacets];
 
     DefaultDiseaseFacets = [
+        "JensenLab Confidence",
+        "Expression Atlas Log2 Fold Change",
+        "DisGeNET Score",
         "Disease Data Source",
         "Linked Disease",
         ...this.assocationFacets];
@@ -233,6 +238,8 @@ ON diseaseList.name = d.ncats_name`));
     DefaultFacets = [
         'Target Development Level',
         'IDG Target Lists',
+        'Log Novelty',
+        'Log PubMed Score',
         'Family',
         'Interacting Virus',
         'Interacting Viral Protein (Virus)',

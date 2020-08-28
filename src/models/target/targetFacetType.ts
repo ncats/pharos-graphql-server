@@ -13,9 +13,9 @@ export enum TargetFacetType {
     "GO Component",
     "GO Function",
     "GWAS",
-    "Expression: CCLE",//useless
-    "Expression: HCA RNA",//useless
-    "Expression: HPM Protein",//useless
+    // "Expression: CCLE", // these three are not too informative, because all options have the same set of targets
+    // "Expression: HCA RNA", // and they're super slow
+    // "Expression: HPM Protein", // so let's just not calculate them
     "Expression: HPA",
     "Expression: JensenLab Experiment HPA",
     "Expression: HPM Gene",
@@ -37,5 +37,13 @@ export enum TargetFacetType {
     "Disease Data Source",
     "Linked Disease",
     "Interacting Viral Protein (Virus)",
-    "Interacting Virus"
+    "Interacting Virus",
+    "Log Novelty",
+    "Log PubMed Score",
+    "StringDB Interaction Score",
+    "BioPlex Interaction Probability",
+    "JensenLab TextMining zscore",
+    "JensenLab Confidence",
+    "Expression Atlas Log2 Fold Change",
+    "DisGeNET Score"
 }
