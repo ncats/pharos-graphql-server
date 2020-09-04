@@ -1356,7 +1356,7 @@ const resolvers = {
                 for (let i = 0; i < rows.length; i++) {
                     rows[i].parent = ligand;
                     if (rows[i].pubs) {
-                        rows[i].pubs = rows[i].pubs.split(',').map(r => {
+                        rows[i].pubs = rows[i].pubs.split('|').map(r => {
                             return {pmid: r};
                         });
                     }
