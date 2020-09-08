@@ -5,5 +5,6 @@ export enum LigandFacetType {
     "EC50",
     "IC50",
     "Kd",
-    "Ki"
+    "Ki",
+    "Data Source"
 }

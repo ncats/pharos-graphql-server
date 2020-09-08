@@ -281,6 +281,12 @@ export class TargetFacetFactory extends FacetFactory{
                     typeModifier: parent.associatedDisease,
                     whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`
                 } as FacetInfo);
+            case TargetFacetType["Data Source"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "ncats_dataSource_map",
+                    dataColumn: "dataSource"
+                } as FacetInfo);
         }
         return this.unknownFacet();
     }
