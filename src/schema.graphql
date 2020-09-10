@@ -588,8 +588,21 @@ type Result @cacheControl(maxAge: 604800) {
      orthologResult: OrthologResult
 }
 
+type DataSourceCount @cacheControl(maxAge: 604800){
+     dataSource: String
+     url: String
+     license: String
+     licenseURL: String
+     targetCount: Int
+     diseaseCount: Int
+     ligandCount: Int
+}
+
 type Query{
      autocomplete(name: String): SuggestionResults
+
+     dataSourceCounts: [DataSourceCount]
+
      targetFacets: [String!] @cacheControl(maxAge: 604800)
      targets(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter, targets: [String]): TargetResult
      target(q: ITarget): Target

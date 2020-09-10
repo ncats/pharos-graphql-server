@@ -36,6 +36,23 @@ const resolvers = {
             });
         },
 
+        dataSourceCounts: async function (_, args, {dataSources}) {
+            const knex = dataSources.tcrd.db;
+            let query = knex("ncats_dataSource_map")
+                .select({
+                    dataSource: "dataSource",
+                    url: knex.raw("max(url)"),
+                    license: knex.raw("max(license)"),
+                    licenseURL: knex.raw("max(licenseURL)"),
+                    targetCount: knex.raw("COUNT(protein_id)"),
+                    diseaseCount: knex.raw("COUNT(disease_name)"),
+                    ligandCount: knex.raw("COUNT(ncats_ligand_id)")
+                })
+                .groupBy("dataSource")
+                .orderBy("dataSource");
+            return query.then(rows => {return rows;});
+        },
+
         search: async function (_, args, {dataSources}) {
             args.filter = {
                 term: args.term
@@ -187,6 +204,10 @@ const resolvers = {
         },
 
         batch: async function (line, args, {dataSources}, info) {
+            console.log('beeyatch!');
+            if(args && args.filter) {
+                console.log(args.filter.facets);
+            }
             let funcs = [
                 getTargetResult(args, dataSources),
                 getDiseaseResult(args, dataSources.tcrd),
@@ -1480,10 +1501,13 @@ function getDiseaseResult(args, tcrd) {
 
     return Promise.all(queries).then(rows => {
         let count = rows.shift()[0].count;
+        queries.shift();
 
         let facets = [];
         for (var i in rows) {
             facets.push({
+                sql: queries[i].toString(),
+                elapsedTime: diseaseList.getElapsedTime(diseaseList.facetsToFetch[i].type),
                 facet: diseaseList.facetsToFetch[i].type,
                 modifier: diseaseList.facetsToFetch[i].typeModifier,
                 count: rows[i].length,

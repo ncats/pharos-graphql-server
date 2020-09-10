@@ -6,7 +6,7 @@ CREATE TABLE `ncats_dataSource_map`
     `dataSource`   VARCHAR (50) NOT NULL,
     `url` VARCHAR(128),
     `license` VARCHAR(128),
-    `licenceURL` VARCHAR(128),
+    `licenseURL` VARCHAR(128),
     `protein_id`   int,
     `ncats_ligand_id`    int,
     `disease_name` TEXT,
@@ -16,4 +16,4 @@ CREATE TABLE `ncats_dataSource_map`
     KEY `dataSource_disease` (`disease_name`(200)),
     CONSTRAINT `dataSource_protein` FOREIGN KEY (`protein_id`) REFERENCES `protein` (`id`),
     CONSTRAINT `dataSource_ligand` FOREIGN KEY (`ncats_ligand_id`) REFERENCES `ncats_ligands` (`id`)
-) DEFAULT CHARSET = utf8;
+) DEFAULT CHARSET = utf8 COLLATE utf8_unicode_ci;

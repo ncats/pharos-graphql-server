@@ -41,7 +41,7 @@ dataSourceMapping = [
     dataSource("Consensus Expression Values", url, license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM expression WHERE etype = 'Consensus'")
     ]),
-    dataSource("CTD Disease Associations", "https://ctdbase.org/", license, licenseURL, [
+    dataSource("CTD", "https://ctdbase.org/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'CTD'")
         ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'CTD'")
     ]),
@@ -54,6 +54,10 @@ dataSourceMapping = [
     ]),
     # This one isn't really how we fetch DRGC resources anymore
     dataSource("DRGC Resources", "https://rss.ccs.miami.edu/rss-apis/", license, licenseURL, []),
+    dataSource("Drug Central Indication", "http://drugcentral.org", license, licenseURL, [ # don't change spelling of disease dataSources!
+        mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'DrugCentral Indication'")
+        ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'DrugCentral Indication'")
+        ]),
     dataSource("Drug Central - Scientific Literature", "http://drugcentral.org/", license, licenseURL, [
         mapping("ligand", "SELECT DISTINCT protein_id FROM drug_activity, t2tc where source = 'SCIENTIFIC LITERATURE' and t2tc.target_id = drug_activity.target_id")
     ]),
@@ -141,9 +145,25 @@ dataSourceMapping = [
     dataSource("JensenLab COMPARTMENTS", "https://compartments.jensenlab.org/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM compartment WHERE ctype like 'JensenLab%'")
     ]),
-    dataSource("JensenLab DISEASES", "https://diseases.jensenlab.org/", license, licenseURL, [
-        mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype like 'JENSENLAB %'")
-        ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype like 'JENSENLAB %'")
+    dataSource("JensenLab Experiment COSMIC", "https://diseases.jensenlab.org/", license, licenseURL, [
+        mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'JensenLab Experiment COSMIC'")
+        ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'JensenLab Experiment COSMIC'")
+    ]),
+    dataSource("JensenLab Experiment DistiLD", "https://diseases.jensenlab.org/", license, licenseURL, [
+        mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'JensenLab Experiment DistiLD'")
+        ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'JensenLab Experiment DistiLD'")
+    ]),
+    dataSource("JensenLab Knowledge GHR", "https://diseases.jensenlab.org/", license, licenseURL, [
+        mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'JensenLab Knowledge GHR'")
+        ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'JensenLab Knowledge GHR'")
+    ]),
+    dataSource("JensenLab Knowledge UniProtKB-KW", "https://diseases.jensenlab.org/", license, licenseURL, [
+        mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'JensenLab Knowledge UniProtKB-KW'")
+        ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'JensenLab Knowledge UniProtKB-KW'")
+    ]),
+    dataSource("JensenLab Text Mining", "https://diseases.jensenlab.org/", license, licenseURL, [
+        mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'JensenLab Text Mining'")
+        ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'JensenLab Text Mining'")
     ]),
     dataSource("JensenLab TISSUES", "https://tissues.jensenlab.org/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM expression WHERE etype like 'JENSENLAB %'")
@@ -169,7 +189,7 @@ dataSourceMapping = [
     dataSource("LocSigDB", "http://genome.unmc.edu/LocSigDB/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM locsig")
     ]),
-    dataSource("Monarch Disease Associations", "https://monarchinitiative.org/", license, licenseURL, [
+    dataSource("Monarch", "https://monarchinitiative.org/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'Monarch'")
         ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'Monarch'")
     ]),
@@ -237,6 +257,10 @@ dataSourceMapping = [
     ]),
     dataSource("UniProt", "https://www.uniprot.org/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM xref WHERE xtype='UniProt Keyword'")
+    ]),
+    dataSource("UniProt Disease", "https://www.uniprot.org/", license, licenseURL, [
+        mapping("protein", "SELECT DISTINCT protein_id FROM disease WHERE dtype = 'UniProt Disease'")
+        ,mapping("disease","SELECT DISTINCT ncats_name FROM disease WHERE dtype = 'UniProt Disease'")
     ]),
     dataSource("WikiPathways", "https://www.wikipathways.org/index.php/WikiPathways", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM pathway WHERE pwtype = 'WikiPathways'")

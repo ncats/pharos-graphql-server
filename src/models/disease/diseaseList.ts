@@ -78,9 +78,12 @@ export class DiseaseList extends DataModelList {
     };
 
     addLinkToRootTable(query: any, facet: FacetInfo): void {
-        if (facet.dataTable == 'target') {
+        if (facet.dataTable === 'target') {
             query.andWhere('target.id', this.database.raw('t2tc.target_id'))
                 .andWhere('disease.protein_id', this.database.raw('t2tc.protein_id'));
+        }
+        if (facet.dataTable === 'ncats_dataSource_map'){
+            query.andWhere('disease.ncats_name', this.database.raw('ncats_dataSource_map.disease_name'));
         }
     }
 

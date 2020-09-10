@@ -39,12 +39,12 @@ export class DiseaseFacetFactory extends FacetFactory {
         return this.unknownFacet();
     }
 
-    getdiseaseWhereClause(sym: string, extraClause?: string){
+    getdiseaseWhereClause(sym: string, extraClause?: string) {
         if (!sym) {
             return extraClause;
         }
         let baseClause = `disease.protein_id = (select id from protein where MATCH (uniprot , sym , stringid) AGAINST ('${sym}' IN BOOLEAN MODE))`;
-        if(extraClause) {
+        if (extraClause) {
             return `${baseClause} and ${extraClause}`;
         }
         return baseClause;
