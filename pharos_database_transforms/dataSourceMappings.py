@@ -106,9 +106,10 @@ dataSourceMapping = [
     dataSource("Harmonizome", "http://amp.pharm.mssm.edu/Harmonizome/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM gene_attribute")
     ]),
-    dataSource("Harmonogram CDFs", "http://amp.pharm.mssm.edu/Harmonizome/", license, licenseURL, [
-        mapping("protein", "SELECT DISTINCT protein_id FROM hgram_cdf")
-    ]),
+    # this is not worth a second option
+    # dataSource("Harmonogram CDFs", "http://amp.pharm.mssm.edu/Harmonizome/", license, licenseURL, [
+    #     mapping("protein", "SELECT DISTINCT protein_id FROM hgram_cdf")
+    # ]),
     dataSource("HGNC", "https://www.genenames.org/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM xref WHERE xtype = 'HGNC'")
     ]),
