@@ -11,6 +11,7 @@ CREATE TABLE `ncats_dataSource_map`
     `ncats_ligand_id`    int,
     `disease_name` TEXT,
     PRIMARY KEY (`id`),
+    KEY `dataSource_dataSource` (`dataSource`),
     KEY `dataSource_protein` (`protein_id`),
     KEY `dataSource_ligand` (`ncats_ligand_id`),
     KEY `dataSource_disease` (`disease_name`(200)),

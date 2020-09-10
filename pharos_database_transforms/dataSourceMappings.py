@@ -209,10 +209,10 @@ dataSourceMapping = [
     dataSource("Orthologs", "https://www.genenames.org/tools/hcop/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM ortholog")
     ]),
-    dataSource("p-hipster viral PPIs", "http://phipster.org/", license, licenseURL, [
+    dataSource("P-HIPSTer Viral PPIs", "http://phipster.org/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM viral_ppi")
     ]),
-    dataSource("PANTHER protein classes", "http://www.pantherdb.org/", license, licenseURL, [
+    dataSource("PANTHER Protein Classes", "http://www.pantherdb.org/", license, licenseURL, [
         mapping("protein", "SELECT DISTINCT protein_id FROM p2pc")
     ]),
     dataSource("PathwayCommons", "https://www.pathwaycommons.org/", license, licenseURL, [
