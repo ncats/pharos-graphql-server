@@ -204,10 +204,6 @@ const resolvers = {
         },
 
         batch: async function (line, args, {dataSources}, info) {
-            console.log('beeyatch!');
-            if(args && args.filter) {
-                console.log(args.filter.facets);
-            }
             let funcs = [
                 getTargetResult(args, dataSources),
                 getDiseaseResult(args, dataSources.tcrd),
