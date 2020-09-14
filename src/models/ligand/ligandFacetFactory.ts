@@ -54,6 +54,12 @@ export class LigandFacetFactory extends FacetFactory {
                         dataType: FacetDataType.numeric,
                         whereClause: this.getActivityWhereClause(parent.associatedTarget, `act_type = '${typeName}'`)
                     } as FacetInfo);
+            case LigandFacetType["Data Source"]:
+                return new FacetInfo({
+                    ...partialReturn,
+                    dataTable: "ncats_dataSource_map",
+                    dataColumn: "dataSource"
+                } as FacetInfo)
         }
         return this.unknownFacet();
     }

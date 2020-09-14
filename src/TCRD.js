@@ -52,21 +52,33 @@ function diseaseFacetMapping(facet) {
     return facet;
 }
 
-function dtoTraversal(matches, node, args) {
+function validRegex(pattern) {
+    try {
+        var re = new RegExp(pattern, 'i');
+        match = re.test('test pattern doesnt matter');
+    } catch {
+        return false;
+    }
+    return true;
+}
+
+function dtoTraversal(matches, node, args, doRegex) {
     var matched = node.name == args.name;
     if (!matched) {
         matched = node.name.indexOf(args.name) >= 0;
     }
 
-    if (!matched) { // assume regex
+    if (!matched && doRegex) { // assume regex
         var re = new RegExp(args.name, 'i');
         matched = re.test(node.name);
     }
 
-    if (matched)
+    if (matched) {
         matches.push(node);
-    for (var n in node.children)
-        dtoTraversal(matches, node.children[n], args);
+    }
+    for (var n in node.children) {
+        dtoTraversal(matches, node.children[n], args, doRegex);
+    }
 }
 
 function diseaseOntologyTraversal(matches, node, args) {
@@ -532,7 +544,7 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
         let q = this.db("disease")
             .select(this.db.raw(`'name' as "name"`))
             .count({associationCount: this.db.raw("distinct protein_id")})
-            .join(descendentQuery.as("diseaseList"),"diseaseList.name",this.db.raw("disease.ncats_name"));
+            .join(descendentQuery.as("diseaseList"), "diseaseList.name", this.db.raw("disease.ncats_name"));
         return q;
     }
 
@@ -746,8 +758,8 @@ order by years desc, pubmed_ids desc limit ? offset ?`,
     getPubsForGeneRIF(generif) {
         //console.log('>>> getPubsForGeneRIF: '+generif.rifid);
 
-        let q = this.db({pubmed:'pubmed', ncats_generif_pubmed_map:'ncats_generif_pubmed_map'})
-            .select({pmid:'id', title:'title', journal:'journal', date:'date', abstract:'abstract'})
+        let q = this.db({pubmed: 'pubmed', ncats_generif_pubmed_map: 'ncats_generif_pubmed_map'})
+            .select({pmid: 'id', title: 'title', journal: 'journal', date: 'date', abstract: 'abstract'})
             .where('ncats_generif_pubmed_map.generif_id', generif.rifid)
             .andWhere(this.db.raw('pubmed.id = ncats_generif_pubmed_map.pubmed_id'));
         return q;
@@ -1633,10 +1645,11 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
                 n = n.parent;
             }
         } else {
+            let checkRegex = validRegex(args.name);
             for (var key in this.dto) {
                 let n = this.dto[key];
                 if (!n.parent)
-                    dtoTraversal(matches, n, args);
+                    dtoTraversal(matches, n, args, checkRegex);
             }
         }
         return matches;
@@ -1750,6 +1763,7 @@ union select * from (
     }
 
 }
+
 Object.assign(TCRD.prototype, require('./target_search'));
 
 module.exports = TCRD;

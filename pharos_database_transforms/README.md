@@ -98,3 +98,8 @@ Here's what that looks like for our AWS server
         ```
         python tcrd-create-generif-pubmed-map.py
         ```
+    * Later still
+        * create mapping between data sources and all the targets, diseases, and ligands we have data from there for
+        ```
+        python tcrd-create-datasource-table.py
+        ```

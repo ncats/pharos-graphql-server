@@ -248,5 +248,5 @@ ON diseaseList.name = d.ncats_name`));
         'Expression: Consensus',
         'Ortholog',
         'UniProt Disease',
-        'UniProt Keyword'];
+        "Data Source"];
 }

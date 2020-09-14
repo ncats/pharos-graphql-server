@@ -36,6 +36,23 @@ const resolvers = {
             });
         },
 
+        dataSourceCounts: async function (_, args, {dataSources}) {
+            const knex = dataSources.tcrd.db;
+            let query = knex("ncats_dataSource_map")
+                .select({
+                    dataSource: "dataSource",
+                    url: knex.raw("max(url)"),
+                    license: knex.raw("max(license)"),
+                    licenseURL: knex.raw("max(licenseURL)"),
+                    targetCount: knex.raw("COUNT(protein_id)"),
+                    diseaseCount: knex.raw("COUNT(disease_name)"),
+                    ligandCount: knex.raw("COUNT(ncats_ligand_id)")
+                })
+                .groupBy("dataSource")
+                .orderBy("dataSource");
+            return query.then(rows => {return rows;});
+        },
+
         search: async function (_, args, {dataSources}) {
             args.filter = {
                 term: args.term
@@ -66,10 +83,11 @@ const resolvers = {
             const q = dataSources.tcrd.getTarget(args.q);
             return q.then(rows => {
                 if (rows) {
-                    if(rows.length > 0){
+                    if (rows.length > 0) {
                         dataSources.associatedTargetTCRDID = rows[0].id;
                     }
-                    return rows[0];}
+                    return rows[0];
+                }
                 return rows;
             }).catch(function (error) {
                 console.error(error);
@@ -753,8 +771,7 @@ const resolvers = {
             ligandArgs.filter.facets = ligandArgs.filter.facets || [];
             if (ligandArgs.isdrug) {
                 ligandArgs.filter.facets.push({facet: "Type", values: ["Drug"]});
-            }
-            else {
+            } else {
                 ligandArgs.filter.facets.push({facet: "Type", values: ["Ligand"]});
             }
             return new LigandList(dataSources.tcrd, ligandArgs).getListQuery()
@@ -1017,23 +1034,26 @@ const resolvers = {
             });
         },
 
-        tinx: async function (disease, args, {dataSources}){
+        tinx: async function (disease, args, {dataSources}) {
             let query = DiseaseList.getTinxQuery(dataSources.tcrd.db, disease.name);
             return query.then(rows => {
                 let associationMap = new Map();
-                for(let i = 0 ; i < rows.length ; i++){
-                    if(associationMap.has(rows[i].targetID)){
+                for (let i = 0; i < rows.length; i++) {
+                    if (associationMap.has(rows[i].targetID)) {
                         let details = associationMap.get(rows[i].targetID).details;
                         details.push({doid: rows[i].doid, diseaseName: rows[i].name, importance: rows[i].importance});
-                    }
-                    else{
+                    } else {
                         let association = {};
                         association.targetID = rows[i].targetID;
                         association.targetName = rows[i].targetName;
                         association.novelty = rows[i].novelty;
                         association.tdl = rows[i].tdl;
                         association.details = [];
-                        association.details.push({doid: rows[i].doid, diseaseName: rows[i].name, importance: rows[i].importance});
+                        association.details.push({
+                            doid: rows[i].doid,
+                            diseaseName: rows[i].name,
+                            importance: rows[i].importance
+                        });
                         associationMap.set(rows[i].targetID, association);
                     }
                 }
@@ -1159,7 +1179,7 @@ const resolvers = {
                     return matched;
                 });
             }
-            if(facet.dataType == "Numeric"){
+            if (facet.dataType == "Numeric") {
                 return values;
             }
             return slice(values, args.skip, args.top + args.skip);
@@ -1340,7 +1360,9 @@ const resolvers = {
                     type: 'act_type',
                     value: 'act_value',
                     moa: 'action_type',
-                    target_id: 'target_id'
+                    target_id: 'target_id',
+                    reference: 'reference',
+                    pubs: 'pubmed_ids'
                 })
                 .whereRaw(`ncats_ligands.identifier = '${ligand.ligid}'`)
                 .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`));
@@ -1350,6 +1372,11 @@ const resolvers = {
             return query.then(rows => {
                 for (let i = 0; i < rows.length; i++) {
                     rows[i].parent = ligand;
+                    if (rows[i].pubs) {
+                        rows[i].pubs = rows[i].pubs.split('|').map(r => {
+                            return {pmid: r};
+                        });
+                    }
                 }
                 return rows;
             }).catch(function (error) {
@@ -1357,7 +1384,7 @@ const resolvers = {
             });
         },
         synonyms: async function (ligand, args, {dataSources}) {
-            const parser = function(row){
+            const parser = function (row) {
                 let synonyms = [];
                 for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
                     if (row[field]) {
@@ -1436,8 +1463,11 @@ function getTargetResult(args, dataSources) {
                 if (targetList.facetsToFetch[i].valuesDelimited) {
                     rowData = splitOnDelimiters(rows[i]);
                 }
-                if (targetList.facetsToFetch[i].dataType == FacetDataType.numeric){
-                    rowData = rowData.map(p => {p.name = p.bin; return p})
+                if (targetList.facetsToFetch[i].dataType == FacetDataType.numeric) {
+                    rowData = rowData.map(p => {
+                        p.name = p.bin;
+                        return p
+                    })
                 }
                 facets.push({
                     dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
@@ -1467,10 +1497,13 @@ function getDiseaseResult(args, tcrd) {
 
     return Promise.all(queries).then(rows => {
         let count = rows.shift()[0].count;
+        queries.shift();
 
         let facets = [];
         for (var i in rows) {
             facets.push({
+                sql: queries[i].toString(),
+                elapsedTime: diseaseList.getElapsedTime(diseaseList.facetsToFetch[i].type),
                 facet: diseaseList.facetsToFetch[i].type,
                 modifier: diseaseList.facetsToFetch[i].typeModifier,
                 count: rows[i].length,
@@ -1522,7 +1555,10 @@ function getLigandResult(args, tcrd) {
                 rowData = splitOnDelimiters(rows[i]);
             }
             if (ligandList.facetsToFetch[i].dataType == FacetDataType.numeric) {
-                rowData = rowData.map(p => {p.name = p.bin; return p})
+                rowData = rowData.map(p => {
+                    p.name = p.bin;
+                    return p
+                })
             }
             facets.push({
                 dataType: ligandList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",

@@ -45,5 +45,6 @@ export enum TargetFacetType {
     "JensenLab TextMining zscore",
     "JensenLab Confidence",
     "Expression Atlas Log2 Fold Change",
-    "DisGeNET Score"
+    "DisGeNET Score",
+    "Data Source"
 }
