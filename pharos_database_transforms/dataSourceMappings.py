@@ -67,7 +67,7 @@ dataSourceMapping = [
     dataSource("Drug Central - Kegg Drug", "http://drugcentral.org/", license, licenseURL, [
         mapping("ligand", "SELECT DISTINCT protein_id FROM drug_activity, t2tc where source = 'KEGG DRUG' and t2tc.target_id = drug_activity.target_id")
     ]),
-    dataSource("Drug Central - IUPHAR", "http://drugcentral.org/", license, licenseURL, [
+    dataSource("Drug Central - GtoPdb", "http://drugcentral.org/", license, licenseURL, [
         mapping("ligand", "SELECT DISTINCT protein_id FROM drug_activity, t2tc where source = 'IUPHAR' and t2tc.target_id = drug_activity.target_id")
     ]),
     dataSource("Drug Central - ChEMBL", "http://drugcentral.org/", license, licenseURL, [
