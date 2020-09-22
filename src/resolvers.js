@@ -8,20 +8,28 @@ const {find, filter, slice} = require('lodash');
 
 const resolvers = {
     Query: {
-        autocomplete: async function (_, args, {dataSources}) {
-            let results = dataSources.tcrd.getSuggestions(args.name);
+        autocomplete: async function (_, args, {dataSources}, info) {
+            let queries = [];
+            if(info.fieldNodes["0"].selectionSet.selections.map(sel => sel.name.value).includes("ligands")){
+                queries.push(LigandList.getAutocomplete(dataSources.tcrd.db, args.name));
+            }
+            if(info.fieldNodes["0"].selectionSet.selections.filter(sel => sel.name.value != "ligands").length > 0){
+                queries.push(dataSources.tcrd.getSuggestions(args.name));
+            }
             let startTime = performance.now();
-
-            return Promise.all([results]).then(rows => {
+            return Promise.all(queries).then(rows => {
                 var sorted = {};
                 sorted["UniProt Gene"] = [];
                 sorted["Target"] = [];
                 sorted["Disease"] = [];
                 sorted["IMPC Phenotype"] = [];
                 sorted["UniProt Keyword"] = [];
+                sorted["Ligand"] = [];
 
-                for (var i = 0; i < rows[0].length; i++) {
-                    sorted[rows[0][i].source].push({key: rows[0][i].value});
+                for (var j = 0; j < rows.length; j++) {
+                    for (var i = 0; i < rows[j].length; i++) {
+                        sorted[rows[j][i].source].push({key: rows[j][i].value});
+                    }
                 }
                 return {
                     elapsedTime: (performance.now() - startTime) / 1000,
@@ -29,7 +37,8 @@ const resolvers = {
                     targets: sorted["Target"],
                     diseases: sorted["Disease"],
                     phenotypes: sorted["IMPC Phenotype"],
-                    keywords: sorted["UniProt Keyword"]
+                    keywords: sorted["UniProt Keyword"],
+                    ligands: sorted["Ligand"]
                 };
             }).catch(function (error) {
                 console.error(error);

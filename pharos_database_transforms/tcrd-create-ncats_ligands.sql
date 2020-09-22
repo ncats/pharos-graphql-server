@@ -17,7 +17,8 @@ CREATE TABLE `ncats_ligands`
     `description` text 													 COMMENT 'description of the drug from nlm_drug_info',
     `actCnt`     int          											 DEFAULT NULL COMMENT 'activity count',
     PRIMARY KEY (`id`),
-    KEY `identifier` (`identifier`)
+    KEY `identifier` (`identifier`),
+    FULLTEXT KEY `text_search` (`name`,`ChEMBL`,`PubChem`,`Guide to Pharmacology`,`DrugCentral`)
 ) ENGINE = InnoDB  AUTO_INCREMENT = 0  DEFAULT CHARSET = utf8;
 
 INSERT INTO ncats_ligands

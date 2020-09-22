@@ -546,6 +546,7 @@ type SuggestionResults @cacheControl(maxAge: 60){
      diseases: [Suggestion]
      keywords: [Suggestion]
      phenotypes: [Suggestion]
+     ligands: [Suggestion]
 }
 
 type Suggestion @cacheControl(maxAge: 60){

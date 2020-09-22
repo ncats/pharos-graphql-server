@@ -18,11 +18,11 @@ order by xtra;
 
 insert into ncats_typeahead
 SELECT
-    distinct name as value,
+    distinct ncats_name as value,
              'Disease' as source
 from disease
-where name is not null
-order by name;
+where ncats_name is not null
+order by ncats_name;
 
 insert into ncats_typeahead
 select

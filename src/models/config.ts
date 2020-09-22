@@ -56,7 +56,7 @@ export class Config {
                 dataFields.push({table: "disease", data: `dtype`, group_method: `count`});
                 break;
             case ConfigKeys.Disease_List_Default:
-                dataFields.push({table: "disease", data: "name"});
+                dataFields.push({table: "disease", data: "ncats_name", alias: "name"});
                 break;
             case ConfigKeys.Ligand_List_Default:
                 dataFields.push({table: "ncats_ligands", data: "identifier", alias: "ligid"});
