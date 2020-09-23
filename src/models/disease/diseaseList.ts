@@ -25,7 +25,7 @@ export class DiseaseList extends DataModelList {
             .select('lst.name')
             .where('finder.lft', '<=', knex.raw('lst.lft'))
             .andWhere('finder.rght', '>=', knex.raw('lst.rght'));
-        return query;
+        return knex.select(knex.raw(`"${diseaseName}"`)).union(query);
     }
 
     static getTinxQuery(knex: any, diseaseName: string) {
