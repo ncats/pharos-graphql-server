@@ -9,37 +9,22 @@ const {find, filter, slice} = require('lodash');
 const resolvers = {
     Query: {
         autocomplete: async function (_, args, {dataSources}, info) {
-            let queries = [];
-            if(info.fieldNodes["0"].selectionSet.selections.map(sel => sel.name.value).includes("ligands")){
-                queries.push(LigandList.getAutocomplete(dataSources.tcrd.db, args.name));
-            }
-            if(info.fieldNodes["0"].selectionSet.selections.filter(sel => sel.name.value != "ligands").length > 0){
-                queries.push(dataSources.tcrd.getSuggestions(args.name));
-            }
-            let startTime = performance.now();
-            return Promise.all(queries).then(rows => {
-                var sorted = {};
-                sorted["UniProt Gene"] = [];
-                sorted["Target"] = [];
-                sorted["Disease"] = [];
-                sorted["IMPC Phenotype"] = [];
-                sorted["UniProt Keyword"] = [];
-                sorted["Ligand"] = [];
-
-                for (var j = 0; j < rows.length; j++) {
-                    for (var i = 0; i < rows[j].length; i++) {
-                        sorted[rows[j][i].source].push({key: rows[j][i].value});
+            let query = dataSources.tcrd.getSuggestions(args.name);
+            return query.then(rows => {
+                rows.forEach(row => {
+                    let cats = row.category.split('|');
+                    if (row.reference_id) {
+                        let refs = row.reference_id.split('|');
+                        row.categories = [];
+                        for (let i = 0; i < cats.length; i++) {
+                            row.categories.push({category: cats[i], reference_id: refs[i]});
+                        }
                     }
-                }
-                return {
-                    elapsedTime: (performance.now() - startTime) / 1000,
-                    genes: sorted["UniProt Gene"],
-                    targets: sorted["Target"],
-                    diseases: sorted["Disease"],
-                    phenotypes: sorted["IMPC Phenotype"],
-                    keywords: sorted["UniProt Keyword"],
-                    ligands: sorted["Ligand"]
-                };
+                    else{
+                        row.categories = cats.map(c => {return {category: c};});
+                    }
+                });
+                return rows;
             }).catch(function (error) {
                 console.error(error);
             });
@@ -59,7 +44,9 @@ const resolvers = {
                 })
                 .groupBy("dataSource")
                 .orderBy("dataSource");
-            return query.then(rows => {return rows;});
+            return query.then(rows => {
+                return rows;
+            });
         },
 
         search: async function (_, args, {dataSources}) {

@@ -8,7 +8,7 @@ export class LigandList extends DataModelList{
 
     static getAutocomplete(knex: any, term: string){
         let query = knex("ncats_ligands")
-            .select({value: "name", source: knex.raw("'Ligand'")})
+            .select({value: knex.raw('distinct name'), source: knex.raw("'Ligand'")})
             .where('name', 'not like', 'chembl%')
             .andWhere('name', 'like', '%' + term + '%')
             .orderByRaw(`CASE WHEN name LIKE '${term}%' THEN 1
