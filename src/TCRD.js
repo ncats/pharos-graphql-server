@@ -1699,8 +1699,8 @@ and c.target_id = ?`, [target.tcrdid]));
         const q = this.db("ncats_typeahead_index")
             .select({
                 value: "value",
-                category:this.db.raw("group_concat(`category`,'|')"),
-                reference_id:this.db.raw("group_concat(ifnull(`reference_id`,''),'|')")
+                category:this.db.raw("group_concat(`category` separator '|')"),
+                reference_id:this.db.raw("group_concat(ifnull(`reference_id`,'') separator '|')")
             })
             .where("value", "like", `%${key}%`)
             .groupBy("value")
