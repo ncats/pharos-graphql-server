@@ -92,7 +92,7 @@ export class DiseaseList extends DataModelList {
             query.join(this.getAssociatedTargetQuery().as('assocTarget'), 'assocTarget.name', this.keyString());
         }
         if (this.term.length > 0) {
-            query.andWhere(this.database.raw(`match(disease.ncats_name, disease.description, disease.drug_name) against('"${this.term}*"' in boolean mode)`));
+            query.andWhere(this.database.raw(`match(disease.ncats_name, disease.description, disease.drug_name) against('${this.term}*' in boolean mode)`));
         }
     }
 

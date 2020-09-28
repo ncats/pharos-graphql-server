@@ -48,7 +48,7 @@ export class LigandList extends DataModelList{
             query.join(associatedTargetQuery, 'assocTarget.identifier', 'ncats_ligands.identifier');
         }
         else if (this.term.length > 0){
-            query.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against('"${this.term}*"')`);
+            query.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against('${this.term}*')`);
         }
     }
 
