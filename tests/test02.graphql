@@ -1,5 +1,5 @@
 {
-  search(term: "GNB*") {
+  search(term: "GNB") {
     targetResult {
       count
       facets {

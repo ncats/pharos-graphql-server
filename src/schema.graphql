@@ -540,16 +540,13 @@ type TargetResult @cacheControl(maxAge: 604800){
 }
 
 type SuggestionResults @cacheControl(maxAge: 60){
-     elapsedTime: Float
-     genes: [Suggestion]
-     targets: [Suggestion]
-     diseases: [Suggestion]
-     keywords: [Suggestion]
-     phenotypes: [Suggestion]
+     value: String
+     categories: [SuggestionCategory]
 }
 
-type Suggestion @cacheControl(maxAge: 60){
-     key: String
+type SuggestionCategory @cacheControl(maxAge: 60){
+     category: String
+     reference_id: String
 }
 
 type DiseaseResult @cacheControl(maxAge: 604800) {
@@ -599,7 +596,7 @@ type DataSourceCount @cacheControl(maxAge: 604800){
 }
 
 type Query{
-     autocomplete(name: String): SuggestionResults
+     autocomplete(name: String): [SuggestionResults]
 
      dataSourceCounts: [DataSourceCount]
 

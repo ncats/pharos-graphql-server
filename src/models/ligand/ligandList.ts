@@ -5,6 +5,19 @@ import {LigandFacetFactory} from "./ligandFacetFactory";
 import {ConfigKeys} from "../config";
 
 export class LigandList extends DataModelList{
+
+    static getAutocomplete(knex: any, term: string){
+        let query = knex("ncats_ligands")
+            .select({value: knex.raw('distinct name'), source: knex.raw("'Ligand'")})
+            .where('name', 'not like', 'chembl%')
+            .andWhere('name', 'like', '%' + term + '%')
+            .orderByRaw(`CASE WHEN name LIKE '${term}%' THEN 1
+                              WHEN name LIKE '% ${term}%' THEN 2
+                              ELSE 3 END, name`)
+            .limit(10);
+        return query;
+    }
+
     constructor(tcrd: any, json: any) {
         super(tcrd, "ncats_ligands" , "id", new LigandFacetFactory(), json);
         this.facetsToFetch = FacetInfo.deduplicate(
@@ -33,6 +46,9 @@ export class LigandList extends DataModelList{
                 .andWhere(this.database.raw(`ncats_ligand_activity.target_id = t2tc.target_id`))
                 .andWhere(this.database.raw(`t2tc.protein_id = protein.id`)).as('assocTarget');
             query.join(associatedTargetQuery, 'assocTarget.identifier', 'ncats_ligands.identifier');
+        }
+        else if (this.term.length > 0){
+            query.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against('${this.term}*')`);
         }
     }
 
