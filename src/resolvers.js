@@ -1473,7 +1473,8 @@ function getTargetResult(args, dataSources) {
                     count: rowData.length,
                     values: rowData,
                     sql: facetQueries[i].toString(),
-                    elapsedTime: targetList.getElapsedTime(targetList.facetsToFetch[i].type)
+                    elapsedTime: targetList.getElapsedTime(targetList.facetsToFetch[i].type),
+                    sourceExplanation: targetList.facetsToFetch[i].sourceExplanation
                 });
             }
             return {
@@ -1503,7 +1504,8 @@ function getDiseaseResult(args, tcrd) {
                 facet: diseaseList.facetsToFetch[i].type,
                 modifier: diseaseList.facetsToFetch[i].typeModifier,
                 count: rows[i].length,
-                values: rows[i]
+                values: rows[i],
+                sourceExplanation: diseaseList.facetsToFetch[i].sourceExplanation
             })
         }
 
@@ -1564,7 +1566,8 @@ function getLigandResult(args, tcrd) {
                 count: rowData.length,
                 values: rowData,
                 sql: facetQueries[i].toString(),
-                elapsedTime: ligandList.getElapsedTime(ligandList.facetsToFetch[i].type)
+                elapsedTime: ligandList.getElapsedTime(ligandList.facetsToFetch[i].type),
+                sourceExplanation: ligandList.facetsToFetch[i].sourceExplanation
             });
         }
         return {

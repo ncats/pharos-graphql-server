@@ -13,7 +13,7 @@ export class TargetFacetFactory extends FacetFactory{
             type: typeName,
             parent: parent,
             allowedValues: allowedValues
-        };
+        } as FacetInfo;
         const type: TargetFacetType = (<any>TargetFacetType)[typeName];
         switch (type) {
             case TargetFacetType["Target Development Level"]:
@@ -21,7 +21,8 @@ export class TargetFacetFactory extends FacetFactory{
                     {
                         ...partialReturn,
                         dataTable: "target",
-                        dataColumn: "tdl"
+                        dataColumn: "tdl",
+                        sourceExplanation: "Development levels of targets in the target list based on the degree to which they are studied, as evidenced by publications, tool compounds and other features."
                     } as FacetInfo);
             case TargetFacetType.Family:
                 return new FacetInfo(
@@ -43,11 +44,23 @@ export class TargetFacetFactory extends FacetFactory{
                         ...partialReturn,
                         dataTable: "xref",
                         dataColumn: "xtra",
-                        whereClause: "xref.xtype = 'UniProt Keyword'"
+                        whereClause: "xref.xtype = 'UniProt Keyword'",
+                        sourceExplanation: `A classifications of proteins into multiple categories with a controlled vocabulary defined by <a href="https://www.uniprot.org/help/keywords" target="_blank">UniProt</a>.`
                     } as FacetInfo);
             case TargetFacetType["UniProt Disease"]:
             case TargetFacetType.Indication:
             case TargetFacetType["Monarch Disease"]:
+                switch (type) {
+                    case TargetFacetType["UniProt Disease"]:
+                        partialReturn.sourceExplanation = `Diseases found to be associated with targets in the target list, based on data from <a href="https://www.uniprot.org/diseases/" target="_blank">UniProt</a>.`;
+                        break;
+                    case TargetFacetType["Monarch Disease"]:
+                        partialReturn.sourceExplanation = `Diseases found to be associated with targets in the target list, based on data from <a href="https://monarchinitiative.org/" target="_blank">Monarch</a>.`;
+                        break;
+                    case TargetFacetType.Indication:
+                        partialReturn.sourceExplanation = `Diseases found to be associated with targets in the target list, based on a documented indication in data from <a href="https://drugcentral.org/" target="_blank">DrugCentral</a>.`;
+                        break;
+                }
                 return new FacetInfo(
                     {
                         ...partialReturn,
@@ -60,7 +73,8 @@ export class TargetFacetFactory extends FacetFactory{
                     {
                         ...partialReturn,
                         dataTable: "ortholog",
-                        dataColumn: "species"
+                        dataColumn: "species",
+                        sourceExplanation: `Species which are known to have analogs to the targets in the target list, based on data from <a href = "https://www.genenames.org/" target="_blank">HGNC</a>.`
                     } as FacetInfo);
             case TargetFacetType["JAX/MGI Phenotype"]:
                 return new FacetInfo(
@@ -68,11 +82,24 @@ export class TargetFacetFactory extends FacetFactory{
                         ...partialReturn,
                         dataTable: "phenotype",
                         dataColumn: "term_name",
-                        whereClause: `phenotype.ptype = 'JAX/MGI Human Ortholog Phenotype'`
+                        whereClause: `phenotype.ptype = 'JAX/MGI Human Ortholog Phenotype'`,
+                        sourceExplanation: `Phenotypes associated with targets in the target list, based on data from <a href = "http://www.informatics.jax.org/" target="_blank">Mouse Genome Informatics</a>.`
                     } as FacetInfo);
             case TargetFacetType["GO Component"]:
             case TargetFacetType["GO Function"]:
             case TargetFacetType["GO Process"]:
+                const link = `<a href = "https://www.uniprot.org/help/gene_ontology/" target="_blank">UniProt</a>`;
+                switch (type) {
+                    case TargetFacetType["GO Component"]:
+                        partialReturn.sourceExplanation = `Cellular locations containing targets in the target list, as defined by ${link}`;
+                        break;
+                    case TargetFacetType["GO Function"]:
+                        partialReturn.sourceExplanation = `Cellular functions of targets in the target list, as defined by ${link}`;
+                        break;
+                    case TargetFacetType["GO Process"]:
+                        partialReturn.sourceExplanation = `Cellular processes of targets in the target list, as defined by ${link}`;
+                        break;
+                }
                 return new FacetInfo({
                     ...partialReturn,
                     dataTable: "goa",

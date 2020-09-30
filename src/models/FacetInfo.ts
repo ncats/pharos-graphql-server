@@ -21,6 +21,7 @@ export class FacetInfo {
     dataType: FacetDataType;
     binSize: number;
     log: boolean;
+    sourceExplanation: string;
 
     constructor(obj: FacetInfo) {
         this.dataType = obj.dataType || FacetDataType.category;
@@ -32,6 +33,7 @@ export class FacetInfo {
         this.dataColumn = obj.dataColumn || "";
         this.countColumn = obj.countColumn || "";
         this.whereClause = obj.whereClause || "";
+        this.sourceExplanation = obj.sourceExplanation || "";
         this.valuesDelimited = obj.valuesDelimited || false;
         this.select = obj.log ? (`log(${this.dataString()})`) : obj.select || this.dataString();
         this.groupBy = obj.groupBy || this.dataString();

@@ -55,6 +55,7 @@ type Facet @cacheControl(maxAge: 604800) {
      binSize: Float
      sql: String
      elapsedTime: Float
+     sourceExplanation: String
 }
 
 input IFilterFacet {
