@@ -9,10 +9,12 @@ import * as CONSTANTS from "../../constants";
 export class TargetFacetFactory extends FacetFactory{
 
     GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], nullQuery: boolean = false): FacetInfo {
+        const facet_config = parent.databaseConfig.facetMap.get(`${parent.rootTable}-${typeName}`);
         const partialReturn = {
             type: typeName,
             parent: parent,
-            allowedValues: allowedValues
+            allowedValues: allowedValues,
+            sourceExplanation: facet_config?.sourceExplanation
         } as FacetInfo;
         const type: TargetFacetType = (<any>TargetFacetType)[typeName];
         switch (type) {
@@ -22,7 +24,6 @@ export class TargetFacetFactory extends FacetFactory{
                         ...partialReturn,
                         dataTable: "target",
                         dataColumn: "tdl",
-                        sourceExplanation: "Development levels of targets in the target list based on the degree to which they are studied, as evidenced by publications, tool compounds and other features."
                     } as FacetInfo);
             case TargetFacetType.Family:
                 return new FacetInfo(
@@ -45,22 +46,10 @@ export class TargetFacetFactory extends FacetFactory{
                         dataTable: "xref",
                         dataColumn: "xtra",
                         whereClause: "xref.xtype = 'UniProt Keyword'",
-                        sourceExplanation: `A classifications of proteins into multiple categories with a controlled vocabulary defined by <a href="https://www.uniprot.org/help/keywords" target="_blank">UniProt</a>.`
                     } as FacetInfo);
             case TargetFacetType["UniProt Disease"]:
             case TargetFacetType.Indication:
             case TargetFacetType["Monarch Disease"]:
-                switch (type) {
-                    case TargetFacetType["UniProt Disease"]:
-                        partialReturn.sourceExplanation = `Diseases found to be associated with targets in the target list, based on data from <a href="https://www.uniprot.org/diseases/" target="_blank">UniProt</a>.`;
-                        break;
-                    case TargetFacetType["Monarch Disease"]:
-                        partialReturn.sourceExplanation = `Diseases found to be associated with targets in the target list, based on data from <a href="https://monarchinitiative.org/" target="_blank">Monarch</a>.`;
-                        break;
-                    case TargetFacetType.Indication:
-                        partialReturn.sourceExplanation = `Diseases found to be associated with targets in the target list, based on a documented indication in data from <a href="https://drugcentral.org/" target="_blank">DrugCentral</a>.`;
-                        break;
-                }
                 return new FacetInfo(
                     {
                         ...partialReturn,
@@ -74,7 +63,6 @@ export class TargetFacetFactory extends FacetFactory{
                         ...partialReturn,
                         dataTable: "ortholog",
                         dataColumn: "species",
-                        sourceExplanation: `Species which are known to have analogs to the targets in the target list, based on data from <a href = "https://www.genenames.org/" target="_blank">HGNC</a>.`
                     } as FacetInfo);
             case TargetFacetType["JAX/MGI Phenotype"]:
                 return new FacetInfo(
@@ -83,23 +71,10 @@ export class TargetFacetFactory extends FacetFactory{
                         dataTable: "phenotype",
                         dataColumn: "term_name",
                         whereClause: `phenotype.ptype = 'JAX/MGI Human Ortholog Phenotype'`,
-                        sourceExplanation: `Phenotypes associated with targets in the target list, based on data from <a href = "http://www.informatics.jax.org/" target="_blank">Mouse Genome Informatics</a>.`
                     } as FacetInfo);
             case TargetFacetType["GO Component"]:
             case TargetFacetType["GO Function"]:
             case TargetFacetType["GO Process"]:
-                const link = `<a href = "https://www.uniprot.org/help/gene_ontology/" target="_blank">UniProt</a>`;
-                switch (type) {
-                    case TargetFacetType["GO Component"]:
-                        partialReturn.sourceExplanation = `Cellular locations containing targets in the target list, as defined by ${link}`;
-                        break;
-                    case TargetFacetType["GO Function"]:
-                        partialReturn.sourceExplanation = `Cellular functions of targets in the target list, as defined by ${link}`;
-                        break;
-                    case TargetFacetType["GO Process"]:
-                        partialReturn.sourceExplanation = `Cellular processes of targets in the target list, as defined by ${link}`;
-                        break;
-                }
                 return new FacetInfo({
                     ...partialReturn,
                     dataTable: "goa",
@@ -135,13 +110,10 @@ export class TargetFacetFactory extends FacetFactory{
                         whereClause: "phenotype.ptype = 'IMPC' and phenotype.p_value < 0.05"
                     } as FacetInfo);
                 }
-            // case TargetFacetType["Expression: CCLE"]:
             case TargetFacetType["Expression: Cell Surface Protein Atlas"]:
             case TargetFacetType["Expression: Consensus"]:
-            // case TargetFacetType["Expression: HCA RNA"]:
             case TargetFacetType["Expression: HPA"]:
             case TargetFacetType["Expression: HPM Gene"]:
-            // case TargetFacetType["Expression: HPM Protein"]:
             case TargetFacetType["Expression: JensenLab Experiment Cardiac proteome"]:
             case TargetFacetType["Expression: JensenLab Experiment Exon array"]:
             case TargetFacetType["Expression: JensenLab Experiment GNF"]:
@@ -195,7 +167,6 @@ export class TargetFacetFactory extends FacetFactory{
                     dataColumn: "dtype",
                     typeModifier: parent.associatedDisease,
                     whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`,
-                    // valuesDelimited: true
                 } as FacetInfo);
             case TargetFacetType["Linked Disease"]:
                 if(!parent.associatedDisease) {return this.unknownFacet();}
@@ -204,7 +175,6 @@ export class TargetFacetFactory extends FacetFactory{
                     dataTable: "disease",
                     dataColumn: "ncats_name",
                     whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`,
-                    // valuesDelimited: true
                 } as FacetInfo);
             case TargetFacetType["Interacting Viral Protein (Virus)"]:
                 return new FacetInfo({
@@ -318,7 +288,6 @@ export class TargetFacetFactory extends FacetFactory{
         return this.unknownFacet();
     }
 
-
     static getExtraParam(type: string) {
         switch (type) {
             case "Indication":
@@ -331,20 +300,14 @@ export class TargetFacetFactory extends FacetFactory{
                 return "F";
             case "GO Process":
                 return "P";
-            // case "Expression: CCLE":
-            //     return "CCLE";
             case "Expression: Cell Surface Protein Atlas":
                 return "Cell Surface Protein Atlas";
             case "Expression: Consensus":
                 return "Consensus";
-            // case "Expression: HCA RNA":
-            //     return "HCA RNA";
             case "Expression: HPA":
                 return "HPA";
             case "Expression: HPM Gene":
                 return "HPM Gene";
-            // case "Expression: HPM Protein":
-            //     return "HPM Protein";
             case "Expression: JensenLab Experiment Cardiac proteome":
                 return "JensenLab Experiment Cardiac proteome";
             case "Expression: JensenLab Experiment Exon array":

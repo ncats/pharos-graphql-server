@@ -1,17 +1,25 @@
 import {DataModelList} from "./DataModelList";
+import {FacetInfo} from "./FacetInfo";
 
 /**
  * Class to query the database to see what tables and foreign keys are there, to automatically generate the query for the requested data
  */
 export class DatabaseConfig {
-
     tables: DatabaseTable[] = [];
+    facetMap: Map<string, FacetInfo> = new Map<string, FacetInfo>();
 
     constructor(database: any, dbname: string) {
         let query = database.raw('show tables from ' + dbname);
         query.then((rows: any) => {
             for (let tableKey in rows[0]) {
                 this.tables.push(new DatabaseTable(database, dbname, rows[0][tableKey]["Tables_in_" + dbname]));
+            }
+        });
+        let facetQuery = database('pharos_config.facet')
+            .select({model:'model', type: 'type', description:'description'});
+        facetQuery.then((rows: any[]) => {
+            for(let row of rows){
+                this.facetMap.set(`${row.model}-${row.type}`, {sourceExplanation: row.description} as FacetInfo);
             }
         });
     }
