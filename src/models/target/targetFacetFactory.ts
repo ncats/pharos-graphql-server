@@ -9,11 +9,13 @@ import * as CONSTANTS from "../../constants";
 export class TargetFacetFactory extends FacetFactory{
 
     GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], nullQuery: boolean = false): FacetInfo {
+        const facet_config = parent.databaseConfig.facetMap.get(`${parent.rootTable}-${typeName}`);
         const partialReturn = {
             type: typeName,
             parent: parent,
-            allowedValues: allowedValues
-        };
+            allowedValues: allowedValues,
+            sourceExplanation: facet_config?.sourceExplanation
+        } as FacetInfo;
         const type: TargetFacetType = (<any>TargetFacetType)[typeName];
         switch (type) {
             case TargetFacetType["Target Development Level"]:
@@ -21,7 +23,7 @@ export class TargetFacetFactory extends FacetFactory{
                     {
                         ...partialReturn,
                         dataTable: "target",
-                        dataColumn: "tdl"
+                        dataColumn: "tdl",
                     } as FacetInfo);
             case TargetFacetType.Family:
                 return new FacetInfo(
@@ -43,7 +45,7 @@ export class TargetFacetFactory extends FacetFactory{
                         ...partialReturn,
                         dataTable: "xref",
                         dataColumn: "xtra",
-                        whereClause: "xref.xtype = 'UniProt Keyword'"
+                        whereClause: "xref.xtype = 'UniProt Keyword'",
                     } as FacetInfo);
             case TargetFacetType["UniProt Disease"]:
             case TargetFacetType.Indication:
@@ -60,7 +62,7 @@ export class TargetFacetFactory extends FacetFactory{
                     {
                         ...partialReturn,
                         dataTable: "ortholog",
-                        dataColumn: "species"
+                        dataColumn: "species",
                     } as FacetInfo);
             case TargetFacetType["JAX/MGI Phenotype"]:
                 return new FacetInfo(
@@ -68,7 +70,7 @@ export class TargetFacetFactory extends FacetFactory{
                         ...partialReturn,
                         dataTable: "phenotype",
                         dataColumn: "term_name",
-                        whereClause: `phenotype.ptype = 'JAX/MGI Human Ortholog Phenotype'`
+                        whereClause: `phenotype.ptype = 'JAX/MGI Human Ortholog Phenotype'`,
                     } as FacetInfo);
             case TargetFacetType["GO Component"]:
             case TargetFacetType["GO Function"]:
@@ -108,13 +110,10 @@ export class TargetFacetFactory extends FacetFactory{
                         whereClause: "phenotype.ptype = 'IMPC' and phenotype.p_value < 0.05"
                     } as FacetInfo);
                 }
-            // case TargetFacetType["Expression: CCLE"]:
             case TargetFacetType["Expression: Cell Surface Protein Atlas"]:
             case TargetFacetType["Expression: Consensus"]:
-            // case TargetFacetType["Expression: HCA RNA"]:
             case TargetFacetType["Expression: HPA"]:
             case TargetFacetType["Expression: HPM Gene"]:
-            // case TargetFacetType["Expression: HPM Protein"]:
             case TargetFacetType["Expression: JensenLab Experiment Cardiac proteome"]:
             case TargetFacetType["Expression: JensenLab Experiment Exon array"]:
             case TargetFacetType["Expression: JensenLab Experiment GNF"]:
@@ -168,7 +167,6 @@ export class TargetFacetFactory extends FacetFactory{
                     dataColumn: "dtype",
                     typeModifier: parent.associatedDisease,
                     whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`,
-                    // valuesDelimited: true
                 } as FacetInfo);
             case TargetFacetType["Linked Disease"]:
                 if(!parent.associatedDisease) {return this.unknownFacet();}
@@ -177,7 +175,6 @@ export class TargetFacetFactory extends FacetFactory{
                     dataTable: "disease",
                     dataColumn: "ncats_name",
                     whereClause: `disease.ncats_name in (${DiseaseList.getDescendentsQuery(parent.database, parent.associatedDisease).toString()})`,
-                    // valuesDelimited: true
                 } as FacetInfo);
             case TargetFacetType["Interacting Viral Protein (Virus)"]:
                 return new FacetInfo({
@@ -291,7 +288,6 @@ export class TargetFacetFactory extends FacetFactory{
         return this.unknownFacet();
     }
 
-
     static getExtraParam(type: string) {
         switch (type) {
             case "Indication":
@@ -304,20 +300,14 @@ export class TargetFacetFactory extends FacetFactory{
                 return "F";
             case "GO Process":
                 return "P";
-            // case "Expression: CCLE":
-            //     return "CCLE";
             case "Expression: Cell Surface Protein Atlas":
                 return "Cell Surface Protein Atlas";
             case "Expression: Consensus":
                 return "Consensus";
-            // case "Expression: HCA RNA":
-            //     return "HCA RNA";
             case "Expression: HPA":
                 return "HPA";
             case "Expression: HPM Gene":
                 return "HPM Gene";
-            // case "Expression: HPM Protein":
-            //     return "HPM Protein";
             case "Expression: JensenLab Experiment Cardiac proteome":
                 return "JensenLab Experiment Cardiac proteome";
             case "Expression: JensenLab Experiment Exon array":

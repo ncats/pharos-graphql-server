@@ -5,10 +5,12 @@ import {LigandFacetType} from "./ligandFacetType";
 
 export class LigandFacetFactory extends FacetFactory {
     GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], extra?: any): FacetInfo {
+        const facet_config = parent.databaseConfig.facetMap.get(`${parent.rootTable}-${typeName}`);
         const partialReturn = {
             type: typeName,
             parent: parent,
-            allowedValues: allowedValues
+            allowedValues: allowedValues,
+            sourceExplanation: facet_config?.sourceExplanation
         };
         const type: LigandFacetType = (<any>LigandFacetType)[typeName];
         switch (type) {
