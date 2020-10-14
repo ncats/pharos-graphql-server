@@ -238,6 +238,7 @@ ON diseaseList.name = d.ncats_name`));
     DefaultFacets = [
         'Target Development Level',
         'IDG Target Lists',
+        'Data Source',
         'Log Novelty',
         'Log PubMed Score',
         'Family',
@@ -245,8 +246,6 @@ ON diseaseList.name = d.ncats_name`));
         'Interacting Viral Protein (Virus)',
         "JAX/MGI Phenotype",
         'GWAS',
-        'Expression: Consensus',
-        'Ortholog',
-        'UniProt Disease',
-        "Data Source"];
+        'UniProt Disease'
+    ];
 }
