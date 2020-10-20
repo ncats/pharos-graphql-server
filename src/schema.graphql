@@ -113,6 +113,7 @@ type PantherClass @cacheControl(maxAge: 604800) {
 }
 
 type Pathway @cacheControl(maxAge: 604800) {
+     pwid: Int!
      type: String!
      name: String!
      url: String

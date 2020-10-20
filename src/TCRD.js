@@ -1166,6 +1166,7 @@ limit ? offset ?`, [pubmed.pmid, args.top, args.skip]));
 
     getPathways(target, args) {
         let columns = {
+            pwid: 'pathway.id',
             type: 'pathway.pwtype',
             sourceID: 'pathway.id_in_source',
             name: 'name',
