@@ -143,11 +143,13 @@ export class TargetFacetFactory extends FacetFactory{
             case TargetFacetType["WikiPathways Pathway"]:
             case TargetFacetType["KEGG Pathway"]:
             case TargetFacetType["Reactome Pathway"]:
+            case TargetFacetType["UniProt Pathway"]:
+            case TargetFacetType["PathwayCommons Pathway"]:
                 return new FacetInfo({
                     ...partialReturn,
                     dataTable: "pathway",
                     dataColumn: "name",
-                    whereClause: `pathway.pwtype = '${TargetFacetFactory.getExtraParam(typeName)}'`
+                    whereClause: `pathway.pwtype like '${TargetFacetFactory.getExtraParam(typeName)}'`
                 } as FacetInfo);
             case TargetFacetType["PPI Data Source"]:
                 if(!parent.associatedTarget) { return this.unknownFacet();}
@@ -334,6 +336,10 @@ export class TargetFacetFactory extends FacetFactory{
                 return "KEGG";
             case "Reactome Pathway":
                 return "Reactome";
+            case "UniProt Pathway":
+                return "UniProt";
+            case "PathwayCommons Pathway":
+                return "PathwayCommons: %";
         }
         return type;
     }

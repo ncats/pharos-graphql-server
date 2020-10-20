@@ -113,9 +113,10 @@ type PantherClass @cacheControl(maxAge: 604800) {
 }
 
 type Pathway @cacheControl(maxAge: 604800) {
-     pwid: Int!
      type: String!
      name: String!
+     url: String
+     sourceID: String
      targetCounts: [IntProp]
      targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
@@ -437,7 +438,7 @@ type Target @cacheControl(maxAge: 604800){
 
      """Pathway information"""
      pathwayCounts: [IntProp]
-     pathways(skip: Int=0, top: Int=10, type: [String]=[]): [Pathway]
+     pathways(skip: Int=0, top: Int=10, type: [String]=[], excludeType: [String]=[]): [Pathway]
 
      """Protein signal localization"""
      locsigs: [LocSig]

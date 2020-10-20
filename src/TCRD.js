@@ -1165,20 +1165,29 @@ limit ? offset ?`, [pubmed.pmid, args.top, args.skip]));
     }
 
     getPathways(target, args) {
-        if (args.type.length > 0) {
-            return this.db.select(this.db.raw(`
-a.*, a.id as pwid, a.pwtype as type 
-from pathway a, t2tc b`)).whereIn('a.pwtype', args.type)
-                .andWhere(this.db.raw(`
-a.protein_id = b.protein_id and b.target_id = ?
-limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
+        let columns = {
+            type: 'pathway.pwtype',
+            sourceID: 'pathway.id_in_source',
+            name: 'name',
+            url: 'url'
+        };
+        const query = this.db({pathway:'pathway', t2tc:'t2tc'})
+            .select(columns);
+        if(args.type.length > 0){
+            query.whereIn('pathway.pwtype', args.type);
         }
-        return this.db.select(this.db.raw(`
-a.*, a.id as pwid, a.pwtype as type 
-from pathway a, t2tc b
-where a.protein_id = b.protein_id
-and b.target_id = ?
-limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
+        if(args.excludeType.length > 0){
+            query.whereNotIn('pathway.pwtype', args.excludeType);
+        }
+        query.andWhere(this.db.raw('pathway.protein_id = t2tc.protein_id'))
+            .andWhere('t2tc.target_id', target.tcrdid);
+        if (args.top) {
+            query.limit(args.top);
+        }
+        if (args.skip) {
+            query.offset(args.skip);
+        }
+        return query;
     }
 
     getTargetsForPathway(pathway, args) {

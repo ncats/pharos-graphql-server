@@ -33,6 +33,8 @@ export enum TargetFacetType {
     "Reactome Pathway",
     "WikiPathways Pathway",
     "KEGG Pathway",
+    "UniProt Pathway",
+    "PathwayCommons Pathway",
     "PPI Data Source",
     "Disease Data Source",
     "Linked Disease",
