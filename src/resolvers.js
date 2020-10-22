@@ -247,6 +247,16 @@ const resolvers = {
     },
 
     Target: {
+        dataSources: async function (target, args, {dataSources}) {
+            let query = dataSources.tcrd.db({ncats_dataSource_map: "ncats_dataSource_map", t2tc: "t2tc"})
+                .distinct('ncats_dataSource_map.dataSource')
+                .where(dataSources.tcrd.db.raw('ncats_dataSource_map.protein_id = t2tc.protein_id'))
+                .andWhere("t2tc.target_id", target.tcrdid);
+            return query.then(rows => {
+                return rows.map(row => row.dataSource);
+            })
+        },
+
         interactingViruses: async function (target, args, {dataSources}) {
             let query = Virus.getQuery(dataSources.tcrd.db, target.tcrdid);
             return query.then(rows => {

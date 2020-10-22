@@ -487,6 +487,8 @@ type Target @cacheControl(maxAge: 604800){
      diseaseAssociationDetails: [AssociationDetails]
 
      interactingViruses: [VirusDetails]
+
+     dataSources: [String]
 }
 
 type ViralInteractionDetails @cacheControl(maxAge: 604800) {
