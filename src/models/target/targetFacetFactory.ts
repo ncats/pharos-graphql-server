@@ -183,7 +183,7 @@ export class TargetFacetFactory extends FacetFactory{
                     ...partialReturn,
                     dataTable: "viral_protein",
                     dataColumn: "ncbi",
-                    whereClause: `viral_ppi.finalLR >= ${CONSTANTS.VIRAL_LR_CUTOFFF}`,
+                    whereClause: 'viral_ppi.highConfidence = 1',
                     select: `concat(viral_protein.name, ' (', virus.name, ')')`
                 } as FacetInfo);
             case TargetFacetType["Interacting Virus"]:
@@ -191,7 +191,7 @@ export class TargetFacetFactory extends FacetFactory{
                     ...partialReturn,
                     dataTable: "virus",
                     dataColumn: "name",
-                    whereClause: `viral_ppi.finalLR >= ${CONSTANTS.VIRAL_LR_CUTOFFF}`
+                    whereClause: 'viral_ppi.highConfidence = 1'
                 } as FacetInfo);
             case TargetFacetType["Log Novelty"]:
                 return new FacetInfo({

@@ -496,6 +496,7 @@ type ViralInteractionDetails @cacheControl(maxAge: 604800) {
      protein_name: String!
      protein_ncbi: String
      dataSource: String
+     pdbIDs: [String]
 }
 
 type VirusDetails @cacheControl(maxAge: 604800){
