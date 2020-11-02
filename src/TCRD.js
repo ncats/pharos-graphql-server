@@ -1165,6 +1165,17 @@ limit ? offset ?`, [pubmed.pmid, args.top, args.skip]));
     }
 
     getPathways(target, args) {
+        if (args.getTopForEachType) {
+            const queries = [];
+            for (let type of ['Reactome', 'KEGG', 'WikiPathways', 'UniProt', 'PathwayCommons']) {
+                queries.push(this.getPathwayQuery(target, type, null, args.top, 0));
+            }
+            return queries;
+        }
+        return [this.getPathwayQuery(target, args.type, args.excludeType, args.top, args.skip)];
+    }
+
+    getPathwayQuery(target, type, excludeType, top, skip) {
         let columns = {
             pwid: 'pathway.id',
             type: 'pathway.pwtype',
@@ -1172,21 +1183,29 @@ limit ? offset ?`, [pubmed.pmid, args.top, args.skip]));
             name: 'name',
             url: 'url'
         };
-        const query = this.db({pathway:'pathway', t2tc:'t2tc'})
+        const query = this.db({pathway: 'pathway', t2tc: 't2tc'})
             .select(columns);
-        if(args.type.length > 0){
-            query.whereIn('pathway.pwtype', args.type);
+        if (type && type.length > 0) {
+            if (Array.isArray(type)) {
+                if(type.length == 1){
+                    query.where('pathway.pwtype', 'like', type[0] + '%');
+                }else{
+                    query.whereIn('pathway.pwtype', type);
+                }
+            } else {
+                query.where('pathway.pwtype', 'like', type + '%');
+            }
         }
-        if(args.excludeType.length > 0){
-            query.whereNotIn('pathway.pwtype', args.excludeType);
+        if (excludeType && excludeType.length > 0) {
+            query.whereNotIn('pathway.pwtype', excludeType);
         }
         query.andWhere(this.db.raw('pathway.protein_id = t2tc.protein_id'))
             .andWhere('t2tc.target_id', target.tcrdid);
-        if (args.top) {
-            query.limit(args.top);
+        if (top) {
+            query.limit(top);
         }
-        if (args.skip) {
-            query.offset(args.skip);
+        if (skip) {
+            query.offset(skip);
         }
         return query;
     }
@@ -1709,8 +1728,8 @@ and c.target_id = ?`, [target.tcrdid]));
         const q = this.db("ncats_typeahead_index")
             .select({
                 value: "value",
-                category:this.db.raw("group_concat(`category` separator '|')"),
-                reference_id:this.db.raw("group_concat(ifnull(`reference_id`,'') separator '|')")
+                category: this.db.raw("group_concat(`category` separator '|')"),
+                reference_id: this.db.raw("group_concat(ifnull(`reference_id`,'') separator '|')")
             })
             .where("value", "like", `%${key}%`)
             .groupBy("value")

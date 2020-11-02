@@ -439,7 +439,7 @@ type Target @cacheControl(maxAge: 604800){
 
      """Pathway information"""
      pathwayCounts: [IntProp]
-     pathways(skip: Int=0, top: Int=10, type: [String]=[], excludeType: [String]=[]): [Pathway]
+     pathways(skip: Int=0, top: Int=10, type: [String]=[], excludeType: [String]=[], getTopForEachType: Boolean = false): [Pathway]
 
      """Protein signal localization"""
      locsigs: [LocSig]

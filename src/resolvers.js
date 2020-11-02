@@ -583,14 +583,18 @@ const resolvers = {
             });
         },
         pathways: async function (target, args, {dataSources}) {
-            const q = dataSources.tcrd.getPathways(target, args);
-            return q.then(rows => {
+            let q = dataSources.tcrd.getPathways(target, args);
+            return Promise.all(q).then(rows => {
+                const outRows = [];
                 rows.forEach(row => {
+                    outRows.push(...row);
+                });
+                outRows.forEach(row => {
                     if(row.type == "Reactome"){
                         row.url = `https://reactome.org/PathwayBrowser/#/${row.sourceID}`;
                     }
                 });
-                return rows;
+                return outRows;
             }).catch(function (error) {
                 console.error(error);
             });
