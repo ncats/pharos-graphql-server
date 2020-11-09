@@ -4,6 +4,7 @@
 alter table `xref`
 add fulltext index xref_text_idx(`value`, xtra)
 ,add index xref_idx7(xtra)
+,add index xref_type_val_idx(`xtype`, `value`)
 ;
 
 alter table `uberon`

@@ -116,6 +116,8 @@ type Pathway @cacheControl(maxAge: 604800) {
      pwid: Int!
      type: String!
      name: String!
+     url: String
+     sourceID: String
      targetCounts: [IntProp]
      targets(skip: Int=0, top: Int=10, filter: IFilter): [Target]
 }
@@ -437,7 +439,7 @@ type Target @cacheControl(maxAge: 604800){
 
      """Pathway information"""
      pathwayCounts: [IntProp]
-     pathways(skip: Int=0, top: Int=10, type: [String]=[]): [Pathway]
+     pathways(skip: Int=0, top: Int=10, type: [String]=[], excludeType: [String]=[], getTopForEachType: Boolean = false): [Pathway]
 
      """Protein signal localization"""
      locsigs: [LocSig]
@@ -485,6 +487,8 @@ type Target @cacheControl(maxAge: 604800){
      diseaseAssociationDetails: [AssociationDetails]
 
      interactingViruses: [VirusDetails]
+
+     dataSources: [String]
 }
 
 type ViralInteractionDetails @cacheControl(maxAge: 604800) {
@@ -492,6 +496,7 @@ type ViralInteractionDetails @cacheControl(maxAge: 604800) {
      protein_name: String!
      protein_ncbi: String
      dataSource: String
+     pdbIDs: [String]
 }
 
 type VirusDetails @cacheControl(maxAge: 604800){

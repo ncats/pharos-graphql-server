@@ -18,6 +18,7 @@ module.exports._getTargetListQuery = function(term) {
 
     let proteinQuery = this.proteinSearch(this.db, firstWordMatch, 1);
     let proteinAliasQuery = this.proteinAliasSearch(this.db, firstWordMatch, 1.5);
+    let proteinEnsemblQuery = this.proteinEnsemblSearch(this.db, term, 1.5);
     let targetFirstWordQuery = this.targetSearch(this.db, firstWordMatch, 2);
     let targetAnyWordQuery = this.targetSearch(this.db, anyWordMatch, 2.5);
     let diseaseAnyWordQuery = this.diseaseSearch(this.db, anyWordMatch, 3);
@@ -27,6 +28,7 @@ module.exports._getTargetListQuery = function(term) {
 
     return proteinQuery.union(
         proteinAliasQuery,
+        proteinEnsemblQuery,
         targetFirstWordQuery,
         targetAnyWordQuery,
         keywordAnyWordQuery,
@@ -55,6 +57,12 @@ module.exports.proteinAliasSearch = function (db, term, score) {
     return db({alias: 'alias'})
         .select({protein_id: 'protein_id', match: 'value', score: score, match_score: 1})
         .where('value', 'regexp', term);
+};
+module.exports.proteinEnsemblSearch = function (db, term, score) {
+    return db({xref: 'xref'})
+        .select({protein_id: 'protein_id', match: 'value', score: score, match_score: 1})
+        .where('xtype', 'Ensembl')
+        .andWhere('value', term);
 };
 module.exports.targetSearch = function (db, term, score) {
     return db({tar: 'target', link: "t2tc"})

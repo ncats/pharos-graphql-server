@@ -39,7 +39,8 @@ export class Virus {
             finalLR: "viral_ppi.finalLR",
             protein_name: "viral_protein.name",
             protein_ncbi: "viral_protein.ncbi",
-            dataSource: "viral_ppi.dataSource"
+            dataSource: "viral_ppi.dataSource",
+            pdbIDs: "viral_ppi.pdbIDs"
         };
 
         const tableList = {
@@ -49,7 +50,7 @@ export class Virus {
         return knex(tableList).select(columnList)
             .where('protein.id', knex.raw('viral_ppi.protein_id'))
             .where('viral_ppi.viral_protein_id', knex.raw('viral_protein.id'))
-            .where('viral_ppi.finalLR','>=', CONSTANTS.VIRAL_LR_CUTOFFF)
+            .where('viral_ppi.highConfidence','1')
             .where('viral_protein.virus_id', knex.raw('virus.virusTaxid'))
             .where('protein.id', knex.raw('t2tc.protein_id'))
             .where('t2tc.target_id', targetID)
@@ -69,22 +70,24 @@ export class Virus {
         let returnArray : Virus[] = [];
         for(let row of rows){
             let virusObj = getVirus(row);
-            virusObj.interactionDetails.push(row);
+            virusObj.interactionDetails.push(new ViralProteinInteraction(row));
         }
         return returnArray;
     }
 }
 
 export class ViralProteinInteraction {
-    name: string;
-    ncbi: string;
+    protein_name: string;
+    protein_ncbi: string;
     dataSource: string;
     finalLR: number;
+    pdbIDs: string[];
 
     constructor(row: any) {
-        this.name = row.protein_name;
-        this.ncbi = row.protein_ncbi;
+        this.protein_name = row.protein_name;
+        this.protein_ncbi = row.protein_ncbi;
         this.dataSource = row.dataSource;
         this.finalLR = row.finalLR;
+        this.pdbIDs = row.pdbIDs?.split('|') || [];
     }
 }

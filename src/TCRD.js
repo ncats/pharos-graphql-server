@@ -1165,20 +1165,49 @@ limit ? offset ?`, [pubmed.pmid, args.top, args.skip]));
     }
 
     getPathways(target, args) {
-        if (args.type.length > 0) {
-            return this.db.select(this.db.raw(`
-a.*, a.id as pwid, a.pwtype as type 
-from pathway a, t2tc b`)).whereIn('a.pwtype', args.type)
-                .andWhere(this.db.raw(`
-a.protein_id = b.protein_id and b.target_id = ?
-limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
+        if (args.getTopForEachType) {
+            const queries = [];
+            for (let type of ['Reactome', 'KEGG', 'WikiPathways', 'UniProt', 'PathwayCommons']) {
+                queries.push(this.getPathwayQuery(target, type, null, args.top, 0));
+            }
+            return queries;
         }
-        return this.db.select(this.db.raw(`
-a.*, a.id as pwid, a.pwtype as type 
-from pathway a, t2tc b
-where a.protein_id = b.protein_id
-and b.target_id = ?
-limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
+        return [this.getPathwayQuery(target, args.type, args.excludeType, args.top, args.skip)];
+    }
+
+    getPathwayQuery(target, type, excludeType, top, skip) {
+        let columns = {
+            pwid: 'pathway.id',
+            type: 'pathway.pwtype',
+            sourceID: 'pathway.id_in_source',
+            name: 'name',
+            url: 'url'
+        };
+        const query = this.db({pathway: 'pathway', t2tc: 't2tc'})
+            .select(columns);
+        if (type && type.length > 0) {
+            if (Array.isArray(type)) {
+                if(type.length == 1){
+                    query.where('pathway.pwtype', 'like', type[0] + '%');
+                }else{
+                    query.whereIn('pathway.pwtype', type);
+                }
+            } else {
+                query.where('pathway.pwtype', 'like', type + '%');
+            }
+        }
+        if (excludeType && excludeType.length > 0) {
+            query.whereNotIn('pathway.pwtype', excludeType);
+        }
+        query.andWhere(this.db.raw('pathway.protein_id = t2tc.protein_id'))
+            .andWhere('t2tc.target_id', target.tcrdid);
+        if (top) {
+            query.limit(top);
+        }
+        if (skip) {
+            query.offset(skip);
+        }
+        return query;
     }
 
     getTargetsForPathway(pathway, args) {
@@ -1699,8 +1728,8 @@ and c.target_id = ?`, [target.tcrdid]));
         const q = this.db("ncats_typeahead_index")
             .select({
                 value: "value",
-                category:this.db.raw("group_concat(`category` separator '|')"),
-                reference_id:this.db.raw("group_concat(ifnull(`reference_id`,'') separator '|')")
+                category: this.db.raw("group_concat(`category` separator '|')"),
+                reference_id: this.db.raw("group_concat(ifnull(`reference_id`,'') separator '|')")
             })
             .where("value", "like", `%${key}%`)
             .groupBy("value")
