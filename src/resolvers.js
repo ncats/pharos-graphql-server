@@ -19,9 +19,10 @@ const resolvers = {
                         for (let i = 0; i < cats.length; i++) {
                             row.categories.push({category: cats[i], reference_id: refs[i]});
                         }
-                    }
-                    else{
-                        row.categories = cats.map(c => {return {category: c};});
+                    } else {
+                        row.categories = cats.map(c => {
+                            return {category: c};
+                        });
                     }
                 });
                 return rows;
@@ -590,8 +591,8 @@ const resolvers = {
                     outRows.push(...row);
                 });
                 outRows.forEach(row => {
-                    if(row.type == "Reactome"){
-                        row.url = `https://reactome.org/PathwayBrowser/#/${row.sourceID}`;
+                    if (row.type == "Reactome") {
+                        row.url = `https://idg.reactome.org/PathwayBrowser/#/${row.sourceID}&FLG=${target.sym}`;
                     }
                 });
                 return outRows;
