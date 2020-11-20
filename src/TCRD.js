@@ -459,12 +459,10 @@ and b.id = c.target_id`));
     getTarget(args) {
         //console.log('>>> getTarget: '+JSON.stringify(args));
         if (args.uniprot || args.sym || args.stringid) {
-            var value;
-            if (args.uniprot) value = args.uniprot;
-            else if (args.sym) value = args.sym;
-            else value = args.stringid;
+            var value = args.uniprot || args.sym || args.stringid;
             return this.db.select(this.db.raw(TARGET_SQL + `
-and match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)`, [value]));
+and (match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
+OR b.id = (SELECT protein_id FROM xref where xtype = 'Ensembl' and value = ? limit 1))`, [value, value]));
         }
 
         if (args.geneid) {
