@@ -144,7 +144,6 @@ export class FacetInfo {
         query.groupBy('grouper_column').orderBy('value', 'desc');
 
         this.parent.captureQueryPerformance(query, this.type);
-        console.log(query.toString());
         return query;
     }
 
