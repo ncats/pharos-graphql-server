@@ -37,7 +37,7 @@ export class DatabaseConfig {
         console.log(facetQuery.toString());
         facetQuery.then((rows: any[]) => {
             for (let row of rows) {
-                console.log(row);
+                console.log(row.type + " : " + row.sourceExplanation);
                 this.facetMap.set(`${row.rootTable}-${row.type}`, row);
             }
         });
