@@ -27,6 +27,7 @@ export class DatabaseConfig {
                     null_table: `field.null_table`,
                     null_column: `field.null_column`,
                     null_count_column: `field.null_count_column`,
+                    null_where_clause: `field.null_where_clause`,
                     dataType: `field.dataType`,
                     binSize: `field.binSize`,
                     log: `field.log`,
