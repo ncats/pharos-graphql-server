@@ -20,4 +20,20 @@ export abstract class FacetFactory {
     unknownFacet(): FacetInfo {
         return new FacetInfo({} as FacetInfo);
     }
+
+    parse_facet_config(parent: DataModelList, typeName: string, allowedValues: string[], nullQuery: boolean, facet_config: any){
+        return ({
+            type: typeName,
+            parent: parent,
+            allowedValues: allowedValues,
+            dataTable: nullQuery ? facet_config?.null_table || facet_config?.table : facet_config?.table,
+            dataColumn: nullQuery ? facet_config?.null_column || facet_config?.column : facet_config?.column,
+            select: facet_config?.select,
+            whereClause: facet_config?.where_clause,
+            dataType: facet_config?.dataType || 'category',
+            binSize: facet_config?.binSize,
+            log: facet_config?.log,
+            sourceExplanation: facet_config?.sourceExplanation
+        } as FacetInfo);
+    }
 }

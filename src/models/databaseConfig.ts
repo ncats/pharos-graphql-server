@@ -1,12 +1,11 @@
 import {DataModelList} from "./DataModelList";
-import {FacetInfo} from "./FacetInfo";
 
 /**
  * Class to query the database to see what tables and foreign keys are there, to automatically generate the query for the requested data
  */
 export class DatabaseConfig {
     tables: DatabaseTable[] = [];
-    facetMap: Map<string, FacetInfo> = new Map<string, FacetInfo>();
+    facetMap: Map<string, any> = new Map<string, any>();
 
     constructor(database: any, dbname: string) {
         let query = database.raw('show tables from ' + dbname);
@@ -15,11 +14,28 @@ export class DatabaseConfig {
                 this.tables.push(new DatabaseTable(database, dbname, rows[0][tableKey]["Tables_in_" + dbname]));
             }
         });
-        let facetQuery = database('pharos_config.facet')
-            .select({model:'model', type: 'type', description:'description'});
+        let facetQuery = database({field: 'pharos_config.field', model: 'pharos_config.model'})
+            .select(
+                {
+                    id: 'field.id',
+                    model_id: `field.model_id`,
+                    type: `field.type`,
+                    table: `field.table`,
+                    column: `field.column`,
+                    select: `field.select`,
+                    where_clause: `field.where_clause`,
+                    null_table: `field.null_table`,
+                    null_column: `field.null_column`,
+                    null_count_column: `field.null_count_column`,
+                    dataType: `field.dataType`,
+                    binSize: `field.binSize`,
+                    log: `field.log`,
+                    sourceExplanation: `field.description`,
+                    rootTable: 'model.table',
+                }).whereRaw('field.model_id = model.id');
         facetQuery.then((rows: any[]) => {
-            for(let row of rows){
-                this.facetMap.set(`${row.model}-${row.type}`, {sourceExplanation: row.description} as FacetInfo);
+            for (let row of rows) {
+                this.facetMap.set(`${row.rootTable}-${row.type}`, row);
             }
         });
     }
@@ -46,9 +62,13 @@ export class DatabaseConfig {
         if (from == undefined) {
             return null;
         }
-        let toLinks: TableLink[] = from.links.filter(table => {return table.otherTable == toTable;});
-        if(toLinks.length > 1){
-            toLinks = toLinks.filter(link => {return link.column == DatabaseTable.preferredLink.get(`${fromTable}-${toTable}`)});
+        let toLinks: TableLink[] = from.links.filter(table => {
+            return table.otherTable == toTable;
+        });
+        if (toLinks.length > 1) {
+            toLinks = toLinks.filter(link => {
+                return link.column == DatabaseTable.preferredLink.get(`${fromTable}-${toTable}`)
+            });
         }
         const toLink = toLinks[0];
         if (toLink == undefined) {
@@ -77,21 +97,21 @@ export class DatabaseTable {
         this.getColumnInfo(database, dbname);
     }
 
-    getColumnInfo(database: any, dbname: string){
+    getColumnInfo(database: any, dbname: string) {
         let query = database('INFORMATION_SCHEMA.COLUMNS')
             .select(['column_name', 'data_type'])
             .where('table_schema', dbname)
             .andWhere('table_name', this.tableName);
         query.then((rows: any) => {
-            for(let rowKey in rows){
+            for (let rowKey in rows) {
                 this.dataTypes.set(rows[rowKey]['column_name'], rows[rowKey]['data_type']);
             }
         });
     }
 
-    columnIsNumeric(column: string){
+    columnIsNumeric(column: string) {
         let dataType = this.dataTypes.get(column)?.toLowerCase();
-        if (dataType){
+        if (dataType) {
             return ['bigint', 'int', 'tinyint', 'decimal', 'double', 'float'].includes(dataType);
         }
         return null
@@ -135,12 +155,12 @@ export class DatabaseTable {
 
     static preferredLink: Map<string, string> = new Map(
         [
-            ["ncats_ppi-protein","protein_id"]
+            ["ncats_ppi-protein", "protein_id"]
         ]
     );
 
-    static additionalWhereClause(table: string, alias: string, dataModelListObj: DataModelList){
-        if(table == "ncats_ppi"){
+    static additionalWhereClause(table: string, alias: string, dataModelListObj: DataModelList) {
+        if (table == "ncats_ppi") {
             return `${alias}.other_id = (select id from protein where match(uniprot,sym,stringid) against('${dataModelListObj.associatedTarget}' in boolean mode))
             and NOT (${alias}.ppitypes = 'STRINGDB' AND ${alias}.score < ${dataModelListObj.ppiConfidence})`;
         }
