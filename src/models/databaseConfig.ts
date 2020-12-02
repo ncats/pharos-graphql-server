@@ -34,10 +34,8 @@ export class DatabaseConfig {
                     sourceExplanation: `field.description`,
                     rootTable: 'model.table',
                 }).whereRaw('field.model_id = model.id');
-        console.log(facetQuery.toString());
         facetQuery.then((rows: any[]) => {
             for (let row of rows) {
-                console.log(row.type + " : " + row.sourceExplanation);
                 this.facetMap.set(`${row.rootTable}-${row.type}`, row);
             }
         });
