@@ -45,5 +45,7 @@ export enum TargetFacetType {
     "JensenLab Confidence",
     "Expression Atlas Log2 Fold Change",
     "DisGeNET Score",
-    "Data Source"
+    "Data Source",
+    "PANTHER Class",
+    "DTO Class"
 }

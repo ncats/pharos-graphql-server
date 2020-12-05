@@ -92,6 +92,12 @@ export class TargetList extends DataModelList {
             query.andWhere('protein.id', this.database.raw('viral_ppi.protein_id'))
                 .andWhere('viral_ppi.viral_protein_id', this.database.raw('viral_protein.id'))
                 .andWhere('virus.virusTaxid', this.database.raw('viral_protein.virus_id'));
+        }else if (facet.dataTable === 'panther_class') {
+            query.andWhere('protein.id', this.database.raw('p2pc.protein_id'))
+                .andWhere('p2pc.panther_class_id', this.database.raw('panther_class.id'));
+        }else if (facet.dataTable === 'dto') {
+            query.andWhere('protein.id', this.database.raw('p2dto.protein_id'))
+                .andWhere('p2dto.dtoid', this.database.raw('dto.dtoid'));
         } else { // default is to use protein_id column from keyTable
             query.andWhere('protein.id', this.database.raw(facet.dataTable + '.protein_id'));
         }
@@ -116,6 +122,12 @@ export class TargetList extends DataModelList {
                 tableList.push("viral_ppi");
                 tableList.push("viral_protein");
                 tableList.push("virus");
+                break;
+            case "panther_class":
+                tableList.push("p2pc");
+                break;
+            case "dto":
+                tableList.push("p2dto");
                 break;
         }
         if (info.type == "IMPC Phenotype") {
@@ -236,12 +248,14 @@ ON diseaseList.name = d.ncats_name`));
         ...this.assocationFacets];
 
     DefaultFacets = [
+        'DTO Class',
         'Target Development Level',
         'IDG Target Lists',
         'Data Source',
         'Log Novelty',
         'Log PubMed Score',
         'Family',
+        'PANTHER Class',
         'Interacting Virus',
         'Interacting Viral Protein (Virus)',
         "JAX/MGI Phenotype",
