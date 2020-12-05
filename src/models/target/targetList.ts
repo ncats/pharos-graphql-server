@@ -248,7 +248,6 @@ ON diseaseList.name = d.ncats_name`));
         ...this.assocationFacets];
 
     DefaultFacets = [
-        'DTO Class',
         'Target Development Level',
         'IDG Target Lists',
         'Data Source',
@@ -256,6 +255,7 @@ ON diseaseList.name = d.ncats_name`));
         'Log PubMed Score',
         'Family',
         'PANTHER Class',
+        'DTO Class',
         'Interacting Virus',
         'Interacting Viral Protein (Virus)',
         "JAX/MGI Phenotype",
