@@ -266,6 +266,8 @@ type GO @cacheControl(maxAge: 604800) {
      term: String!
      evidence: String
      goeco: String
+     assigned_by: String
+     explanation: String
 }
 
 type MIM @cacheControl(maxAge: 604800) {
