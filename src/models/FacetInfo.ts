@@ -1,8 +1,8 @@
 import {DataModelList} from "./DataModelList";
 
 export enum FacetDataType {
-    category,
-    numeric
+    category="category",
+    numeric="numeric"
 }
 
 export class FacetInfo {
@@ -14,7 +14,6 @@ export class FacetInfo {
     whereClause: string;
     valuesDelimited: boolean;
     select: string;
-    groupBy: string;
     allowedValues: string[];
     parent: DataModelList;
     tables: string[] = [];
@@ -36,7 +35,6 @@ export class FacetInfo {
         this.sourceExplanation = obj.sourceExplanation || "";
         this.valuesDelimited = obj.valuesDelimited || false;
         this.select = obj.log ? (`log(${this.dataString()})`) : obj.select || this.dataString();
-        this.groupBy = obj.groupBy || this.dataString();
         this.allowedValues = obj.allowedValues || [];
         this.parent = obj.parent || {};
 
@@ -134,7 +132,7 @@ export class FacetInfo {
             return query;
         }
         let query = this.parent.database(DataModelList.listToObject(this.tables, this.parent.rootTable))
-            .select(this.parent.database.raw(this.select + " as name, count(distinct " + this.parent.keyString() + ") as value"));
+            .select(this.parent.database.raw(`${this.select} as name, count(distinct ${this.parent.keyString()}) as value, ${this.select} as grouper_column`));
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.type);
         if (this.whereClause.length > 0) {
             query.whereRaw(this.whereClause);
@@ -143,7 +141,7 @@ export class FacetInfo {
         if (this.dataTable != this.parent.rootTable) {
             this.parent.addLinkToRootTable(query, this);
         }
-        query.groupBy(this.groupBy).orderBy('value', 'desc');
+        query.groupBy('grouper_column').orderBy('value', 'desc');
 
         this.parent.captureQueryPerformance(query, this.type);
         return query;

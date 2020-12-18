@@ -13,9 +13,6 @@ export enum TargetFacetType {
     "GO Component",
     "GO Function",
     "GWAS",
-    // "Expression: CCLE", // these three are not too informative, because all options have the same set of targets
-    // "Expression: HCA RNA", // and they're super slow
-    // "Expression: HPM Protein", // so let's just not calculate them
     "Expression: HPA",
     "Expression: JensenLab Experiment HPA",
     "Expression: HPM Gene",
@@ -48,5 +45,7 @@ export enum TargetFacetType {
     "JensenLab Confidence",
     "Expression Atlas Log2 Fold Change",
     "DisGeNET Score",
-    "Data Source"
+    "Data Source",
+    "PANTHER Class",
+    "DTO Class"
 }

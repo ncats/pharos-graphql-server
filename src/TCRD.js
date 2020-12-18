@@ -484,10 +484,72 @@ order by value desc`, [target.tcrdid]));
     }
 
     getGOTermsForTarget(target, args) {
-        let q = this.db.select(this.db.raw(`
-*,go_id as goid, substr(go_term,1,1) as type, substring(go_term,3) as term
-from goa a, t2tc b
-`));
+        let q = this.db({goa: 'goa', t2tc: 't2tc'})
+            .select(
+                {
+                    goid: 'go_id',
+                    type: this.db.raw('substr(go_term,1,1)'),
+                    term: this.db.raw('substr(go_term,3)'),
+                    goeco: 'goeco',
+                    evidence: 'evidence',
+                    assigned_by: 'assigned_by',
+                    explanation: this.db.raw(`CASE
+        WHEN evidence = 'EXP' THEN 'Inferred from Experiment'
+        WHEN evidence = 'IDA' THEN 'Inferred from Direct Assay'
+        WHEN evidence = 'IPI' THEN 'Inferred from Physical Interaction'
+        WHEN evidence = 'IMP' THEN 'Inferred from Mutant Phenotype'
+        WHEN evidence = 'IGI' THEN 'Inferred from Genetic Interaction'
+        WHEN evidence = 'IEP' THEN 'Inferred from Expression Pattern'
+        WHEN evidence = 'HTP' THEN 'Inferred from High Throughput Experiment'
+        WHEN evidence = 'HDA' THEN 'Inferred from High Throughput Direct Assay'
+        WHEN evidence = 'HMP' THEN 'Inferred from High Throughput Mutant Phenotype'
+        WHEN evidence = 'HGI' THEN 'Inferred from High Throughput Genetic Interaction'
+        WHEN evidence = 'HEP' THEN 'Inferred from High Throughput Expression Pattern'
+        WHEN evidence = 'IBA' THEN 'Inferred from Biological aspect of Ancestor'
+        WHEN evidence = 'IBD' THEN 'Inferred from Biological aspect of Descendant'
+        WHEN evidence = 'IKR' THEN 'Inferred from Key Residues'
+        WHEN evidence = 'IRD' THEN 'Inferred from Rapid Divergence'
+        WHEN evidence = 'ISS' THEN 'Inferred from Sequence or structural Similarity'
+        WHEN evidence = 'ISO' THEN 'Inferred from Sequence Orthology'
+        WHEN evidence = 'ISA' THEN 'Inferred from Sequence Alignment'
+        WHEN evidence = 'ISM' THEN 'Inferred from Sequence Model'
+        WHEN evidence = 'IGC' THEN 'Inferred from Genomic Context'
+        WHEN evidence = 'RCA' THEN 'Inferred from Reviewed Computational Analysis'
+        WHEN evidence = 'TAS' THEN 'Traceable Author Statement'
+        WHEN evidence = 'NAS' THEN 'Non-traceable Author Statement'
+        WHEN evidence = 'IC' THEN 'Inferred by Curator'
+        WHEN evidence = 'ND' THEN 'No biological Data available'
+        WHEN evidence = 'IEA' THEN 'Inferred from Electronic Annotation' END`),
+                    sort_column: this.db.raw(`CASE
+        WHEN evidence =  'EXP' THEN 1
+        WHEN evidence =  'IDA' THEN 2
+        WHEN evidence =  'IPI' THEN 3
+        WHEN evidence =  'IMP' THEN 4
+        WHEN evidence =  'IGI' THEN 5
+        WHEN evidence =  'IEP' THEN 6
+        WHEN evidence =  'HTP' THEN 7
+        WHEN evidence =  'HDA' THEN 8
+        WHEN evidence =  'HMP' THEN 9
+        WHEN evidence = 'HGI' THEN 10
+        WHEN evidence = 'HEP' THEN 11
+        WHEN evidence = 'IBA' THEN 12
+        WHEN evidence = 'IBD' THEN 13
+        WHEN evidence = 'IKR' THEN 14
+        WHEN evidence = 'IRD' THEN 15
+        WHEN evidence = 'ISS' THEN 16
+        WHEN evidence = 'ISO' THEN 17
+        WHEN evidence = 'ISA' THEN 18
+        WHEN evidence = 'ISM' THEN 19
+        WHEN evidence = 'IGC' THEN 20
+        WHEN evidence = 'RCA' THEN 21
+        WHEN evidence = 'TAS' THEN 22
+        WHEN evidence = 'NAS' THEN 23
+        WHEN evidence =  'IC' THEN 24
+        WHEN evidence =  'ND' THEN 26
+        WHEN evidence = 'IEA' THEN 25 END`)
+                })
+            .where(this.db.raw('goa.protein_id = t2tc.protein_id'))
+            .andWhere('t2tc.target_id', target.tcrdid);
         if (args.filter) {
             for (var i in args.filter.facets) {
                 let f = args.filter.facets[i];
@@ -501,20 +563,17 @@ from goa a, t2tc b
             let t = args.filter.term;
             if (t != undefined && t !== '') {
                 q = q.andWhere(this.db.raw(`
-match(a.go_term) against(? in boolean mode)`, [t]));
+match(go_term) against(? in boolean mode)`, [t]));
             }
         }
-
-        q = q.andWhere(this.db.raw(`a.protein_id = b.protein_id
-and b.target_id = ?`, [target.tcrdid]))
-            .groupBy('a.go_term');
 
         if (args.top)
             q = q.limit(args.top);
         if (args.skip)
             q = q.offset(args.skip);
 
-        //console.log('>>> getGOTermsForTarget: '+q);
+        q.orderBy('sort_column');
+        // console.log('>>> getGOTermsForTarget: '+q);
         return q;
     }
 

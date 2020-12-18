@@ -1503,6 +1503,8 @@ function getTargetResult(args, dataSources) {
                 count: count,
                 facets: facets
             };
+        }).catch( error => {
+            console.error(error);
         });
     }
 }

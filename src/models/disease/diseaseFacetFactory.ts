@@ -6,39 +6,24 @@ import {DiseaseFacetType} from "./diseaseFacetType";
 export class DiseaseFacetFactory extends FacetFactory {
     GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], extra?: any): FacetInfo {
         const facet_config = parent.databaseConfig.facetMap.get(`${parent.rootTable}-${typeName}`);
-        const partialReturn = {
-            type: typeName,
-            parent: parent,
-            allowedValues: allowedValues,
-            sourceExplanation: facet_config?.sourceExplanation
-        };
+        const partialReturn = this.parse_facet_config(parent, typeName, allowedValues, false, facet_config);
+
         const type: DiseaseFacetType = (<any>DiseaseFacetType)[typeName];
         switch (type) {
-            case DiseaseFacetType["Target Development Level"]:
-                return new FacetInfo(
-                    {
-                        ...partialReturn,
-                        dataTable: "target",
-                        dataColumn: "tdl"
-                    } as FacetInfo);
             case DiseaseFacetType["Data Source"]:
                 return new FacetInfo({
                     ...partialReturn,
-                    dataTable: "disease",
-                    dataColumn: "dtype",
                     typeModifier: parent.associatedTarget,
                     whereClause: this.getdiseaseWhereClause(parent.associatedTarget)
                 } as FacetInfo);
             case DiseaseFacetType.Drug:
                 return new FacetInfo({
                     ...partialReturn,
-                    dataTable: "disease",
-                    dataColumn: "drug_name",
                     typeModifier: parent.associatedTarget,
                     whereClause: this.getdiseaseWhereClause(parent.associatedTarget, "drug_name is not null")
                 } as FacetInfo);
         }
-        return this.unknownFacet();
+        return new FacetInfo(partialReturn);
     }
 
     getdiseaseWhereClause(sym: string, extraClause?: string) {
