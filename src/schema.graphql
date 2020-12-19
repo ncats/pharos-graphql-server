@@ -92,6 +92,7 @@ input IFilter {
      order: String
      associatedTarget: String
      associatedDisease: String
+     similarity: String
      ppiConfidence: Int = 400
 }
 
@@ -386,8 +387,18 @@ type TINXTarget @cacheControl(maxAge: 604800) {
      details: [TINXTargetDetails]
 }
 
+type SimilarityDetails @cacheControl(maxAge: 604800){
+     jaccard: Float
+     overlap: Int
+     baseSize: Int
+     testSize: Int
+     commonOptions: [String]
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
+     similarity: SimilarityDetails
+
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
      """UniProt Accession"""
@@ -491,6 +502,15 @@ type Target @cacheControl(maxAge: 604800){
      interactingViruses: [VirusDetails]
 
      dataSources: [String]
+}
+
+type SimilarTargetResult @cacheControl(maxAge: 604800) {
+     protein_id: Int
+     sym: String
+     overlap: Int
+     baseSize: Int
+     testSize: Int
+     jaccard:  Float
 }
 
 type ViralInteractionDetails @cacheControl(maxAge: 604800) {
@@ -603,7 +623,38 @@ type DataSourceCount @cacheControl(maxAge: 604800){
      ligandCount: Int
 }
 
+type PharosConfiguration{
+     lists (listName: String): [FieldList]
+}
+
+type FieldList{
+     listName: String
+     field: [FieldDetails]
+}
+
+type FieldDetails{
+     order: Int
+     type: String
+     table: String
+     column: String
+     select: String
+     where_clause: String
+     null_table: String
+     null_column: String
+     null_count_column: String
+     null_where_clause: String
+     dataType: String
+     binSize: String
+     log: String
+     sourceExplanation: String
+     modelName: String
+     rootTable: String
+     rootColumn: String
+}
+
 type Query{
+     configuration: PharosConfiguration
+
      autocomplete(name: String): [SuggestionResults]
 
      dataSourceCounts: [DataSourceCount]

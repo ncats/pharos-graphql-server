@@ -23,20 +23,20 @@ export class FacetInfo {
     sourceExplanation: string;
 
     constructor(obj: FacetInfo) {
-        this.dataType = obj.dataType || FacetDataType.category;
-        this.binSize = obj.binSize || 1;
-        this.log = obj.log || false;
-        this.type = obj.type || "";
-        this.typeModifier = obj.typeModifier || "";
-        this.dataTable = obj.dataTable || "";
-        this.dataColumn = obj.dataColumn || "";
-        this.countColumn = obj.countColumn || "";
-        this.whereClause = obj.whereClause || "";
-        this.sourceExplanation = obj.sourceExplanation || "";
-        this.valuesDelimited = obj.valuesDelimited || false;
-        this.select = obj.log ? (`log(${this.dataString()})`) : obj.select || this.dataString();
-        this.allowedValues = obj.allowedValues || [];
-        this.parent = obj.parent || {};
+        this.dataType = obj?.dataType || FacetDataType.category;
+        this.binSize = obj?.binSize || 1;
+        this.log = obj?.log || false;
+        this.type = obj?.type || "";
+        this.typeModifier = obj?.typeModifier || "";
+        this.dataTable = obj?.dataTable || "";
+        this.dataColumn = obj?.dataColumn || "";
+        this.countColumn = obj?.countColumn || "";
+        this.whereClause = obj?.whereClause || "";
+        this.sourceExplanation = obj?.sourceExplanation || "";
+        this.valuesDelimited = obj?.valuesDelimited || false;
+        this.select = obj?.log ? (`log(${this.dataString()})`) : obj?.select || this.dataString();
+        this.allowedValues = obj?.allowedValues || [];
+        this.parent = obj?.parent || {};
 
         if (obj && obj.parent) {
             this.tables = this.parent.getRequiredTablesForFacet(this);

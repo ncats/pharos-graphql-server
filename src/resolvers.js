@@ -7,7 +7,29 @@ const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 
 const resolvers = {
+    FieldList: {
+        listName: async function(listObject, args, {dataSources}){
+            return listObject;
+        },
+        field: async function(listObject, args, {dataSources}){
+            return dataSources.tcrd.tableInfo.fieldLists.get(listObject);
+        }
+    },
+
+    PharosConfiguration: {
+        lists: async function(config, args, {dataSources}){
+            if(args.listName){
+                return [args.listName];
+            }
+            return  config.fieldLists.keys();
+        }
+    },
+
     Query: {
+        configuration: async function (_, args, {dataSources}){
+            return dataSources.tcrd.tableInfo;
+        },
+
         autocomplete: async function (_, args, {dataSources}, info) {
             let query = dataSources.tcrd.getSuggestions(args.name);
             return query.then(rows => {
@@ -73,7 +95,7 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return TargetList.AllFacets();
+            return dataSources.tcrd.tableInfo.fieldLists.get('Target Facets - All').map(facet => facet.type);
         },
 
         target: async function (_, args, {dataSources}) {
@@ -815,9 +837,22 @@ const resolvers = {
                 }).catch(function (error) {
                     console.error(error);
                 });
+        },
+        similarity: async function (target, args, {dataSources}){
+            if(dataSources.similarity) {
+                return target;
+            }
+            return null;
         }
     },
-
+    SimilarityDetails:{
+        commonOptions: async function (target, args, {dataSources}){
+            if(target && target.commonOptions && dataSources.similarity) {
+                return target.commonOptions.split('|');
+            }
+            return null;
+        }
+    },
     PubMed: {
         targetCounts: async function (pubmed, args, {dataSources}) {
             const q = dataSources.tcrd.getTargetCountsForPubMed(pubmed);
@@ -1453,6 +1488,7 @@ function getTargetResult(args, dataSources) {
     const targetList = new TargetList(dataSources.tcrd, args);
     dataSources.associatedTarget = targetList.associatedTarget;
     dataSources.associatedDisease = targetList.associatedDisease;
+    dataSources.similarity = targetList.similarity;
     const proteinListQuery = targetList.fetchProteinList();
     if (!!proteinListQuery) {
         return proteinListQuery.then(rows => {

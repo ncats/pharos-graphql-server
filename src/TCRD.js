@@ -108,7 +108,7 @@ class TCRD extends SQLDataSource {
     constructor(config) {
         super(config);
         const _this = this;
-        this.tableInfo = new DatabaseConfig(this.db, config.connection.database);
+        this.tableInfo = new DatabaseConfig(this.db, config.connection.database, config.connection.configDB);
 
         const root = {
             doid: 'DOID:4',

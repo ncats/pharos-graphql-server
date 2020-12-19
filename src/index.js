@@ -3,6 +3,7 @@
 //
 const DBHOST = 'tcrd.ncats.io';
 const DBNAME = 'tcrd660';
+const CONFIGDB = 'pharos_config';
 const USER = 'tcrd';
 const PWORD = '';
 
@@ -31,7 +32,8 @@ const tcrdConfig = {
         host: DBHOST,
         user: USER,
         password: PWORD,
-        database: DBNAME
+        database: DBNAME,
+        configDB: CONFIGDB
     },
     pool: {
         min: 2,

@@ -1,8 +1,8 @@
 import {TargetFacetFactory} from "./targetFacetFactory";
-import {TargetFacetType} from "./targetFacetType";
 import {DataModelList} from "../DataModelList";
 import {FacetInfo} from "../FacetInfo";
 import {ConfigKeys} from "../config";
+import {Jaccard} from "../similarTargets/jaccard";
 
 export class TargetList extends DataModelList {
     batch: string[] = [];
@@ -20,6 +20,9 @@ export class TargetList extends DataModelList {
         }
         else if(this.associatedDisease){
             return [{column: 'dtype', order:'desc'}];
+        }
+        else if(this.similarity.match.length > 0){
+            return [{column: 'jaccard', order: 'desc'}];
         }
         return [{column:'novelty', order:'desc'}];
     }
@@ -62,12 +65,25 @@ export class TargetList extends DataModelList {
        if(this.associatedDisease){
             return ConfigKeys.Target_List_Disease;
         }
+       if(this.similarity.match.length > 0){
+           return ConfigKeys.Target_List_Similarity;
+       }
         return ConfigKeys.Target_List_Default;
     }
 
     addModelSpecificFiltering(query: any, list: boolean = false): void {
-        if(list && this.term.length > 0) {
+        if (list && this.term.length > 0) {
             query.join(this.tcrd.getScoredProteinList(this.term).as("searchQuery"), 'searchQuery.protein_id', 'protein.id');
+        } else if (list && this.similarity.match.length > 0) {
+            const subq = new Jaccard(
+                {
+                    ...this.similarity,
+                    matchQuery: `match(protein.uniprot,protein.sym,protein.stringid) against('${this.similarity.match}' in boolean mode)`
+                },
+                this.rootTable, this.database, this.databaseConfig).getListQuery(true);
+            if(subq) {
+                query.join(subq.as("similarityQuery"), 'similarityQuery.protein_id', 'protein.id');
+            }
         } else {
             if(!list || !this.associatedTarget) {
                 this.addProteinListConstraint(query, this.fetchProteinList());
@@ -138,7 +154,7 @@ export class TargetList extends DataModelList {
     }
 
     fetchProteinList(): any {
-        if (this.term.length == 0 && this.associatedTarget.length == 0 && this.associatedDisease.length == 0) {
+        if (this.term.length == 0 && this.associatedTarget.length == 0 && this.associatedDisease.length == 0 && this.similarity.match.length == 0) {
             return null;
         }
         if (this.proteinListCached) {
@@ -150,8 +166,20 @@ export class TargetList extends DataModelList {
         } else if (this.associatedTarget) {
             proteinListQuery = this.tcrd.getProteinListFromPPI(this.associatedTarget, this.ppiConfidence);
         }
+        else if (this.similarity.match.length > 0){
+            proteinListQuery = new Jaccard(
+                {...this.similarity, matchQuery: `match(protein.uniprot,protein.sym,protein.stringid) against('${this.similarity.match}' in boolean mode)`},
+                this.rootTable, this.database, this.databaseConfig).getListQuery(false);
+        }
         else{
-            proteinListQuery = this.database.select(this.database.raw(` 
+            proteinListQuery = this.getDiseaseQuery();
+        }
+        this.captureQueryPerformance(proteinListQuery, "protein list");
+        return proteinListQuery;
+    }
+
+    getDiseaseQuery(){
+        return this.database.select(this.database.raw(` 
 distinct protein_id
 FROM
     disease as d
@@ -169,9 +197,6 @@ JOIN (SELECT "${this.associatedDisease}" AS name UNION SELECT
             finder.lft + 1 <= lst.lft
                 AND finder.rght >= lst.rght) as diseaseList
 ON diseaseList.name = d.ncats_name`));
-        }
-        this.captureQueryPerformance(proteinListQuery, "protein list");
-        return proteinListQuery;
     }
 
     cacheProteinList(list: string[]) {
@@ -215,51 +240,15 @@ ON diseaseList.name = d.ncats_name`));
         return true;
     }
 
-    static AllFacets(){
-        return Object.keys(TargetFacetType).filter(key => isNaN(Number(key)));
-    }
+    get DefaultPPIFacets() {
+        return this.databaseConfig.fieldLists
+            .get('Target Facets - Associated Target')?.sort((a,b) => a.order - b.order)
+            .map(a => a.type) || [];
+    };
 
-    AllFacets = TargetList.AllFacets();
-
-    assocationFacets = [
-        "Target Development Level",
-        'Family',
-        "IDG Target Lists",
-        "Reactome Pathway",
-        "GO Process",
-        "GO Component",
-        "GO Function",
-        "UniProt Disease",
-        "Expression: UniProt Tissue",
-        "Ortholog"];
-
-    DefaultPPIFacets = [
-        "StringDB Interaction Score",
-        "BioPlex Interaction Probability",
-        "PPI Data Source",
-        ...this.assocationFacets];
-
-    DefaultDiseaseFacets = [
-        "JensenLab Confidence",
-        "Expression Atlas Log2 Fold Change",
-        "DisGeNET Score",
-        "Disease Data Source",
-        "Linked Disease",
-        ...this.assocationFacets];
-
-    DefaultFacets = [
-        'Target Development Level',
-        'IDG Target Lists',
-        'Data Source',
-        'Log Novelty',
-        'Log PubMed Score',
-        'Family',
-        'PANTHER Class',
-        'DTO Class',
-        'Interacting Virus',
-        'Interacting Viral Protein (Virus)',
-        "JAX/MGI Phenotype",
-        'GWAS',
-        'UniProt Disease'
-    ];
+    get DefaultDiseaseFacets() {
+        return this.databaseConfig.fieldLists
+            .get('Target Facets - Associated Disease')?.sort((a,b) => a.order - b.order)
+            .map(a => a.type) || [];
+    };
 }

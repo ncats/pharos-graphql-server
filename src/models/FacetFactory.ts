@@ -41,9 +41,9 @@ export abstract class FacetFactory {
             returnObj.whereClause = facet_config?.null_where_clause;
             returnObj.countColumn = facet_config?.null_count_column;
         } else {
-            returnObj.dataTable = facet_config?.table;
-            returnObj.dataColumn = facet_config?.column;
-            returnObj.whereClause = facet_config?.where_clause;
+            returnObj.dataTable = facet_config?.dataTable;
+            returnObj.dataColumn = facet_config?.dataColumn;
+            returnObj.whereClause = facet_config?.whereClause;
         }
         return returnObj;
     }

@@ -1,32 +1,30 @@
 import {FacetFactory} from "../FacetFactory";
 import {DataModelList} from "../DataModelList";
-import {FacetDataType, FacetInfo} from "../FacetInfo";
-import {LigandFacetType} from "./ligandFacetType";
+import {FacetInfo} from "../FacetInfo";
 
 export class LigandFacetFactory extends FacetFactory {
     GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], extra?: any): FacetInfo {
-        const facet_config = parent.databaseConfig.facetMap.get(`${parent.rootTable}-${typeName}`);
+        const facet_config = parent.databaseConfig.getFacetConfig(parent.rootTable, typeName);
         const partialReturn = this.parse_facet_config(parent, typeName, allowedValues, false, facet_config);
 
-        const type: LigandFacetType = (<any>LigandFacetType)[typeName];
-        switch (type) {
-            case LigandFacetType.Activity:
+        switch (typeName) {
+            case "Activity":
                 return new FacetInfo({
                     ...partialReturn,
                     typeModifier: parent.associatedTarget,
                     whereClause: this.getActivityWhereClause(parent.associatedTarget, "act_type not in ('','-')")
                 } as FacetInfo);
-            case LigandFacetType.Action:
+            case "Action":
                 return new FacetInfo(
                     {
                         ...partialReturn,
                         typeModifier: parent.associatedTarget,
                         whereClause: this.getActivityWhereClause(parent.associatedTarget, "action_type is not null")
                     } as FacetInfo);
-            case LigandFacetType.EC50:
-            case LigandFacetType.IC50:
-            case LigandFacetType.Kd:
-            case LigandFacetType.Ki:
+            case "EC50":
+            case "IC50":
+            case "Kd":
+            case "Ki":
                 if (!parent.associatedTarget) {
                     return this.unknownFacet();
                 }

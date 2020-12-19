@@ -1,4 +1,4 @@
-import {DatabaseTable} from "./databaseConfig";
+import {DatabaseTable} from "./databaseTable";
 
 /**
  * Class for gathering tables and columns to use for standard queries
@@ -41,7 +41,6 @@ export class Config {
                 dataFields.push({table: "ncats_ppi", data: "p_wrong"});
                 break;
             case ConfigKeys.Target_List_Disease:
-
                 dataFields.push({table: "target", data: "id", alias: "tcrdid"});
                 dataFields.push({table: "target", data: "tdl"});
                 dataFields.push({table: "target", data: "fam"});
@@ -54,6 +53,24 @@ export class Config {
                 dataFields.push({table: "tinx_novelty", data: "score", alias: "novelty"});
 
                 dataFields.push({table: "disease", data: `dtype`, group_method: `count`});
+                break;
+            case ConfigKeys.Target_List_Similarity:
+                dataFields.push({table: "target", data: "id", alias: "tcrdid"});
+                dataFields.push({table: "target", data: "tdl"});
+                dataFields.push({table: "target", data: "fam"});
+
+                dataFields.push({table: "protein", data: "description", alias: "name"});
+                dataFields.push({table: "protein", data: "sym"});
+                dataFields.push({table: "protein", data: "uniprot"});
+                dataFields.push({table: "protein", data: "seq"});
+
+                dataFields.push({table: "tinx_novelty", data: "score", alias: "novelty"});
+
+                dataFields.push({subQuery: true, table: "similarityQuery", data:"jaccard"});
+                dataFields.push({subQuery: true, table: "similarityQuery", data:"overlap"});
+                dataFields.push({subQuery: true, table: "similarityQuery", data:"baseSize"});
+                dataFields.push({subQuery: true, table: "similarityQuery", data:"testSize"});
+                dataFields.push({subQuery: true, table: "similarityQuery", data:"commonOptions"});
                 break;
             case ConfigKeys.Disease_List_Default:
                 dataFields.push({table: "disease", data: "ncats_name", alias: "name"});
@@ -96,6 +113,7 @@ export class RequestedData {
     data: string = "";
     alias?: string = "";
     group_method?: string = "";
+    subQuery?: boolean = false;
 }
 
 /**
@@ -136,6 +154,7 @@ export class QueryDefinition {
         const table = reqData.table;
         const data = reqData.data;
         const alias = reqData.alias;
+        const subq = reqData.subQuery;
         let links: string[] = [];
         const tableCount = this.tables.filter(t => {
             return t.tableName == table;
@@ -158,7 +177,7 @@ export class QueryDefinition {
             links = DatabaseTable.getRequiredLinks(table, this.rootTable) || [];
         }
 
-        const newTable = new SqlTable(table, {}, links);
+        const newTable = new SqlTable(table, {}, links, subq);
         newTable.columns.push(new SqlColumns(reqData.data, reqData.alias, reqData.group_method));
         this.tables.push(newTable);
     }
@@ -193,6 +212,7 @@ export class QueryDefinition {
 
     getInnerJoinTables(): SqlTable[] {
         return this.tables.filter(table => {
+            if (table.subQuery) return false;
             return table.allowUnmatchedRows == false;
         });
     }
@@ -200,6 +220,7 @@ export class QueryDefinition {
     getLeftJoinTables(): SqlTable[] {
         return this.tables.filter(table => {
             if (this.rootTable === table.tableName) return false;
+            if (table.subQuery) return false;
             return table.allowUnmatchedRows == true;
         });
     }
@@ -237,14 +258,16 @@ export class SqlTable {
     joinConstraint: string;
     columns: SqlColumns[] = [];
     linkingTables: string[] = [];
+    subQuery: boolean = false;
 
     constructor(tableName: string,
                 {alias = "", allowUnmatchedRows = false, joinConstraint = ""} = {},
-                linkingTables: string[] = []) {
+                linkingTables: string[] = [], subQuery: boolean = false) {
         this.tableName = tableName;
         this.allowUnmatchedRows = allowUnmatchedRows;
         this.joinConstraint = joinConstraint;
         this.linkingTables = linkingTables;
+        this.subQuery = subQuery;
         if (alias) {
             this._alias = alias;
         }
@@ -290,6 +313,7 @@ export enum ConfigKeys {
     Target_List_Default,
     Target_List_PPI,
     Target_List_Disease,
+    Target_List_Similarity,
     Disease_List_Default,
     Ligand_List_Default
 }
