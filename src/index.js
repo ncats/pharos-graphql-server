@@ -1,12 +1,5 @@
-//
-// Edit as appropriate
-//
-const DBHOST = 'tcrd.ncats.io';
-const DBNAME = 'tcrd660';
-const CONFIGDB = 'pharos_config';
-const USER = 'tcrd';
-const PWORD = '';
-
+const {cred} = require('./db_credentials');
+console.log('using config: ' + cred.CONFIGDB);
 ////////////////////////////////////////////////////////////////////////////////
 // DON'T EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING!
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,11 +22,11 @@ const schema = makeExecutableSchema({
 const tcrdConfig = {
     client: 'mysql',
     connection: {
-        host: DBHOST,
-        user: USER,
-        password: PWORD,
-        database: DBNAME,
-        configDB: CONFIGDB
+        host: cred.DBHOST,
+        user: cred.USER,
+        password: cred.PWORD,
+        database: cred.DBNAME,
+        configDB: cred.CONFIGDB
     },
     pool: {
         min: 2,
