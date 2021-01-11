@@ -123,7 +123,8 @@ export class DatabaseTable {
             ["protein-dto", ["p2dto"]],
             ["protein-panther_class", ["p2pc"]],
             ["protein-virus", ["viral_protein", "viral_ppi"]],
-            ["protein-viral_protein", ["virus", "viral_ppi"]]
+            ["protein-viral_protein", ["virus", "viral_ppi"]],
+            ["protein-ncats_ligands", ["ncats_ligand_activity", "target", "t2tc"]]
         ]);
 
     static getRequiredLinks(table1: string, table2: string): string[] | undefined {

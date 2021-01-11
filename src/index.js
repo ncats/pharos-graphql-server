@@ -1,5 +1,4 @@
 const {cred} = require('./db_credentials');
-console.log('using config: ' + cred.CONFIGDB);
 ////////////////////////////////////////////////////////////////////////////////
 // DON'T EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING!
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +62,8 @@ const PORT = process.env.PORT || 4000;
 
 setTimeout(() => {
     app.listen({port: PORT}, () => {
+        console.log('🏭 using configuration from: ' + cred.CONFIGDB);
         console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`)
     });
-}, 1000);
+}, 5000);
 
