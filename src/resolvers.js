@@ -848,7 +848,11 @@ const resolvers = {
     SimilarityDetails:{
         commonOptions: async function (target, args, {dataSources}){
             if(target && target.commonOptions && dataSources.similarity) {
-                return target.commonOptions.split('|');
+                const options = target.commonOptions.split('|');
+                if(options.length <= 20){
+                    return options;
+                }
+                return [...options.slice(0,20), `...and ${options.length - 20} more`];
             }
             return null;
         }
