@@ -852,7 +852,7 @@ const resolvers = {
                 if(options.length <= 20){
                     return options;
                 }
-                return [...options.slice(0,20), `...and ${options.length - 20} more`];
+                return [...options.slice(0,20), `...and ${target.overlap - 20} more`];
             }
             return null;
         }
