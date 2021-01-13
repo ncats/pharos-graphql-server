@@ -1,3 +1,4 @@
+const {TargetDetails} = require("./models/target/targetDetails");
 const {FacetDataType} = require("./models/FacetInfo");
 const {LigandList} = require("./models/ligand/ligandList");
 const {DiseaseList} = require("./models/disease/diseaseList");
@@ -843,6 +844,27 @@ const resolvers = {
                 return target;
             }
             return null;
+        },
+        facetValueCount: async function(target, args, {dataSources}){
+            if (!args.facetName) {
+                return null;
+            }
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getFacetValueCount().then(results => {
+                if(results && results.length > 0) {
+                    return results[0].value;
+                }
+                return null;
+            });
+        },
+        facetValues: async function(target, args, {dataSources}) {
+            if (!args.facetName) {
+                return null;
+            }
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getAllFacetValues().then(results => {
+                return results.map(res => res.value);
+            });
         }
     },
     SimilarityDetails:{

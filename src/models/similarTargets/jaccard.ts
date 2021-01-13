@@ -47,10 +47,8 @@ export class Jaccard{
         return similarityQuery;
     }
 
-
-
     getOverlapQuery() {
-        const query = this.getBaseSetQuery(
+        const query = this.dbConfig.getBaseSetQuery(this.rootTable, this.facet,
             {
                 testID : this.keyString,
                 commonOptions: this.knex.raw(`group_concat(distinct ${this.facet.select} separator '|')`),
@@ -62,58 +60,25 @@ export class Jaccard{
     }
 
     getCountForTest(){
-        const testSetQuery = this.getBaseSetQuery({value: this.knex.raw(`count(distinct ${this.facet.select})`)});
+        const testSetQuery = this.dbConfig.getBaseSetQuery(this.rootTable, this.facet, {value: this.knex.raw(`count(distinct ${this.facet.select})`)});
         return testSetQuery.where(this.knex.raw(`${this.keyString} = testID`));
     }
 
     getCountForMatch(){
-        const baseSetQuery = this.getBaseSetQuery({value: this.knex.raw(`count(distinct ${this.facet.select})`)});
+        const baseSetQuery = this.dbConfig.getBaseSetQuery(this.rootTable, this.facet, {value: this.knex.raw(`count(distinct ${this.facet.select})`)});
         return baseSetQuery.where(this.knex.raw(this.matchQuery));
     }
 
     getOptionsForMatch(){
-        const baseSetQuery = this.getBaseSetQuery();
+        const baseSetQuery = this.dbConfig.getBaseSetQuery(this.rootTable, this.facet);
         return baseSetQuery.where(this.knex.raw(this.matchQuery));
     }
     getOptionsForTest(){
-        const testSetQuery = this.getBaseSetQuery();
+        const testSetQuery = this.dbConfig.getBaseSetQuery(this.rootTable, this.facet);
         return testSetQuery.where(this.knex.raw(`${this.keyString} = testID`));
     }
 
-    getJoinTables(){
-        let joinTables: string[] = [];
 
-        if (this.facet.dataTable != this.rootTable) {
-            const links = DatabaseTable.getRequiredLinks(this.facet.dataTable, this.rootTable) || [];
-            joinTables.push(...links);
-            joinTables.push(this.rootTable);
-        }
-        return joinTables;
-    }
-
-    getBaseSetQuery(columns?: any){
-        const joinTables = this.getJoinTables();
-
-        const query = this.knex(this.facet.dataTable);
-        if(!columns) {
-            query.distinct({value: this.knex.raw(this.facet.select)});
-        }
-        else{
-            query.select(columns);
-        }
-
-        let leftTable = this.facet.dataTable;
-        joinTables.forEach(rightTable => {
-            const linkInfo = this.dbConfig.getLinkInformation(leftTable, rightTable);
-            query.join(rightTable, `${leftTable}.${linkInfo?.fromCol}`, '=', `${rightTable}.${linkInfo?.toCol}`);
-            leftTable = rightTable;
-        });
-
-        if (this.facet.whereClause.length > 0) {
-            query.whereRaw(this.facet.whereClause);
-        }
-        return query;
-    }
 
 
 }

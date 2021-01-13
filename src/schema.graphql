@@ -502,6 +502,9 @@ type Target @cacheControl(maxAge: 604800){
      interactingViruses: [VirusDetails]
 
      dataSources: [String]
+
+     facetValueCount(facetName: String!): Int
+     facetValues(facetName: String!, skip: Int=0, top: Int=10): [String]
 }
 
 type SimilarTargetResult @cacheControl(maxAge: 604800) {

@@ -1,4 +1,5 @@
 import {DatabaseTable, TableLink, TableLinkInfo} from "./databaseTable";
+import {FacetInfo} from "./FacetInfo";
 
 /**
  * Class to query the database to see what tables and foreign keys are there, to automatically generate the query for the requested data
@@ -176,5 +177,40 @@ export class DatabaseConfig {
             return new TableLinkInfo(toLink.otherColumn, toLink.column)
         }
         return new TableLinkInfo(toLink.column, toLink.otherColumn);
+    }
+
+    getJoinTables(rootTable: string, dataTable: string): string[]{
+        let joinTables: string[] = [];
+
+        if (dataTable != rootTable) {
+            const links = DatabaseTable.getRequiredLinks(dataTable, rootTable) || [];
+            joinTables.push(...links);
+            joinTables.push(rootTable);
+        }
+        return  joinTables;
+    }
+
+    getBaseSetQuery(rootTable: string, facet: FacetInfo, columns?: any){
+        const joinTables = this.getJoinTables(rootTable, facet.dataTable);
+
+        const query = this.database(facet.dataTable);
+        if(!columns) {
+            query.distinct({value: this.database.raw(facet.select)});
+        }
+        else{
+            query.select(columns);
+        }
+
+        let leftTable = facet.dataTable;
+        joinTables.forEach(rightTable => {
+            const linkInfo = this.getLinkInformation(leftTable, rightTable);
+            query.join(rightTable, `${leftTable}.${linkInfo?.fromCol}`, '=', `${rightTable}.${linkInfo?.toCol}`);
+            leftTable = rightTable;
+        });
+
+        if (facet.whereClause.length > 0) {
+            query.whereRaw(facet.whereClause);
+        }
+        return query;
     }
 }
