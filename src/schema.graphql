@@ -568,6 +568,7 @@ type TargetResult @cacheControl(maxAge: 604800){
      count: Int
      facets (include: [String], exclude: [String]): [Facet]
      targets(skip: Int=0, top: Int=10): [Target]
+     similarityTarget: Target
 }
 
 type SuggestionResults @cacheControl(maxAge: 60){

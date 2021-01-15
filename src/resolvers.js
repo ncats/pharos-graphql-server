@@ -1276,7 +1276,13 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
-        }
+        },
+        similarityTarget: async function (target, args, {dataSources}){
+            if(dataSources.similarity && dataSources.similarity.match) {
+                return resolvers.Query.target(null, {q: {uniprot :dataSources.similarity.match}}, {dataSources});
+            }
+            return null;
+        },
     },
 
     DiseaseResult: {
