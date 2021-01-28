@@ -8,7 +8,7 @@ TCRD Update Instructions :smiley_cat:
    terminal > ssh ifxdev.ncats.nih.gov
         <enter password>
    [ifxdev] $ curl -o tcrd6.6.0.sql.gz http://juniper.health.unm.edu/tcrd/download/TCRDv6.6.0.sql.gz
-        (about 12 minutes)
+        (about 12 - 18 minutes)
    [ifxdev] $ gunzip tcrd6.6.0.sql.gz
         (about 2 minutes)
     ```
