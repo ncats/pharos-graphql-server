@@ -7,6 +7,7 @@ const { ApolloServer } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
 const TCRD = require('./TCRD');
 const fs = require('fs');
+var url = require("url");
 require('typescript-require');
 const responseCachePlugin = require('apollo-server-plugin-response-cache');
 
@@ -52,6 +53,11 @@ const server = new ApolloServer({
 
 // Initialize the app
 const app = express();
+
+app.get("/render", (req, res) => {
+    const parsedUrl = url.parse(req.url);
+    res.redirect("https://tripod.nih.gov/servlet/renderServletv13?" + parsedUrl.query);
+});
 
 server.applyMiddleware({
     app,
