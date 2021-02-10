@@ -395,9 +395,21 @@ type SimilarityDetails @cacheControl(maxAge: 604800){
      commonOptions: [String]
 }
 
+
+type VariantInfo @cacheControl(maxAge: 604800){
+     aa: String
+     bits: Float
+}
+
+type SeqVariantInfo @cacheControl(maxAge: 604800){
+     startResidue: Int
+     residue_info: [[VariantInfo]]
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
      similarity: SimilarityDetails
+     sequence_variants: SeqVariantInfo
 
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!

@@ -845,6 +845,29 @@ const resolvers = {
             }
             return null;
         },
+        sequence_variants: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getSequenceVariants().then(results => {
+                if(!results || results.length < 1){
+                    return null;
+                }
+                const residueData = [];
+                let currentResidue = [];
+                let lastResidueIndex = -1;
+                results.forEach(row => {
+                    if(lastResidueIndex != row.residue){
+                        lastResidueIndex = row.residue;
+                        currentResidue = [];
+                        residueData.push(currentResidue);
+                    }
+                    currentResidue.push({
+                        aa: row.aa,
+                        bits: row.bits
+                    })
+                });
+                return {residue_info: residueData, startResidue: results[0].residue};
+            })
+        },
         facetValueCount: async function(target, args, {dataSources}){
             if (!args.facetName) {
                 return null;
