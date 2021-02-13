@@ -866,7 +866,13 @@ const resolvers = {
                     })
                 });
                 return {residue_info: residueData, startResidue: results[0].residue};
-            })
+            });
+        },
+        sequence_annotations: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getSequenceAnnotations().then(results => {
+                return results;
+            });
         },
         facetValueCount: async function(target, args, {dataSources}){
             if (!args.facetName) {

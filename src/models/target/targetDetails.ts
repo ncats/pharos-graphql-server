@@ -46,4 +46,17 @@ export class TargetDetails{
             .orderBy([{column: 'residue', order: 'asc'}, {column: 'bits', order: 'desc'}]);
         return query;
     }
+
+    getSequenceAnnotations() {
+        const query = this.knex({sequence_annotation: 'sequence_annotation', protein: 'protein'}).select({
+            startResidue: `residue_start`,
+            endResidue: `residue_end`,
+            type: `sequence_annotation.type`,
+            name: `sequence_annotation.name`})
+            .where('dataSource', 'ProKinO')
+            .andWhere('protein.uniprot', this.target.uniprot)
+            .andWhere('protein.id', this.knex.raw('sequence_annotation.protein_id'))
+            .orderBy(['startResidue', 'endResidue']);
+        return query;
+    }
 }

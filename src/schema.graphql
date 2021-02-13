@@ -406,10 +406,18 @@ type SeqVariantInfo @cacheControl(maxAge: 604800){
      residue_info: [[VariantInfo]]
 }
 
+type SeqAnnotationInfo @cacheControl(maxAge: 604800){
+     startResidue: Int
+     endResidue: Int
+     type: String
+     name: String
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
      similarity: SimilarityDetails
      sequence_variants: SeqVariantInfo
+     sequence_annotations: [SeqAnnotationInfo]
 
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
