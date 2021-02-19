@@ -56,6 +56,7 @@ export class TargetDetails{
             .where('dataSource', 'ProKinO')
             .andWhere('protein.uniprot', this.target.uniprot)
             .andWhere('protein.id', this.knex.raw('sequence_annotation.protein_id'))
+            .andWhere('type', '!=', 'activation loop')
             .orderBy(['startResidue', 'endResidue']);
         return query;
     }
