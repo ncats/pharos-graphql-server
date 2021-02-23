@@ -42,7 +42,6 @@ export class TargetDetails{
         }).where('dataSource', 'ProKinO')
             .andWhere('protein.uniprot', this.target.uniprot)
             .andWhere('protein.id', this.knex.raw('sequence_variant.protein_id'))
-            .andWhere('bits', '>', 0.1)
             .orderBy([{column: 'residue', order: 'asc'}, {column: 'bits', order: 'desc'}]);
         return query;
     }
