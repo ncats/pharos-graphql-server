@@ -92,6 +92,7 @@ input IFilter {
      order: String
      associatedTarget: String
      associatedDisease: String
+     similarity: String
      ppiConfidence: Int = 400
 }
 
@@ -386,8 +387,38 @@ type TINXTarget @cacheControl(maxAge: 604800) {
      details: [TINXTargetDetails]
 }
 
+type SimilarityDetails @cacheControl(maxAge: 604800){
+     jaccard: Float
+     overlap: Int
+     baseSize: Int
+     testSize: Int
+     commonOptions: [String]
+}
+
+
+type VariantInfo @cacheControl(maxAge: 604800){
+     aa: String
+     bits: Float
+}
+
+type SeqVariantInfo @cacheControl(maxAge: 604800){
+     startResidue: Int
+     residue_info: [[VariantInfo]]
+}
+
+type SeqAnnotationInfo @cacheControl(maxAge: 604800){
+     startResidue: Int
+     endResidue: Int
+     type: String
+     name: String
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
+     similarity: SimilarityDetails
+     sequence_variants: SeqVariantInfo
+     sequence_annotations: [SeqAnnotationInfo]
+
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
      """UniProt Accession"""
@@ -491,6 +522,18 @@ type Target @cacheControl(maxAge: 604800){
      interactingViruses: [VirusDetails]
 
      dataSources: [String]
+
+     facetValueCount(facetName: String!): Int
+     facetValues(facetName: String!, skip: Int=0, top: Int=10): [String]
+}
+
+type SimilarTargetResult @cacheControl(maxAge: 604800) {
+     protein_id: Int
+     sym: String
+     overlap: Int
+     baseSize: Int
+     testSize: Int
+     jaccard:  Float
 }
 
 type ViralInteractionDetails @cacheControl(maxAge: 604800) {
@@ -545,6 +588,7 @@ type TargetResult @cacheControl(maxAge: 604800){
      count: Int
      facets (include: [String], exclude: [String]): [Facet]
      targets(skip: Int=0, top: Int=10): [Target]
+     similarityTarget: Target
 }
 
 type SuggestionResults @cacheControl(maxAge: 60){
@@ -603,7 +647,38 @@ type DataSourceCount @cacheControl(maxAge: 604800){
      ligandCount: Int
 }
 
+type PharosConfiguration{
+     lists (listName: String): [FieldList]
+}
+
+type FieldList{
+     listName: String
+     field: [FieldDetails]
+}
+
+type FieldDetails{
+     order: Int
+     type: String
+     table: String
+     column: String
+     select: String
+     where_clause: String
+     null_table: String
+     null_column: String
+     null_count_column: String
+     null_where_clause: String
+     dataType: String
+     binSize: String
+     log: String
+     sourceExplanation: String
+     modelName: String
+     rootTable: String
+     rootColumn: String
+}
+
 type Query{
+     configuration: PharosConfiguration
+
      autocomplete(name: String): [SuggestionResults]
 
      dataSourceCounts: [DataSourceCount]

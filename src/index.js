@@ -1,11 +1,4 @@
-//
-// Edit as appropriate
-//
-const DBHOST = 'tcrd.ncats.io';
-const DBNAME = 'tcrd660';
-const USER = 'tcrd';
-const PWORD = '';
-
+const {cred} = require('./db_credentials');
 ////////////////////////////////////////////////////////////////////////////////
 // DON'T EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING!
 ////////////////////////////////////////////////////////////////////////////////
@@ -14,6 +7,7 @@ const { ApolloServer } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
 const TCRD = require('./TCRD');
 const fs = require('fs');
+var url = require("url");
 require('typescript-require');
 const responseCachePlugin = require('apollo-server-plugin-response-cache');
 
@@ -28,10 +22,11 @@ const schema = makeExecutableSchema({
 const tcrdConfig = {
     client: 'mysql',
     connection: {
-        host: DBHOST,
-        user: USER,
-        password: PWORD,
-        database: DBNAME
+        host: cred.DBHOST,
+        user: cred.USER,
+        password: cred.PWORD,
+        database: cred.DBNAME,
+        configDB: cred.CONFIGDB
     },
     pool: {
         min: 2,
@@ -59,6 +54,11 @@ const server = new ApolloServer({
 // Initialize the app
 const app = express();
 
+app.get("/render", (req, res) => {
+    const parsedUrl = url.parse(req.url);
+    res.redirect("https://tripod.nih.gov/servlet/renderServletv13?" + parsedUrl.query);
+});
+
 server.applyMiddleware({
     app,
     path: '/graphql'
@@ -68,7 +68,8 @@ const PORT = process.env.PORT || 4000;
 
 setTimeout(() => {
     app.listen({port: PORT}, () => {
+        console.log('🏭 using configuration from: ' + cred.CONFIGDB);
         console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`)
     });
-}, 1000);
+}, 5000);
 

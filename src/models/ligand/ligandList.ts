@@ -1,5 +1,4 @@
 import {DataModelList} from "../DataModelList";
-import {LigandFacetType} from "./ligandFacetType";
 import {FacetInfo} from "../FacetInfo";
 import {LigandFacetFactory} from "./ligandFacetFactory";
 import {ConfigKeys} from "../config";
@@ -23,8 +22,6 @@ export class LigandList extends DataModelList{
         this.facetsToFetch = FacetInfo.deduplicate(
             this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, this.DefaultFacets)));
     }
-    AllFacets = Object.keys(LigandFacetType).filter(key => isNaN(Number(key)));
-    DefaultFacets = this.AllFacets;
 
     defaultSortParameters(): {column: string; order: string}[]
     {

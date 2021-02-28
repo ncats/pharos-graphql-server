@@ -1,5 +1,4 @@
 import {DataModelList} from "../DataModelList";
-import {DiseaseFacetType} from "./diseaseFacetType";
 import {FacetInfo} from "../FacetInfo";
 import {DiseaseFacetFactory} from "./diseaseFacetFactory";
 import {ConfigKeys} from "../config";
@@ -62,12 +61,12 @@ export class DiseaseList extends DataModelList {
         this.facetsToFetch = FacetInfo.deduplicate(
             this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
     }
-    AllFacets = Object.keys(DiseaseFacetType).filter(key => isNaN(Number(key)));
-    DefaultFacets = this.AllFacets;
-    DefaultFacetsWithTarget = [
-        "Data Source",
-        "Drug"];
 
+    get DefaultFacetsWithTarget() {
+        return this.databaseConfig.fieldLists
+            .get('Disease Facets - Associated Target')?.sort((a,b) => a.order - b.order)
+            .map(a => a.type) || [];
+    };
     defaultSortParameters(): {column: string; order: string}[]
     {
         return [{column: 'count', order: 'desc'}]

@@ -2,14 +2,13 @@ import now from "performance-now";
 import {FacetInfo} from "./FacetInfo";
 import {FacetFactory} from "./FacetFactory";
 import {Config, ConfigKeys, QueryDefinition, SqlTable} from "./config";
-import {DatabaseConfig, DatabaseTable} from "./databaseConfig";
+import {DatabaseConfig} from "./databaseConfig";
 // @ts-ignore
 import * as CONSTANTS from "../constants";
 import {DiseaseList} from "./disease/diseaseList";
+import {DatabaseTable} from "./databaseTable";
 
 export abstract class DataModelList {
-    abstract AllFacets: string[];
-    abstract DefaultFacets: string[];
     abstract addModelSpecificFiltering(query: any, list?: boolean): void;
     abstract addLinkToRootTable(query: any, facet: FacetInfo): void;
     abstract getRequiredTablesForFacet(info: FacetInfo): string[];
@@ -25,6 +24,7 @@ export abstract class DataModelList {
 
     associatedTarget: string = "";
     associatedDisease: string = "";
+    similarity: {match: string, facet: string} = {match:'', facet:''};
     ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
     skip: number = 0;
     top: number = 10;
@@ -36,6 +36,18 @@ export abstract class DataModelList {
     sortTable: string = "";
     sortColumn: string = "";
     direction: string = "";
+
+    get AllFacets(): string[] {
+        const modelInfo = this.databaseConfig.modelList.get(this.rootTable);
+        const facetInfo = this.databaseConfig.fieldLists.get(`${modelInfo?.name} Facets - All`);
+        return facetInfo?.map(facet => facet.type) || [];
+    }
+
+    get DefaultFacets() {
+        const modelInfo = this.databaseConfig.modelList.get(this.rootTable);
+        const facetInfo = this.databaseConfig.fieldLists.get(`${modelInfo?.name} Facets - Default`);
+        return facetInfo?.sort((a,b) => a.order - b.order).map(a => a.type) || [];
+    };
 
     constructor(tcrd: any, rootTable: string, keyColumn: string, facetFactory: FacetFactory, json: any, extra?: any) {
         this.tcrd = tcrd;
@@ -63,6 +75,19 @@ export abstract class DataModelList {
             }
             if (json.filter.associatedDisease) {
                 this.associatedDisease = json.filter.associatedDisease;
+            }
+            if (json.filter.similarity) {
+
+                const rawValues = json.filter.similarity.toString().split(',');
+                let match = rawValues[0].trim();
+                if(match[0] === '('){
+                    match = match.slice(1).trim();
+                }
+                let facet = rawValues[1].trim();
+                if(facet[facet.length - 1] === ')'){
+                    facet = facet.slice(0,facet.length - 1).trim();
+                }
+                this.similarity = {match: match, facet: facet};
             }
             if (json.filter.ppiConfidence) {
                 this.ppiConfidence = json.filter.ppiConfidence;

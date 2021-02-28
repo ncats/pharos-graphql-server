@@ -1,3 +1,4 @@
+const {TargetDetails} = require("./models/target/targetDetails");
 const {FacetDataType} = require("./models/FacetInfo");
 const {LigandList} = require("./models/ligand/ligandList");
 const {DiseaseList} = require("./models/disease/diseaseList");
@@ -7,7 +8,29 @@ const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 
 const resolvers = {
+    FieldList: {
+        listName: async function(listObject, args, {dataSources}){
+            return listObject;
+        },
+        field: async function(listObject, args, {dataSources}){
+            return dataSources.tcrd.tableInfo.fieldLists.get(listObject);
+        }
+    },
+
+    PharosConfiguration: {
+        lists: async function(config, args, {dataSources}){
+            if(args.listName){
+                return [args.listName];
+            }
+            return  config.fieldLists.keys();
+        }
+    },
+
     Query: {
+        configuration: async function (_, args, {dataSources}){
+            return dataSources.tcrd.tableInfo;
+        },
+
         autocomplete: async function (_, args, {dataSources}, info) {
             let query = dataSources.tcrd.getSuggestions(args.name);
             return query.then(rows => {
@@ -73,7 +96,7 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return TargetList.AllFacets();
+            return dataSources.tcrd.tableInfo.fieldLists.get('Target Facets - All').map(facet => facet.type);
         },
 
         target: async function (_, args, {dataSources}) {
@@ -815,9 +838,76 @@ const resolvers = {
                 }).catch(function (error) {
                     console.error(error);
                 });
+        },
+        similarity: async function (target, args, {dataSources}){
+            if(dataSources.similarity) {
+                return target;
+            }
+            return null;
+        },
+        sequence_variants: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getSequenceVariants().then(results => {
+                if(!results || results.length < 1){
+                    return null;
+                }
+                const residueData = [];
+                let currentResidue = [];
+                let lastResidueIndex = -1;
+                results.forEach(row => {
+                    if(lastResidueIndex != row.residue){
+                        lastResidueIndex = row.residue;
+                        currentResidue = [];
+                        residueData.push(currentResidue);
+                    }
+                    currentResidue.push({
+                        aa: row.aa,
+                        bits: row.bits
+                    })
+                });
+                return {residue_info: residueData, startResidue: results[0].residue};
+            });
+        },
+        sequence_annotations: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getSequenceAnnotations().then(results => {
+                return results;
+            });
+        },
+        facetValueCount: async function(target, args, {dataSources}){
+            if (!args.facetName) {
+                return null;
+            }
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getFacetValueCount().then(results => {
+                if(results && results.length > 0) {
+                    return results[0].value;
+                }
+                return null;
+            });
+        },
+        facetValues: async function(target, args, {dataSources}) {
+            if (!args.facetName) {
+                return null;
+            }
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getAllFacetValues().then(results => {
+                return results.map(res => res.value);
+            });
         }
     },
-
+    SimilarityDetails:{
+        commonOptions: async function (target, args, {dataSources}){
+            if(target && target.commonOptions && dataSources.similarity) {
+                const options = target.commonOptions.split('|');
+                if(options.length <= 20){
+                    return options;
+                }
+                return [...options.slice(0,20), `...and ${target.overlap - 20} more`];
+            }
+            return null;
+        }
+    },
     PubMed: {
         targetCounts: async function (pubmed, args, {dataSources}) {
             const q = dataSources.tcrd.getTargetCountsForPubMed(pubmed);
@@ -1215,7 +1305,13 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
-        }
+        },
+        similarityTarget: async function (target, args, {dataSources}){
+            if(dataSources.similarity && dataSources.similarity.match) {
+                return resolvers.Query.target(null, {q: {uniprot :dataSources.similarity.match}}, {dataSources});
+            }
+            return null;
+        },
     },
 
     DiseaseResult: {
@@ -1453,6 +1549,7 @@ function getTargetResult(args, dataSources) {
     const targetList = new TargetList(dataSources.tcrd, args);
     dataSources.associatedTarget = targetList.associatedTarget;
     dataSources.associatedDisease = targetList.associatedDisease;
+    dataSources.similarity = targetList.similarity;
     const proteinListQuery = targetList.fetchProteinList();
     if (!!proteinListQuery) {
         return proteinListQuery.then(rows => {
