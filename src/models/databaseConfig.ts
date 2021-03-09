@@ -62,7 +62,9 @@ export class DatabaseConfig {
     }
 
     fieldListColumns = {
-        listName: `fieldList.name`,
+        listType: `fieldList.type`,
+        listName: `fieldList.listName`,
+        field_id: `fieldList.field_id`,
         order: 'fieldList.order'
     };
     fieldColumns = {
@@ -105,21 +107,21 @@ export class DatabaseConfig {
             .whereRaw(this.linkFieldToModel);
         listQuery.then((rows: any[]) => {
             rows.forEach(row => {
-                if (this.fieldLists.has(row.listName)) {
-                    const list = this.fieldLists.get(row.listName);
+                const listNameString = row.modelName + ' ' + row.listType + ' - ' + row.listName;
+                if (this.fieldLists.has(listNameString)) {
+                    const list = this.fieldLists.get(listNameString);
                     list?.push(row);
                 } else {
-                    this.fieldLists.set(row.listName, [row]);
+                    this.fieldLists.set(listNameString, [row]);
                 }
             });
         });
         const allFieldsQuery = this.database({...this.fieldTable, ...this.modelTable})
             .select({...this.fieldColumns, ...this.modelColumns})
             .whereRaw(this.linkFieldToModel);
-        // console.log(allFieldsQuery.toString());
         allFieldsQuery.then((rows: any[]) => {
             rows.forEach(row => {
-                const keyName = `${row.modelName} Facets - All`;
+                const keyName = `${row.modelName} Facet - All`;
                 if(row.isGoodForFacet) {
                     if (this.fieldLists.has(keyName)) {
                         const list = this.fieldLists.get(keyName);

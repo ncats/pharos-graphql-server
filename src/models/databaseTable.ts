@@ -59,7 +59,7 @@ export class DatabaseTable {
     /**
      * tables which should always be left joined to because they might not have a mapping
      */
-    static sparseTables: string[] = ["tinx_novelty"];
+    static sparseTables: string[] = ["tinx_novelty", "xref"];
 
     /**
      * tables which have a data type column which describes the data the caller wants

@@ -12,16 +12,19 @@ export class TargetList extends DataModelList {
     proteinListCached: boolean = false;
 
     defaultSortParameters(): {column: string; order: string}[] {
+        if(this.fields.length > 0){
+            return [{column: 'id', order: 'asc'}];
+        }
         if(this.term){
             return [{column:'min_score', order:'asc'},{column:'name', order:'asc'}];
         }
-        else if(this.associatedTarget){
+        if(this.associatedTarget){
             return [{column:'p_int', order:'desc'},{column:'score', order:'desc'}];
         }
-        else if(this.associatedDisease){
+        if(this.associatedDisease){
             return [{column: 'dtype', order:'desc'}];
         }
-        else if(this.similarity.match.length > 0){
+        if(this.similarity.match.length > 0){
             return [{column: 'jaccard', order: 'desc'}];
         }
         return [{column:'novelty', order:'desc'}];
@@ -85,7 +88,7 @@ export class TargetList extends DataModelList {
                 query.join(subq.as("similarityQuery"), 'similarityQuery.protein_id', 'protein.id');
             }
         } else {
-            if(!list || !this.associatedTarget) {
+            if(!list || !this.associatedTarget || (this.fields.length > 0)) {
                 this.addProteinListConstraint(query, this.fetchProteinList());
             }
         }
@@ -242,13 +245,13 @@ ON diseaseList.name = d.ncats_name`));
 
     get DefaultPPIFacets() {
         return this.databaseConfig.fieldLists
-            .get('Target Facets - Associated Target')?.sort((a,b) => a.order - b.order)
+            .get('Target Facet - Associated Target')?.sort((a,b) => a.order - b.order)
             .map(a => a.type) || [];
     };
 
     get DefaultDiseaseFacets() {
         return this.databaseConfig.fieldLists
-            .get('Target Facets - Associated Disease')?.sort((a,b) => a.order - b.order)
+            .get('Target Facet - Associated Disease')?.sort((a,b) => a.order - b.order)
             .map(a => a.type) || [];
     };
 }

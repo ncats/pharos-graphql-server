@@ -64,7 +64,7 @@ export class DiseaseList extends DataModelList {
 
     get DefaultFacetsWithTarget() {
         return this.databaseConfig.fieldLists
-            .get('Disease Facets - Associated Target')?.sort((a,b) => a.order - b.order)
+            .get('Disease Facet - Associated Target')?.sort((a,b) => a.order - b.order)
             .map(a => a.type) || [];
     };
     defaultSortParameters(): {column: string; order: string}[]

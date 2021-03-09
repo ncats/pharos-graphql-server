@@ -1,7 +1,7 @@
 Pharos graphql server
 =====================
 
-###To run
+### To run
 
 Run `npm install` to get all dependencies, then
 

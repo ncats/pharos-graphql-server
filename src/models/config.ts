@@ -1,10 +1,31 @@
 import {DatabaseTable} from "./databaseTable";
+import {DatabaseConfig} from "./databaseConfig";
 
 /**
  * Class for gathering tables and columns to use for standard queries
  */
 export class Config {
-    static GetDataFields(fieldKey: ConfigKeys, sortTable: string = "", sortColumn: string = ""): RequestedData[] {
+    static GetDataFields(rootTable: string, fields: string[], dbConfig: DatabaseConfig): RequestedData[] {
+        const dataFields: RequestedData[] = [];
+
+        // TODO : get primary key better
+        dataFields.push({table: "protein", data: "id", alias: 'id'});
+
+        fields.forEach(field => {
+            const facetInfo = dbConfig.getFacetConfig(rootTable, field);
+            dataFields.push({table: facetInfo.dataTable, data: facetInfo.dataColumn, alias: field, where_clause: facetInfo.whereClause, group_method: facetInfo.group_method});
+        });
+        return dataFields;
+    }
+
+    /**
+     * TODO : get rid of this when the normal list pages are using the pharos_config.fieldList
+     * @param fieldKey
+     * @param sortTable
+     * @param sortColumn
+     * @constructor
+     */
+    static GetDataFieldsFromKey(fieldKey: ConfigKeys, sortTable: string = "", sortColumn: string = ""): RequestedData[] {
         const dataFields: RequestedData[] = [];
         switch (fieldKey) {
             case ConfigKeys.Target_List_Default:
@@ -113,6 +134,7 @@ export class RequestedData {
     data: string = "";
     alias?: string = "";
     group_method?: string = "";
+    where_clause?: string = "";
     subQuery?: boolean = false;
 }
 
@@ -151,33 +173,37 @@ export class QueryDefinition {
     }
 
     addRequestedDataToNewTable(reqData: RequestedData) {
-        const table = reqData.table;
-        const data = reqData.data;
-        const alias = reqData.alias;
-        const subq = reqData.subQuery;
         let links: string[] = [];
         const tableCount = this.tables.filter(t => {
-            return t.tableName == table;
+            return t.tableName == reqData.table;
         }).length;
 
-        if (DatabaseTable.sparseTables.includes(table)) {
-            this.tables.push(SqlTable.getSparseTableData(table, data, alias, table + tableCount));
+        if (DatabaseTable.sparseTables.includes(reqData.table)) {
+            this.tables.push(SqlTable.getSparseTableData(reqData.table, reqData.data, reqData.alias, reqData.table + tableCount, reqData.group_method, reqData.where_clause));
             return;
         }
 
-        if (DatabaseTable.typeTables.includes(table)) {
-            const typeColumn = DatabaseTable.typeTableColumns.get(table);
-            if (!typeColumn) throw new Error(`bad table configuration - ${table} has no type column configuration`);
-            const dataColumn = DatabaseTable.typeTableColumnMapping.get(table + "-" + data);
-            this.tables.push(SqlTable.getTypeTableData(table, data, typeColumn, (dataColumn || data), alias, table + tableCount));
+        if (DatabaseTable.typeTables.includes(reqData.table)) {
+            const typeColumn = DatabaseTable.typeTableColumns.get(reqData.table);
+            if (!typeColumn) throw new Error(`bad table configuration - ${reqData.table} has no type column configuration`);
+            const dataColumn = DatabaseTable.typeTableColumnMapping.get(reqData.table + "-" + reqData.data);
+            this.tables.push(
+                SqlTable.getTypeTableData(
+                    reqData.table,
+                    reqData.data,
+                    typeColumn,
+                    (dataColumn || reqData.data),
+                    reqData.alias,
+                    reqData.table + tableCount)
+                );
             return;
         }
 
-        if (table != this.rootTable) {
-            links = DatabaseTable.getRequiredLinks(table, this.rootTable) || [];
+        if (reqData.table != this.rootTable) {
+            links = DatabaseTable.getRequiredLinks(reqData.table, this.rootTable) || [];
         }
 
-        const newTable = new SqlTable(table, {}, links, subq);
+        const newTable = new SqlTable(reqData.table, {}, links, reqData.subQuery);
         newTable.columns.push(new SqlColumns(reqData.data, reqData.alias, reqData.group_method));
         this.tables.push(newTable);
     }
@@ -273,19 +299,22 @@ export class SqlTable {
         }
     }
 
-    static getTypeTableData(tableName: string, typeName: string, typeColumn: string, dataColumn: string, columnAlias?: string, tableAlias?: string) {
+    static getTypeTableData(tableName: string, typeName: string, typeColumn: string, dataColumn: string, columnAlias?: string, tableAlias?: string, group_method?: string, where_clause?: string) {
         const typeTable = new SqlTable(tableName, {
             allowUnmatchedRows: true,
             joinConstraint: `${tableAlias || tableName}.${typeColumn} = '${typeName}'`,
             alias: tableAlias
         });
-        typeTable.columns.push(new SqlColumns(dataColumn, columnAlias || dataColumn));
+        typeTable.columns.push(new SqlColumns(dataColumn, columnAlias || dataColumn, group_method, where_clause));
         return typeTable;
     }
 
-    static getSparseTableData(tableName: string, dataColumn: string, columnAlias?: string, tableAlias?: string) {
+    static getSparseTableData(tableName: string, dataColumn: string, columnAlias?: string, tableAlias?: string, group_method?: string, where_clause?: string) {
         const sparseTable = new SqlTable(tableName, {allowUnmatchedRows: true, alias: tableAlias});
-        sparseTable.columns.push(new SqlColumns(dataColumn, columnAlias || dataColumn));
+        if(where_clause && tableAlias) {
+            where_clause = where_clause.replace(tableName, tableAlias);
+        }
+        sparseTable.columns.push(new SqlColumns(dataColumn, columnAlias || dataColumn, group_method, where_clause));
         return sparseTable;
     }
 }
@@ -294,15 +323,17 @@ export class SqlColumns {
     column: string;
     private _alias?: string = "";
     group_method?: string = "";
+    where_clause?: string = "";
 
     get alias(): string {
         if (this._alias) return this._alias;
         return this.column;
     }
 
-    constructor(column: string, alias: string = "", group_method: string = "") {
+    constructor(column: string, alias: string = "", group_method: string = "", where_clause: string = "") {
         this.column = column;
         this.group_method = group_method;
+        this.where_clause = where_clause;
         if (alias) {
             this._alias = alias;
         }

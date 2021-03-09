@@ -1,7 +1,7 @@
 import now from "performance-now";
 import {FacetInfo} from "./FacetInfo";
 import {FacetFactory} from "./FacetFactory";
-import {Config, ConfigKeys, QueryDefinition, SqlTable} from "./config";
+import {Config, ConfigKeys, QueryDefinition, RequestedData, SqlTable} from "./config";
 import {DatabaseConfig} from "./databaseConfig";
 // @ts-ignore
 import * as CONSTANTS from "../constants";
@@ -17,6 +17,7 @@ export abstract class DataModelList {
 
     facetFactory: FacetFactory;
     term: string = "";
+    fields: string[] = [];
     rootTable: string;
     keyColumn: string;
     filteringFacets: FacetInfo[] = [];
@@ -39,13 +40,13 @@ export abstract class DataModelList {
 
     get AllFacets(): string[] {
         const modelInfo = this.databaseConfig.modelList.get(this.rootTable);
-        const facetInfo = this.databaseConfig.fieldLists.get(`${modelInfo?.name} Facets - All`);
+        const facetInfo = this.databaseConfig.fieldLists.get(`${modelInfo?.name} Facet - All`);
         return facetInfo?.map(facet => facet.type) || [];
     }
 
     get DefaultFacets() {
         const modelInfo = this.databaseConfig.modelList.get(this.rootTable);
-        const facetInfo = this.databaseConfig.fieldLists.get(`${modelInfo?.name} Facets - Default`);
+        const facetInfo = this.databaseConfig.fieldLists.get(`${modelInfo?.name} Facet - Default`);
         return facetInfo?.sort((a,b) => a.order - b.order).map(a => a.type) || [];
     };
 
@@ -63,6 +64,9 @@ export abstract class DataModelList {
             }
             if (json.top) {
                 this.top = json.top;
+            }
+            if (json.fields) {
+                this.fields = json.fields;
             }
         }
 
@@ -138,9 +142,15 @@ export abstract class DataModelList {
 
     getListQuery() {
         const that = this;
-        let dataFields = Config.GetDataFields(this.listQueryKey(), this.sortTable, this.sortColumn);
+        let dataFields: RequestedData[];
+        if (this.fields && this.fields.length > 0) {
+            dataFields = Config.GetDataFields(this.rootTable, this.fields, this.databaseConfig);
+        }
+        else {
+            dataFields = Config.GetDataFieldsFromKey(this.listQueryKey(), this.sortTable, this.sortColumn);
+        }
         const queryDefinition = QueryDefinition.GenerateQueryDefinition(this.rootTable, dataFields);
-        let rootTableObject = queryDefinition.getRootTable();
+        let rootTableObject =  queryDefinition.getRootTable();
         if (rootTableObject == undefined) {
             return;
         }
@@ -148,6 +158,12 @@ export abstract class DataModelList {
 
         let leftJoins = queryDefinition.getLeftJoinTables();
         let innerJoins = queryDefinition.getInnerJoinTables();
+        if(this.associatedDisease && this.rootTable != 'disease'){
+            const hasDiseaseAlready = innerJoins.find(table => table.tableName === 'disease');
+            if(!hasDiseaseAlready){
+                innerJoins.push(new SqlTable('disease'));
+            }
+        }
 
         let query = this.database(queryDefinition.getTablesAsObjectArray(innerJoins))
             .select(queryDefinition.getColumnList(this.database));
@@ -164,6 +180,11 @@ export abstract class DataModelList {
                 if (leftJoins[i].joinConstraint) {
                     this.andOn(that.database.raw(leftJoins[i].joinConstraint));
                 }
+                leftJoins[i].columns.forEach(col => {
+                    if(col.where_clause){
+                        this.andOn(that.database.raw(col.where_clause));
+                    }
+                });
             });
         }
         if (this.associatedDisease){
@@ -193,8 +214,9 @@ export abstract class DataModelList {
         }
         this.addModelSpecificFiltering(query, true);
 
-        query.groupBy(this.keyString());
-
+        if(this.fields.length === 0) {
+            query.groupBy(this.keyString());
+        }
         this.addSort(query, queryDefinition);
         if (this.skip) {
             query.offset(this.skip);
@@ -202,7 +224,6 @@ export abstract class DataModelList {
         if (this.top) {
             query.limit(this.top);
         }
-        //console.log(query.toString());
         this.captureQueryPerformance(query, "list count");
         return query;
     }

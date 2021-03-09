@@ -1,3 +1,4 @@
+const {DataModelListFactory} = require("./models/DataModelListFactory");
 const {TargetDetails} = require("./models/target/targetDetails");
 const {FacetDataType} = require("./models/FacetInfo");
 const {LigandList} = require("./models/ligand/ligandList");
@@ -19,14 +20,27 @@ const resolvers = {
 
     PharosConfiguration: {
         lists: async function(config, args, {dataSources}){
-            if(args.listName){
-                return [args.listName];
+            if(args.listNames){
+                return [...args.listNames];
             }
             return  config.fieldLists.keys();
+        },
+        downloadLists: async function(config, args, {dataSources}){
+            return Array.from(config.fieldLists.keys()).filter(key => key.startsWith(args.modelName + ' Field Group'));
         }
     },
 
     Query: {
+        download: async function (_, args, {dataSources}){
+            const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
+            return {
+                result: true,
+                data: args.sqlOnly ? null : listObj.getListQuery(),
+                sql: listObj.getListQuery().toString(),
+                errorDetails: dataSources.tcrd.tableInfo.facetMap
+            };
+        },
+
         configuration: async function (_, args, {dataSources}){
             return dataSources.tcrd.tableInfo;
         },
@@ -96,7 +110,7 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return dataSources.tcrd.tableInfo.fieldLists.get('Target Facets - All').map(facet => facet.type);
+            return dataSources.tcrd.tableInfo.fieldLists.get('Target Facet - All').map(facet => facet.type);
         },
 
         target: async function (_, args, {dataSources}) {

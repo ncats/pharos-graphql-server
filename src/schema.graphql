@@ -14,6 +14,16 @@ enum FacetDataType {
      Numeric
 }
 
+scalar JSON
+
+type DownloadResult {
+     result: Boolean
+     data: JSON
+     errorDetails: JSON
+     sql: String
+}
+
+
 type Xref @cacheControl(maxAge: 604800) {
      source: String!
      name: String!
@@ -648,7 +658,8 @@ type DataSourceCount @cacheControl(maxAge: 604800){
 }
 
 type PharosConfiguration{
-     lists (listName: String): [FieldList]
+     lists (listNames: [String]): [FieldList]
+     downloadLists (modelName: String): [FieldList]
 }
 
 type FieldList{
@@ -659,10 +670,10 @@ type FieldList{
 type FieldDetails{
      order: Int
      type: String
-     table: String
-     column: String
+     dataTable: String
+     dataColumn: String
      select: String
-     where_clause: String
+     whereClause: String
      null_table: String
      null_column: String
      null_count_column: String
@@ -678,6 +689,8 @@ type FieldDetails{
 
 type Query{
      configuration: PharosConfiguration
+
+     download(model: String!, fields: [String!], sqlOnly: Boolean = true, skip: Int, top: Int, filter: IFilter, batch: [String]): DownloadResult
 
      autocomplete(name: String): [SuggestionResults]
 
