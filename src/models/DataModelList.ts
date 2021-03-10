@@ -210,6 +210,11 @@ export abstract class DataModelList {
                 if (additionalWhereClause) {
                     query.andWhere(this.database.raw(additionalWhereClause));
                 }
+                innerJoins[i].columns.forEach(col => {
+                    if(col.where_clause){
+                        query.andWhere(that.database.raw(col.where_clause));
+                    }
+                });
             }
         }
         this.addModelSpecificFiltering(query, true);

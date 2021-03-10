@@ -204,7 +204,7 @@ export class QueryDefinition {
         }
 
         const newTable = new SqlTable(reqData.table, {}, links, reqData.subQuery);
-        newTable.columns.push(new SqlColumns(reqData.data, reqData.alias, reqData.group_method));
+        newTable.columns.push(new SqlColumns(reqData.data, reqData.alias, reqData.group_method, reqData.where_clause));
         this.tables.push(newTable);
     }
 

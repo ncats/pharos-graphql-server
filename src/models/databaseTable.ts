@@ -59,7 +59,7 @@ export class DatabaseTable {
     /**
      * tables which should always be left joined to because they might not have a mapping
      */
-    static sparseTables: string[] = ["tinx_novelty", "xref"];
+    static sparseTables: string[] = ["tinx_novelty"];
 
     /**
      * tables which have a data type column which describes the data the caller wants
@@ -117,14 +117,17 @@ export class DatabaseTable {
 
     static requiredLinks: Map<string, string[]> = new Map(
         [
-            ["protein-target", ["t2tc"]],
             ["protein-viral_protein", ["viral_ppi", "virus"]],
             ["protein-virus", ["viral_ppi", "viral_protein"]],
             ["protein-dto", ["p2dto"]],
             ["protein-panther_class", ["p2pc"]],
             ["protein-virus", ["viral_protein", "viral_ppi"]],
             ["protein-viral_protein", ["virus", "viral_ppi"]],
-            ["protein-ncats_ligands", ["ncats_ligand_activity", "target", "t2tc"]]
+
+            // checked
+            ["protein-target", ["t2tc"]],
+            ["protein-ncats_ligands", ["t2tc", "target", "ncats_ligand_activity"]],
+            ["protein-ncats_ligand_activity", ["t2tc", "target"]]
         ]);
 
     static getRequiredLinks(table1: string, table2: string): string[] | undefined {

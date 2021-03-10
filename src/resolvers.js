@@ -32,12 +32,21 @@ const resolvers = {
 
     Query: {
         download: async function (_, args, {dataSources}){
-            const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
+            let listQuery;
+            try {
+                const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
+                listQuery = listObj.getListQuery();
+            }
+            catch(e){
+                return {
+                    result: false,
+                    errorDetails: e.message
+                }
+            }
             return {
                 result: true,
-                data: args.sqlOnly ? null : listObj.getListQuery(),
-                sql: listObj.getListQuery().toString(),
-                errorDetails: dataSources.tcrd.tableInfo.facetMap
+                data: args.sqlOnly ? null : listQuery,
+                sql: listQuery.toString()
             };
         },
 
