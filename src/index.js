@@ -56,7 +56,13 @@ const app = express();
 
 app.get("/render", (req, res) => {
     const parsedUrl = url.parse(req.url);
-    res.redirect("https://tripod.nih.gov/servlet/renderServletv13?" + parsedUrl.query);
+    const pieces = parsedUrl.query.split('&');
+    const paramMap = {};
+    pieces.forEach(piece => {
+        const chunks = piece.split('=');
+        paramMap[chunks[0]] = chunks[1];
+    });
+    res.redirect(`https://tripod.nih.gov/idg/api/v1/render/${paramMap.structure}?size=${paramMap.size}`);
 });
 
 server.applyMiddleware({

@@ -19,9 +19,21 @@ export class LigandList extends DataModelList{
 
     constructor(tcrd: any, json: any) {
         super(tcrd, "ncats_ligands" , "id", new LigandFacetFactory(), json);
+        let facetList: string[];
+        if (this.associatedTarget) {
+            facetList = this.DefaultFacetsWithTarget;
+        } else {
+            facetList = this.DefaultFacets;
+        }
         this.facetsToFetch = FacetInfo.deduplicate(
-            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, this.DefaultFacets)));
+            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
     }
+
+    get DefaultFacetsWithTarget() {
+        return this.databaseConfig.fieldLists
+            .get('Ligand Facet - Associated Target')?.sort((a,b) => a.order - b.order)
+            .map(a => a.type) || [];
+    };
 
     defaultSortParameters(): {column: string; order: string}[]
     {
