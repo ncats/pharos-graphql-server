@@ -1,144 +1,176 @@
 import {DatabaseTable, TableLink, TableLinkInfo} from "./databaseTable";
-import {FacetInfo} from "./FacetInfo";
+import {FieldInfo} from "./FieldInfo";
+
+
+export class FieldList {
+    model: string;
+    context: string;
+    associatedModel: string = '';
+    listName: string = '';
+
+    constructor(model: string, context: string, associatedModel: string, listName: string) {
+        this.model = model;
+        this.context = context || '';
+        this.associatedModel = associatedModel || '';
+        this.listName = listName || '';
+    }
+
+    static parseJson(obj: any): FieldList {
+        return new FieldList(obj.model, obj.context, obj.associatedModel, obj.listName);
+    }
+
+    static parseJsonContextFree(obj: any): FieldList {
+        return new FieldList(obj.model, '', obj.associatedModel, '');
+    }
+
+    get listKey(): string {
+        return `${this.model}-${this.context}-${this.associatedModel}-${this.listName}`.toLowerCase();
+    }
+}
 
 /**
  * Class to query the database to see what tables and foreign keys are there, to automatically generate the query for the requested data
  */
 export class DatabaseConfig {
     tables: DatabaseTable[] = [];
-    modelList: Map<string, {name: string, rootTable: string}> = new Map<string, {name: string, rootTable: string}>();
-    facetMap: Map<string, any> = new Map<string, any>();
-    fieldLists: Map<string, any[]> = new Map<string, any[]>();
+    availableFieldMap: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
+
+    getAvailableFields(model: string, context: string = '', associatedModel: string = '', listName: string = ''): FieldInfo[] {
+        const key = new FieldList(model, context, associatedModel, listName).listKey;
+        return this.availableFieldMap.get(key)?.map(each => each.copy()) || [];
+    }
+
+    getDefaultFields(model: string, context: string = '', associatedModel: string = '', listName: string = ''): FieldInfo[] {
+        return this.getAvailableFields(model, context, associatedModel, listName)
+            .filter(fInfo => fInfo.default).sort(((a, b) => a.order - b.order));
+    }
+
+    getOneField(model: string, context: string = '', associatedModel: string, listName: string, name: string): FieldInfo | undefined {
+        const list = this.getAvailableFields(model, context, associatedModel, listName);
+        if (list.length > 0) {
+            return list.find((fieldInfo: FieldInfo) => fieldInfo.name === name)?.copy();
+        }
+        return undefined;
+    }
+
+    populateFieldLists() {
+        const query = this.database({...this.modelTable, ...this.fieldListTable, ...this.fieldTable, ...this.contextTable}
+        ).leftJoin({...this.assocModelTable}, 'associated_model.id', 'field_context.associated_model_id')
+            .select(
+                {
+                    // list defining fields
+                    model: 'model.name',
+                    context: 'field_context.context',
+                    associatedModel: 'associated_model.name',
+                    listName: 'field_context.name',
+
+                    // field defining fields
+                    name: 'field.name',
+                    alias: 'field_list.alias',
+                    order: 'field_list.order',
+                    default: 'field_list.default',
+                    description: this.database.raw('COALESCE(field_list.description, field.description)'),
+
+                    // where is the data
+                    table: 'field.table',
+                    column: 'field.column',
+                    select: 'field.select',
+                    where_clause: 'field.where_clause',
+                    group_method: 'field.group_method',
+
+                    // when facets are precalculated
+                    null_table: 'field.null_table',
+                    null_column: 'field.null_column',
+                    null_count_column: 'field.null_count_column',
+                    null_where_clause: 'field.null_where_clause',
+
+                    // numeric facets
+                    dataType: 'field.dataType',
+                    binSize: 'field.binSize',
+                    log: 'field.log'
+                })
+            .where('field_context.model_id', this.database.raw('model.id'))
+            .andWhere('field_context.id', this.database.raw('field_list.context_id'))
+            .andWhere('field_list.field_id', this.database.raw('field.id'))
+            .orderBy(
+                [
+                    'model.id', 'field_context.context', 'associated_model.id', 'field_context.name',
+                    {
+                        column: this.database.raw('-field_list.order'),
+                        order: 'desc'
+                    },
+                    'field.table'
+                ]);
+        return query.then((rows: any[]) => {
+            rows.forEach(row => {
+                ['parseJson', 'parseJsonContextFree'].forEach((method: string) => {
+                    // @ts-ignore
+                    const key = FieldList[method](row).listKey;
+                    const fieldInfo = new FieldInfo(row);
+                    if (this.availableFieldMap.has(key)) {
+                        const existingList = this.availableFieldMap.get(key) || [];
+                        if(!existingList.map(f => f.name).includes(row.name)) {
+                            existingList.push(fieldInfo);
+                        }
+                    } else {
+                        this.availableFieldMap.set(key, [fieldInfo]);
+                    }
+                });
+            });
+        });
+
+    }
+
+    modelList: Map<string, { name: string, table: string, column: string }> = new Map<string, {name: string, table: string, column: string}>();
     database: any;
     dbName: string;
     configDB: string;
 
-    private _fieldTable: { field: string } = {field: ''};
     get fieldTable(): { field: string } {
         return {field: this.configDB + '.field'};
     }
 
-    private _fieldListTable: { fieldList: string } = {fieldList: ''};
-    get fieldListTable(): { fieldList: string } {
-        return {fieldList: this.configDB + '.fieldList'};
+    get fieldListTable(): { field_list: string } {
+        return {field_list: this.configDB + '.field_list'};
     }
 
-    private _modelTable: { model: string } = {model: ''};
     get modelTable(): { model: string } {
         return {model: this.configDB + '.model'};
     };
+
+    get assocModelTable(): { associated_model: string } {
+        return {associated_model: this.configDB + '.model'};
+    };
+
+    get contextTable(): { field_context: string } {
+        return {field_context: this.configDB + '.field_context'};
+    }
+
+    loadPromise: Promise<any>;
 
     constructor(database: any, dbName: string, configDB: string) {
         this.database = database;
         this.dbName = dbName;
         this.configDB = configDB;
-
-        this.parseTables();
-        this.parseFacets();
-        this.parseLists();
+        this.loadPromise = Promise.all([this.parseTables(), this.populateFieldLists(), this.loadModelMap()]);
     }
 
     parseTables() {
         let query = this.database.raw('show tables from ' + this.dbName);
-        query.then((rows: any) => {
+        return query.then((rows: any) => {
             for (let tableKey in rows[0]) {
                 this.tables.push(new DatabaseTable(this.database, this.dbName, rows[0][tableKey]["Tables_in_" + this.dbName]));
             }
+            return Promise.all(this.tables.map(t => t.loadPromise));
         });
     }
 
-    parseFacets() {
-        let facetQuery = this.database({...this.fieldTable, ...this.modelTable})
-            .select(
-                {
-                    ...this.fieldColumns,
-                    ...this.modelColumns
-                }).whereRaw(this.linkFieldToModel);
-        facetQuery.then((rows: any[]) => {
-            for (let row of rows) {
-                this.facetMap.set(`${row.rootTable}-${row.type}`, row);
-            }
-        });
-    }
-
-    fieldListColumns = {
-        listType: `fieldList.type`,
-        listName: `fieldList.listName`,
-        field_id: `fieldList.field_id`,
-        order: 'fieldList.order'
-    };
-    fieldColumns = {
-        model_id: `field.model_id`,
-        type: `field.type`,
-        dataTable: `field.table`,
-        dataColumn: `field.column`,
-        select: `field.select`,
-        whereClause: `field.where_clause`,
-        null_table: `field.null_table`,
-        null_column: `field.null_column`,
-        null_count_column: `field.null_count_column`,
-        null_where_clause: `field.null_where_clause`,
-        dataType: `field.dataType`,
-        binSize: `field.binSize`,
-        log: `field.log`,
-        sourceExplanation: `field.description`,
-        isGoodForFacet: `field.isGoodForFacet`
-    };
-    modelColumns = {
-        modelName: 'model.name',
-        rootTable: 'model.table',
-        rootColumn: 'model.column'
-    };
-    linkFieldToModel = 'field.model_id = model.id';
-    linkFieldListToField = 'fieldList.field_id = field.id';
-
-    parseLists() {
-        const listQuery = this.database({
-            ...this.fieldTable,
-            ...this.fieldListTable,
-            ...this.modelTable
+    loadModelMap() {
+        let query = this.database({...this.modelTable}).select('*').then((rows: any[]) => {
+            rows.forEach(row => {
+                this.modelList.set(row.table, row);
+            });
         })
-            .select({
-                ...this.fieldListColumns,
-                ...this.fieldColumns,
-                ...this.modelColumns
-            })
-            .whereRaw(this.linkFieldListToField)
-            .whereRaw(this.linkFieldToModel);
-        listQuery.then((rows: any[]) => {
-            rows.forEach(row => {
-                const listNameString = row.modelName + ' ' + row.listType + ' - ' + row.listName;
-                if (this.fieldLists.has(listNameString)) {
-                    const list = this.fieldLists.get(listNameString);
-                    list?.push(row);
-                } else {
-                    this.fieldLists.set(listNameString, [row]);
-                }
-            });
-        });
-        const allFieldsQuery = this.database({...this.fieldTable, ...this.modelTable})
-            .select({...this.fieldColumns, ...this.modelColumns})
-            .whereRaw(this.linkFieldToModel);
-        allFieldsQuery.then((rows: any[]) => {
-            rows.forEach(row => {
-                const keyName = `${row.modelName} Facet - All`;
-                if(row.isGoodForFacet) {
-                    if (this.fieldLists.has(keyName)) {
-                        const list = this.fieldLists.get(keyName);
-                        list?.push(row);
-                    } else {
-                        this.fieldLists.set(keyName, [row]);
-                    }
-                    if (!this.modelList.has(row.rootTable)) {
-                        this.modelList.set(row.rootTable, {rootTable: row.rootTable, name: row.modelName});
-                    }
-                }
-            });
-        });
-    }
-
-    getFacetConfig(rootTable: string, facetType: string) {
-        return this.facetMap.get(`${rootTable}-${facetType}`);
     }
 
     getPrimaryKey(table: string): string {
@@ -148,10 +180,13 @@ export class DatabaseConfig {
         return t?.primaryKey || 'id';
     }
 
-    getLinkInformation(fromTable: string, toTable: string): TableLinkInfo | null {
+    getLinkInformation(fromTable: string, toTable: string): TableLinkInfo {
         let linkInfo = this._getLinkInformation(fromTable, toTable);
         if (!linkInfo) {
             linkInfo = this._getLinkInformation(toTable, fromTable, true);
+        }
+        if (!linkInfo) {
+            throw new Error(`Error building query: Could not find link between ${fromTable} and ${toTable}`);
         }
         return linkInfo;
     }
@@ -181,7 +216,7 @@ export class DatabaseConfig {
         return new TableLinkInfo(toLink.column, toLink.otherColumn);
     }
 
-    getJoinTables(rootTable: string, dataTable: string): string[]{
+    getJoinTables(rootTable: string, dataTable: string): string[] {
         let joinTables: string[] = [];
 
         if (dataTable != rootTable) {
@@ -189,29 +224,28 @@ export class DatabaseConfig {
             joinTables.push(...links);
             joinTables.push(rootTable);
         }
-        return  joinTables;
+        return joinTables;
     }
 
-    getBaseSetQuery(rootTable: string, facet: FacetInfo, columns?: any){
-        const joinTables = this.getJoinTables(rootTable, facet.dataTable);
+    getBaseSetQuery(rootTable: string, facet: FieldInfo, columns?: any) {
+        const joinTables = this.getJoinTables(rootTable, facet.table);
 
-        const query = this.database(facet.dataTable);
-        if(!columns) {
+        const query = this.database(facet.table);
+        if (!columns) {
             query.distinct({value: this.database.raw(facet.select)});
-        }
-        else{
+        } else {
             query.select(columns);
         }
 
-        let leftTable = facet.dataTable;
+        let leftTable = facet.table;
         joinTables.forEach(rightTable => {
             const linkInfo = this.getLinkInformation(leftTable, rightTable);
             query.join(rightTable, `${leftTable}.${linkInfo?.fromCol}`, '=', `${rightTable}.${linkInfo?.toCol}`);
             leftTable = rightTable;
         });
 
-        if (facet.whereClause.length > 0) {
-            query.whereRaw(facet.whereClause);
+        if (facet.where_clause.length > 0) {
+            query.whereRaw(facet.where_clause);
         }
         return query;
     }

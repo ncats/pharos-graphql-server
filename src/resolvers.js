@@ -1,6 +1,6 @@
 const {DataModelListFactory} = require("./models/DataModelListFactory");
 const {TargetDetails} = require("./models/target/targetDetails");
-const {FacetDataType} = require("./models/FacetInfo");
+const {FacetDataType} = require("./models/FieldInfo");
 const {LigandList} = require("./models/ligand/ligandList");
 const {DiseaseList} = require("./models/disease/diseaseList");
 const {TargetList} = require("./models/target/targetList");
@@ -119,7 +119,7 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return dataSources.tcrd.tableInfo.fieldLists.get('Target Facet - All').map(facet => facet.type);
+            return dataSources.tcrd.tableInfo.fieldLists.get('Target Facet - All').map(facet => facet.name);
         },
 
         target: async function (_, args, {dataSources}) {
@@ -249,14 +249,14 @@ const resolvers = {
         batch: async function (line, args, {dataSources}, info) {
             let funcs = [
                 getTargetResult(args, dataSources),
-                getDiseaseResult(args, dataSources.tcrd),
-                getLigandResult(args, dataSources.tcrd)
+                // getDiseaseResult(args, dataSources.tcrd),
+                // getLigandResult(args, dataSources.tcrd)
             ];
             return Promise.all(funcs).then(r => {
                 return {
                     targetResult: r[0],
-                    diseaseResult: r[1],
-                    ligandResult: r[2] // sigh
+                    // diseaseResult: r[1],
+                    // ligandResult: r[2] // sigh
                 };
             }).catch(function (error) {
                 console.error(error);
@@ -1608,13 +1608,13 @@ function getTargetResult(args, dataSources) {
                 facets.push({
                     dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                     binSize: targetList.facetsToFetch[i].binSize,
-                    facet: targetList.facetsToFetch[i].type,
+                    facet: targetList.facetsToFetch[i].name,
                     modifier: targetList.facetsToFetch[i].typeModifier,
                     count: rowData.length,
                     values: rowData,
                     sql: facetQueries[i].toString(),
-                    elapsedTime: targetList.getElapsedTime(targetList.facetsToFetch[i].type),
-                    sourceExplanation: targetList.facetsToFetch[i].sourceExplanation
+                    elapsedTime: targetList.getElapsedTime(targetList.facetsToFetch[i].name),
+                    sourceExplanation: targetList.facetsToFetch[i].description
                 });
             }
             return {
@@ -1642,12 +1642,12 @@ function getDiseaseResult(args, tcrd) {
         for (var i in rows) {
             facets.push({
                 sql: queries[i].toString(),
-                elapsedTime: diseaseList.getElapsedTime(diseaseList.facetsToFetch[i].type),
-                facet: diseaseList.facetsToFetch[i].type,
+                elapsedTime: diseaseList.getElapsedTime(diseaseList.facetsToFetch[i].name),
+                facet: diseaseList.facetsToFetch[i].name,
                 modifier: diseaseList.facetsToFetch[i].typeModifier,
                 count: rows[i].length,
                 values: rows[i],
-                sourceExplanation: diseaseList.facetsToFetch[i].sourceExplanation
+                sourceExplanation: diseaseList.facetsToFetch[i].description
             })
         }
 
@@ -1703,13 +1703,13 @@ function getLigandResult(args, tcrd) {
             facets.push({
                 dataType: ligandList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                 binSize: ligandList.facetsToFetch[i].binSize,
-                facet: ligandList.facetsToFetch[i].type,
+                facet: ligandList.facetsToFetch[i].name,
                 modifier: ligandList.facetsToFetch[i].typeModifier,
                 count: rowData.length,
                 values: rowData,
                 sql: facetQueries[i].toString(),
-                elapsedTime: ligandList.getElapsedTime(ligandList.facetsToFetch[i].type),
-                sourceExplanation: ligandList.facetsToFetch[i].sourceExplanation
+                elapsedTime: ligandList.getElapsedTime(ligandList.facetsToFetch[i].name),
+                sourceExplanation: ligandList.facetsToFetch[i].description
             });
         }
         return {

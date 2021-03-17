@@ -1,5 +1,5 @@
 import {DataModelList} from "../DataModelList";
-import {FacetInfo} from "../FacetInfo";
+import {FieldInfo} from "../FieldInfo";
 import {LigandFacetFactory} from "./ligandFacetFactory";
 import {ConfigKeys} from "../config";
 
@@ -25,14 +25,13 @@ export class LigandList extends DataModelList{
         } else {
             facetList = this.DefaultFacets;
         }
-        this.facetsToFetch = FacetInfo.deduplicate(
+        this.facetsToFetch = FieldInfo.deduplicate(
             this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
     }
 
     get DefaultFacetsWithTarget() {
-        return this.databaseConfig.fieldLists
-            .get('Ligand Facet - Associated Target')?.sort((a,b) => a.order - b.order)
-            .map(a => a.type) || [];
+        return this.databaseConfig.getDefaultFields('Ligand', 'facet', 'Target')
+            .map(a => a.name) || [];
     };
 
     defaultSortParameters(): {column: string; order: string}[]
@@ -40,11 +39,10 @@ export class LigandList extends DataModelList{
         return [{column: 'actcnt', order: 'desc'}];
     };
 
-    listQueryKey() {return ConfigKeys.Ligand_List_Default};
-
-    addLinkToRootTable(query: any, facet: FacetInfo): void {
-        query.andWhere('ncats_ligands.id', this.database.raw(facet.dataTable + '.ncats_ligand_id'));
-    }
+    getDefaultFields(): FieldInfo[] {
+        return [];
+        // return ConfigKeys.Ligand_List_Default
+        };
 
     addModelSpecificFiltering(query: any): void {
         if(this.associatedTarget){
@@ -61,14 +59,8 @@ export class LigandList extends DataModelList{
         }
     }
 
-    getRequiredTablesForFacet(info: FacetInfo): string[] {
-        let tableList = [];
-        tableList.push(this.rootTable);
-        if (info.dataTable == this.rootTable) {
-            return tableList;
-        }
-        tableList.push(info.dataTable);
-        return tableList;
+    getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string {
+        return '';
     }
 }
 

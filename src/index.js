@@ -77,5 +77,5 @@ setTimeout(() => {
         console.log('🏭 using configuration from: ' + cred.CONFIGDB);
         console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`)
     });
-}, 5000);
+});
 

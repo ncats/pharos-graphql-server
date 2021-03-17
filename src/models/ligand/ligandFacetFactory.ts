@@ -1,26 +1,21 @@
 import {FacetFactory} from "../FacetFactory";
 import {DataModelList} from "../DataModelList";
-import {FacetInfo} from "../FacetInfo";
+import {FieldInfo} from "../FieldInfo";
 
 export class LigandFacetFactory extends FacetFactory {
-    GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], extra?: any): FacetInfo {
-        const facet_config = parent.databaseConfig.getFacetConfig(parent.rootTable, typeName);
-        const partialReturn = this.parse_facet_config(parent, typeName, allowedValues, false, facet_config);
+    GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], extra?: any): FieldInfo {
+        const fieldInfo = parent.databaseConfig.getOneField('Disease', 'facet', parent.getAssociatedModel(), '', typeName);
+        if(!fieldInfo){
+            return this.unknownFacet();
+        }
 
         switch (typeName) {
             case "Activity":
-                return new FacetInfo({
-                    ...partialReturn,
-                    typeModifier: parent.associatedTarget,
-                    whereClause: this.getActivityWhereClause(parent.associatedTarget, "act_type not in ('','-')")
-                } as FacetInfo);
+                fieldInfo.typeModifier = parent.associatedTarget;
+                fieldInfo.where_clause = this.getActivityWhereClause(parent.associatedTarget, "act_type not in ('','-')") || fieldInfo.where_clause;
             case "Action":
-                return new FacetInfo(
-                    {
-                        ...partialReturn,
-                        typeModifier: parent.associatedTarget,
-                        whereClause: this.getActivityWhereClause(parent.associatedTarget, "action_type is not null")
-                    } as FacetInfo);
+                fieldInfo.typeModifier = parent.associatedTarget;
+                fieldInfo.where_clause = this.getActivityWhereClause(parent.associatedTarget, "action_type is not null") || fieldInfo.where_clause;
             case "EC50":
             case "IC50":
             case "Kd":
@@ -28,14 +23,10 @@ export class LigandFacetFactory extends FacetFactory {
                 if (!parent.associatedTarget) {
                     return this.unknownFacet();
                 }
-                return new FacetInfo(
-                    {
-                        ...partialReturn,
-                        typeModifier: parent.associatedTarget,
-                        whereClause: this.getActivityWhereClause(parent.associatedTarget, `act_type = '${typeName}'`)
-                    } as FacetInfo);
+                fieldInfo.typeModifier = parent.associatedTarget;
+                fieldInfo.where_clause = this.getActivityWhereClause(parent.associatedTarget, `act_type = '${typeName}'`) || fieldInfo.where_clause;
         }
-        return new FacetInfo(partialReturn);
+        return fieldInfo;
     }
 
     getActivityWhereClause(sym: string, extraClause?: string){

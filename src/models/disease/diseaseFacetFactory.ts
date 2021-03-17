@@ -1,27 +1,23 @@
 import {FacetFactory} from "../FacetFactory";
 import {DataModelList} from "../DataModelList";
-import {FacetInfo} from "../FacetInfo";
+import {FieldInfo} from "../FieldInfo";
 
 export class DiseaseFacetFactory extends FacetFactory {
-    GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], extra?: any): FacetInfo {
-        const facet_config = parent.databaseConfig.getFacetConfig(parent.rootTable, typeName);
-        const partialReturn = this.parse_facet_config(parent, typeName, allowedValues, false, facet_config);
+    GetFacet(parent: DataModelList, typeName: string, allowedValues: string[], extra?: any): FieldInfo {
+        const fieldInfo = parent.databaseConfig.getOneField('Disease', 'facet', parent.getAssociatedModel(), '', typeName);
+        if(!fieldInfo){
+            return this.unknownFacet();
+        }
 
         switch (typeName) {
             case "Data Source":
-                return new FacetInfo({
-                    ...partialReturn,
-                    typeModifier: parent.associatedTarget,
-                    whereClause: this.getdiseaseWhereClause(parent.associatedTarget)
-                } as FacetInfo);
+                fieldInfo.typeModifier = parent.associatedTarget;
+                fieldInfo.where_clause = this.getdiseaseWhereClause(parent.associatedTarget) || fieldInfo.where_clause;
             case "Drug":
-                return new FacetInfo({
-                    ...partialReturn,
-                    typeModifier: parent.associatedTarget,
-                    whereClause: this.getdiseaseWhereClause(parent.associatedTarget, "drug_name is not null")
-                } as FacetInfo);
+                fieldInfo.typeModifier = parent.associatedTarget;
+                fieldInfo.where_clause = this.getdiseaseWhereClause(parent.associatedTarget, "drug_name is not null") || fieldInfo.where_clause;
         }
-        return new FacetInfo(partialReturn);
+        return fieldInfo;
     }
 
     getdiseaseWhereClause(sym: string, extraClause?: string) {

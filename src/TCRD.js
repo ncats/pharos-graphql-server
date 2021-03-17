@@ -56,7 +56,7 @@ function validRegex(pattern) {
     try {
         var re = new RegExp(pattern, 'i');
         match = re.test('test pattern doesnt matter');
-    } catch {
+    } catch (e) {
         return false;
     }
     return true;
@@ -890,8 +890,7 @@ and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ?`, [target.tcrdid]));
 
             if (sort) {
-                q = q.orderBy([{column: 'a.p_int', order: 'desc'}, {column: 'a.score', order: 'desc'},
-                ]);
+                q = q.orderBy([{column: 'a.p_int', order: 'desc'}, {column: 'a.score', order: 'desc'}]);
             }
 
             if (args.top) {

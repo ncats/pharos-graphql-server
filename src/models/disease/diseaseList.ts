@@ -1,5 +1,5 @@
 import {DataModelList} from "../DataModelList";
-import {FacetInfo} from "../FacetInfo";
+import {FieldInfo} from "../FieldInfo";
 import {DiseaseFacetFactory} from "./diseaseFacetFactory";
 import {ConfigKeys} from "../config";
 
@@ -58,33 +58,23 @@ export class DiseaseList extends DataModelList {
         } else {
             facetList = this.DefaultFacets;
         }
-        this.facetsToFetch = FacetInfo.deduplicate(
+        this.facetsToFetch = FieldInfo.deduplicate(
             this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
     }
 
     get DefaultFacetsWithTarget() {
-        return this.databaseConfig.fieldLists
-            .get('Disease Facet - Associated Target')?.sort((a,b) => a.order - b.order)
-            .map(a => a.type) || [];
+        return this.databaseConfig.getDefaultFields('Disease', 'facet', 'Target')
+            .map(a => a.name) || [];
     };
     defaultSortParameters(): {column: string; order: string}[]
     {
         return [{column: 'count', order: 'desc'}]
     };
 
-    listQueryKey() {
-        return ConfigKeys.Disease_List_Default
+    getDefaultFields() : FieldInfo[] {
+        return [];
+        // return ConfigKeys.Disease_List_Default
     };
-
-    addLinkToRootTable(query: any, facet: FacetInfo): void {
-        if (facet.dataTable === 'target') {
-            query.andWhere('target.id', this.database.raw('t2tc.target_id'))
-                .andWhere('disease.protein_id', this.database.raw('t2tc.protein_id'));
-        }
-        if (facet.dataTable === 'ncats_dataSource_map'){
-            query.andWhere('disease.ncats_name', this.database.raw('ncats_dataSource_map.disease_name'));
-        }
-    }
 
     addModelSpecificFiltering(query: any): void {
         if (this.associatedTarget) {
@@ -104,20 +94,8 @@ export class DiseaseList extends DataModelList {
             .orderBy("associationCount", "desc");
     }
 
-    getRequiredTablesForFacet(info: FacetInfo): string[] {
-        let tableList = [];
-        tableList.push(this.rootTable);
-        if (info.dataTable == this.rootTable) {
-            return tableList;
-        }
-        tableList.push(info.dataTable);
-        switch (info.dataTable) {
-            case "target":
-                tableList.push("t2tc");
-                break;
-        }
-
-        return tableList;
+    getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string {
+        return '';
     }
 }
 
