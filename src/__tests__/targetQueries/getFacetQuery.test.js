@@ -1,6 +1,6 @@
-const {TargetList} = require("../models/target/targetList");
-const {tcrdConfig} = require('../__utils/loadTCRDforTesting');
-const TCRD = require('../TCRD');
+const {TargetList} = require("../../models/target/targetList");
+const {tcrdConfig} = require('../../__utils/loadTCRDforTesting');
+const TCRD = require('../../TCRD');
 
 let tcrd = new TCRD(tcrdConfig);
 
@@ -11,47 +11,6 @@ beforeAll(() => {
 });
 
 describe('list queries should work', function () {
-    test('TDL facet looks right', () => {
-        const listObj = new TargetList(tcrd, {});
-
-        const facet = listObj.facetsToFetch.find(facet => facet.name === "Target Development Level");
-        const query = facet.getFacetQuery();
-        return query.then(res => {
-            expect(res.length).toBe(4);
-            res.forEach(row => {
-                expect(row.name).toBeTruthy();
-                expect(row.value).toBeGreaterThanOrEqual(0);
-            });
-        });
-    });
-
-
-    test('Facet with custom select looks right', () => {
-        const listObj = new TargetList(tcrd, {facets: ["Family"]});
-        const query = listObj.facetsToFetch.find(facet => facet.name === "Family").getFacetQuery();
-        return query.then(res => {
-            const TFrow = res.find(row => row.name == 'Transcription Factor'); // translated from TF
-            expect(TFrow.name).toBe('Transcription Factor');
-            res.slice(0, 5).forEach(row => {
-                expect(row.name).toBeTruthy();
-                expect(row.value).toBeGreaterThanOrEqual(0);
-            });
-        });
-    });
-
-    test('facet constraints are constraining something', () => {
-        const listObj = new TargetList(tcrd, {filter: {facets: [{facet: "Family", values: ["Kinase"]}]}});
-        const tdlFacet = listObj.facetsToFetch.find(facet => facet.name === "Target Development Level").getFacetQuery();
-        const famFacet = listObj.facetsToFetch.find(facet => facet.name === "Family").getFacetQuery();
-        return Promise.all([tdlFacet, famFacet]).then(res => {
-            const tdlData = res[0];
-            const famData = res[1];
-            const tdlCount = tdlData.reduce((a, c) => a + c.value, 0);
-            const famCount = famData.reduce((a, c) => a + c.value, 0);
-
-            expect(tdlCount).toBeLessThan(famCount); // b/c TDL is filtered by Fam facet, and Fam facet doesn't filter itself
-        });
-    });
 
     test('numeric facets work too!', () => {
         const listObj = new TargetList(tcrd, {facets: ["Log Novelty"]});
@@ -85,31 +44,6 @@ describe('list queries should work', function () {
             res.slice(0, 5).forEach(row => {
                 expect(row.name).toBeTruthy();
                 expect(row.value).toBeGreaterThanOrEqual(0);
-            });
-        });
-    });
-
-    test('Facet constraint queries are people too!', () => {
-        const listObj = new TargetList(tcrd, {
-            filter: {
-                facets: [{
-                    facet: "Family",
-                    values: ["Kinase", "Transcription Factor"]
-                }]
-            }
-        });
-        const famFacet = listObj.facetsToFetch.find(facet => facet.name === "Family");
-        return Promise.all([famFacet.getFacetQuery(), famFacet.getFacetConstraintQuery()]).then(res => {
-            const famCounts = res[0];
-            const proteinList = res[1];
-
-            const kinaseCount = famCounts.find(row => row.name == 'Kinase').value;
-            const tfCount = famCounts.find(row => row.name == 'Transcription Factor').value;
-
-            expect(proteinList.length).toBe(kinaseCount + tfCount);
-
-            proteinList.slice(0, 5).forEach(row => {
-                expect(row.id).toBeGreaterThan(0);
             });
         });
     });
@@ -179,8 +113,8 @@ describe('list queries should work', function () {
         });
         const facet = listObj.facetsToFetch.find(facet => facet.name === "PPI Data Source");
 
-        console.log(facet.getFacetQuery().toString());
-        console.log(facet.getFacetConstraintQuery().toString());
+        // console.log(facet.getFacetQuery().toString());
+        // console.log(facet.getFacetConstraintQuery().toString());
 
         return Promise.all([facet.getFacetQuery(), facet.getFacetConstraintQuery()]).then(res => {
             const countResults = res[0];
@@ -206,12 +140,10 @@ describe('list queries should work', function () {
         const ppiFacet = ppiList.facetsToFetch.find(facet => facet.name === "Target Development Level");
         const fullFacet = fullList.facetsToFetch.find(facet => facet.name === "Target Development Level");
 
-        console.log(ppiFacet.getFacetQuery().toString());
-        console.log(fullFacet.getFacetQuery().toString());
+        // console.log(ppiFacet.getFacetQuery().toString());
+        // console.log(fullFacet.getFacetQuery().toString());
 
         return Promise.all([ppiFacet.getFacetQuery(), fullFacet.getFacetQuery()]).then(res => {
-            console.log(res);
-
             const ppiResults = res[0];
             const fullResults = res[1];
 
@@ -228,11 +160,10 @@ describe('list queries should work', function () {
         const fullList = new TargetList(tcrd, {filter: {facets: [{facet: "Log Novelty", values: ["[ -5.5, -3.5 )"]}]}});
         const fullFacet = fullList.facetsToFetch.find(facet => facet.name === "Target Development Level");
 
-        console.log(ppiFacet.getFacetQuery().toString());
-        console.log(fullFacet.getFacetQuery().toString());
+        // console.log(ppiFacet.getFacetQuery().toString());
+        // console.log(fullFacet.getFacetQuery().toString());
 
         return Promise.all([ppiFacet.getFacetQuery(), fullFacet.getFacetQuery()]).then(res => {
-            console.log(res);
             const ppiResults = res[0];
             const fullResults = res[1];
 
@@ -240,7 +171,6 @@ describe('list queries should work', function () {
             const fullCount = fullResults.reduce((a, c) => a + c.value, 0);
 
             expect(fullCount).toBeGreaterThan(ppiCount);
-
         });
     });
 

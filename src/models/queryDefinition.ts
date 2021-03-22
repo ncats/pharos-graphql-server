@@ -8,8 +8,9 @@ import {IBuildable} from "./IBuildable";
  */
 export class QueryDefinition {
     buildable: IBuildable;
+    dataList: FieldInfo[];
     static GenerateQueryDefinition(buildabelObj: IBuildable, dataList: FieldInfo[]): QueryDefinition {
-        let qd = new QueryDefinition(buildabelObj);
+        let qd = new QueryDefinition(buildabelObj, dataList);
         for (let i = 0; i < dataList.length; i++) {
             qd.addRequestedData(dataList[i]);
         }
@@ -18,12 +19,21 @@ export class QueryDefinition {
 
     tables: SqlTable[] = [];
 
-    private constructor(buildableObj: IBuildable) {
+    private constructor(buildableObj: IBuildable, dataList: FieldInfo[]) {
+        this.dataList = dataList;
         this.buildable = buildableObj;
     }
 
     addRequestedData(reqData: FieldInfo) {
-        reqData.where_clause = this.buildable.getSpecialModelWhereClause(reqData, this.buildable.rootTable) || reqData.where_clause;
+        const specialWhereClause = this.buildable.getSpecialModelWhereClause(reqData, this.buildable.rootTable);
+        if(specialWhereClause){
+            if(reqData.where_clause){
+                reqData.where_clause = reqData.where_clause + ' and ' + specialWhereClause;
+            }
+            else {
+                reqData.where_clause = specialWhereClause;
+            }
+        }
         const existingTable = this.tables.find(table => {
             return table.equals(reqData.table, reqData.where_clause);
         });
@@ -43,7 +53,7 @@ export class QueryDefinition {
         let tableAlias = reqData.table;
         if(tableCount > 0){
             tableAlias = reqData.table + tableCount;
-            const re = new RegExp('\\b' + reqData.table + '\\b', 'i');
+            const re = new RegExp('\\b' + reqData.table + '\\b', 'ig');
             reqData.where_clause = reqData.where_clause?.replace(re, tableAlias);
             reqData.select = reqData.select?.replace(re, tableAlias);
         }
@@ -103,7 +113,7 @@ export class QueryDefinition {
                 const columnName = column.alias || column.column;
                 if (column.group_method) {
                     columnList[columnName] = db.raw(column.group_method + `(distinct ${select})`);
-                } else if (column.needsDistinct){
+                } else if (column.needsDistinct) {
                     columnList[columnName] = db.raw(`distinct ${select}`);
                 } else {
                     columnList[columnName] = db.raw(select);
@@ -137,33 +147,40 @@ export class QueryDefinition {
         let query = buildableObj.database(rootTableObject.tableName)
             .select(this.getColumnList(buildableObj.database));
 
-        let joinFunction = 'leftJoin';
-        if(forFacet){
-            joinFunction = 'join';
-        }
 
+        const tablesInQuery: string[] = [];
         joinTables.forEach(dataTable => {
             if(dataTable.columns[0].isFromListQuery) {
                 return;
             }
+            let joinFunction = 'leftJoin';
+            if(forFacet || this.buildable.tableNeedsInnerJoin(dataTable)){
+                joinFunction = 'join';
+            }
             let leftTable = rootTableObject;
             dataTable.linkingTables.forEach(linkTableName => {
-                let linkInfo = buildableObj.databaseConfig.getLinkInformation(leftTable.tableName, linkTableName);
-                // @ts-ignore
-                query[joinFunction](linkTableName, function (this: any) {
-                    this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${linkTableName}.${linkInfo.toCol}`);
-                });
+                if(!tablesInQuery.includes(linkTableName)) {
+                    let linkInfo = buildableObj.databaseConfig.getLinkInformation(leftTable.tableName, linkTableName);
+                    // @ts-ignore
+                    query[joinFunction](linkTableName, function (this: any) {
+                        this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${linkTableName}.${linkInfo.toCol}`);
+                    });
+                    tablesInQuery.push(linkTableName);
+                }
                 leftTable = new SqlTable(linkTableName);
             });
-            let linkInfo = buildableObj.databaseConfig.getLinkInformation(leftTable.tableName, dataTable.tableName);
 
-            // @ts-ignore
-            query[joinFunction]({[dataTable.alias]: dataTable.tableName}, function (this: any) {
-                this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${dataTable.alias}.${linkInfo.toCol}`);
-                if(dataTable.joinConstraint){
-                    this.andOn(buildableObj.database.raw(dataTable.joinConstraint));
-                }
-            });
+            if(!tablesInQuery.includes(dataTable.alias)) {
+                let linkInfo = buildableObj.databaseConfig.getLinkInformation(leftTable.tableName, dataTable.tableName);
+                // @ts-ignore
+                query[joinFunction]({[dataTable.alias]: dataTable.tableName}, function (this: any) {
+                    this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${dataTable.alias}.${linkInfo.toCol}`);
+                    if (dataTable.joinConstraint) {
+                        this.andOn(buildableObj.database.raw(dataTable.joinConstraint));
+                    }
+                });
+                tablesInQuery.push(dataTable.alias);
+            }
         });
         return query;
     }

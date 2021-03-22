@@ -1,6 +1,6 @@
-const {TargetList} = require("../models/target/targetList");
-const {tcrdConfig} = require('../__utils/loadTCRDforTesting');
-const TCRD = require('../TCRD');
+const {TargetList} = require("../../models/target/targetList");
+const {tcrdConfig} = require('../../__utils/loadTCRDforTesting');
+const TCRD = require('../../TCRD');
 
 let tcrd = new TCRD(tcrdConfig);
 

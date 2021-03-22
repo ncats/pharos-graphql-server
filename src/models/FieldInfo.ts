@@ -43,6 +43,14 @@ export class FieldInfo {
 
         this.table = obj?.table || '';
         this.column = obj?.column || '';
+        if(obj?.column){
+            if(obj.column.includes(' ')){
+                this.column = '`' + obj.column + '`';
+            }
+            else{
+                this.column = obj.column;
+            }
+        }
         this.alias = obj?.alias || this.column;
         this.where_clause = obj?.where_clause || '';
         this.group_method = obj?.group_method || '';
@@ -78,34 +86,6 @@ export class FieldInfo {
         return new FieldInfo(this);
     }
 
-    // static parseFromConfigTable(parent: DataModelList, typeName: string, allowedValues: string[], nullQuery: boolean, facet_config: any): FieldInfo {
-    //     const hasNullQueryFields = () => {
-    //         return !!facet_config?.null_count_column;
-    //     };
-    //
-    //     const returnObj: FieldInfo = {} as FieldInfo;
-    //     returnObj.name = typeName;
-    //     returnObj.parent = parent;
-    //     returnObj.allowedValues = allowedValues;
-    //     returnObj.select = facet_config?.select;
-    //     returnObj.dataType = facet_config?.dataType || 'category';
-    //     returnObj.binSize = facet_config?.binSize;
-    //     returnObj.log = facet_config?.log;
-    //     returnObj.sourceExplanation = facet_config?.sourceExplanation;
-    //     returnObj.groupMethod = facet_config?.group_method;
-    //     if (nullQuery && hasNullQueryFields()) {
-    //         returnObj.dataTable = facet_config?.null_table;
-    //         returnObj.dataColumn = facet_config?.null_column;
-    //         returnObj.whereClause = facet_config?.null_where_clause;
-    //         returnObj.countColumn = facet_config?.null_count_column;
-    //     } else {
-    //         returnObj.dataTable = facet_config?.dataTable;
-    //         returnObj.dataColumn = facet_config?.dataColumn;
-    //         returnObj.whereClause = facet_config?.whereClause;
-    //     }
-    //     return new FieldInfo(returnObj);
-    // }
-
     numericBounds() {
         const scrubText = function (text: string): number | null {
             if (!text) return null;
@@ -135,7 +115,8 @@ export class FieldInfo {
                 associatedDisease: this.parent.associatedDisease,
                 rootTable: this.table,
                 ppiConfidence: this.parent.ppiConfidence,
-                getSpecialModelWhereClause: this.parent.getSpecialModelWhereClause
+                getSpecialModelWhereClause: this.parent.getSpecialModelWhereClause.bind(this.parent),
+                tableNeedsInnerJoin: this.parent.tableNeedsInnerJoin.bind(this.parent)
             }, [
                 new FieldInfo({
                     table: this.parent.rootTable,
@@ -182,6 +163,7 @@ export class FieldInfo {
             query = this.getStandardFacetQuery();
         }
         this.parent.captureQueryPerformance(query, this.name);
+        // console.log(query.toString());
         return query;
     }
 
@@ -207,7 +189,7 @@ export class FieldInfo {
         let query = queryDefinition.generateBaseQuery(true);
 
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
-        this.parent.addModelSpecificFiltering(query);
+        this.parent.addModelSpecificFiltering(query, false, [this.table]);
         query.groupBy(1).orderBy('value', 'desc');
         return query;
     }
@@ -224,13 +206,14 @@ export class FieldInfo {
             ]);
         let query = queryDefinition.generateBaseQuery(true);
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
-        this.parent.addModelSpecificFiltering(query);
+        this.parent.addModelSpecificFiltering(query, false, [this.table]);
         if (this.log) {
             query.where(this.dataString(), ">", 0);
         } else {
             query.whereNotNull(this.dataString());
         }
         query.groupBy('bin');
+        // console.log(query.toString());
         return query;
     }
 

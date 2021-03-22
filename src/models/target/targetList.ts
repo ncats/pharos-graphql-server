@@ -1,11 +1,9 @@
-import {TargetFacetFactory} from "./targetFacetFactory";
 import {DataModelList} from "../DataModelList";
 import {FieldInfo} from "../FieldInfo";
 import {Jaccard} from "../similarTargets/jaccard";
+import {SqlTable} from "../sqlTable";
 
 export class TargetList extends DataModelList {
-    skip: number = 0;
-    top: number = 10;
     proteinList: string[] = [];
     proteinListCached: boolean = false;
 
@@ -14,13 +12,13 @@ export class TargetList extends DataModelList {
             return [{column: 'id', order: 'asc'}];
         }
         if (this.term) {
-            return [{column: 'min_score', order: 'asc'}, {column: 'name', order: 'asc'}];
+            return [{column: 'search_score', order: 'asc'}, {column: 'name', order: 'asc'}];
         }
         if (this.associatedTarget) {
             return [{column: 'p_int', order: 'desc'}, {column: 'score', order: 'desc'}];
         }
         if (this.associatedDisease) {
-            return [{column: 'dtype', order: 'desc'}];
+            return [{column: 'datasource_count', order: 'desc'}];
         }
         if (this.similarity.match.length > 0) {
             return [{column: 'jaccard', order: 'desc'}];
@@ -29,7 +27,7 @@ export class TargetList extends DataModelList {
     }
 
     constructor(tcrd: any, json: any) {
-        super(tcrd, "protein", "id", new TargetFacetFactory(), json);
+        super(tcrd, 'Target', json);
 
         let facetList: string[];
         if (!json || !json.facets || json.facets.length == 0) {
@@ -54,7 +52,7 @@ export class TargetList extends DataModelList {
         }
     }
 
-    getDefaultFields(): FieldInfo[] {
+    getAvailableListFields(): FieldInfo[] {
         if (this.associatedTarget) {
             return this.databaseConfig.getAvailableFields('Target', 'list', 'Target');
         }
@@ -77,7 +75,7 @@ export class TargetList extends DataModelList {
         return dataFields;
     }
 
-    addModelSpecificFiltering(query: any, list: boolean = false): void {
+    addModelSpecificFiltering(query: any, list: boolean = false, tables: string[]): void {
         let filterQuery;
         if (list) {
             if(this.term.length > 0){
@@ -87,10 +85,14 @@ export class TargetList extends DataModelList {
                 filterQuery = this.getSimilarityQuery();
             }
             else if(this.associatedDisease.length > 0) {
-                filterQuery = this.fetchProteinList();
+                if(!tables.includes('disease')) {
+                    filterQuery = this.fetchProteinList();
+                }
             }
             else if(this.associatedTarget.length > 0) {
-                filterQuery = this.fetchProteinList();
+                if (!tables.includes('ncats_ppi')) {
+                    filterQuery = this.fetchProteinList();
+                }
             }
         } else {
             filterQuery = this.fetchProteinList();
@@ -147,7 +149,7 @@ export class TargetList extends DataModelList {
 distinct protein_id
 FROM
     disease as d
-JOIN (SELECT "${this.associatedDisease}" AS name UNION SELECT 
+JOIN (SELECT 
             lst.name
         FROM
             ncats_do lst,
@@ -158,7 +160,7 @@ JOIN (SELECT "${this.associatedDisease}" AS name UNION SELECT
             WHERE
                 name = "${this.associatedDisease}") AS finder
         WHERE
-            finder.lft + 1 <= lst.lft
+            finder.lft <= lst.lft
                 AND finder.rght >= lst.rght) as diseaseList
 ON diseaseList.name = d.ncats_name`));
     }
@@ -187,10 +189,43 @@ ON diseaseList.name = d.ncats_name`));
             .map(a => a.name) || [];
     };
 
+    tableNeedsInnerJoin(sqlTable: SqlTable) {
+        if (this.associatedDisease && sqlTable.tableName === 'disease'){
+            return true;
+        }
+        if (this.associatedTarget && sqlTable.tableName === 'ncats_ppi'){
+            return true;
+        }
+        return false;
+    }
+
     getSpecialModelWhereClause( fieldInfo: FieldInfo, rootTableOverride: string): string {
         if (this.associatedTarget && (fieldInfo.table === 'ncats_ppi' || rootTableOverride === 'ncats_ppi')) {
+            const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
+            if(modifiedFacet) {
+                modifiedFacet.typeModifier = this.associatedTarget;
+            }
             return `ncats_ppi.other_id = (select id from protein where match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode))
             and NOT (ncats_ppi.ppitypes = 'STRINGDB' AND ncats_ppi.score < ${this.ppiConfidence})`;
+        }
+        if (this.associatedDisease && (fieldInfo.table === 'disease' || rootTableOverride === 'disease')) {
+            const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
+            if(modifiedFacet) {
+                modifiedFacet.typeModifier = this.associatedDisease;
+            }
+            return `disease.ncats_name in (
+            SELECT 
+                lst.name
+            FROM
+                ncats_do lst, (SELECT 
+                MIN(lft) AS 'lft', MIN(rght) AS 'rght'
+            FROM
+                ncats_do
+            WHERE
+                name = '${this.associatedDisease}') AS finder
+            WHERE
+                finder.lft <= lst.lft
+                    AND finder.rght + 0 >= lst.rght)`;
         }
         return "";
     }

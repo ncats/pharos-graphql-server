@@ -1,21 +1,20 @@
 import now from "performance-now";
 import {FieldInfo} from "./FieldInfo";
 import {FacetFactory} from "./FacetFactory";
-import {DatabaseConfig} from "./databaseConfig";
+import {DatabaseConfig, ModelInfo} from "./databaseConfig";
 // @ts-ignore
 import * as CONSTANTS from "../constants";
 import {QueryDefinition} from "./queryDefinition";
 import {IBuildable} from "./IBuildable";
+import {SqlTable} from "./sqlTable";
 
 export abstract class DataModelList implements IBuildable {
-    abstract addModelSpecificFiltering(query: any, list?: boolean): void;
-    abstract getDefaultFields(): FieldInfo[];
-    abstract defaultSortParameters(): { column: string, order: string }[];
+    abstract addModelSpecificFiltering(query: any, list: boolean, tables: string[]): void;
+    abstract getAvailableListFields(): FieldInfo[];
+    abstract defaultSortParameters(): { column: string, order: string } [];
 
-
-    getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string {
-        return '';
-    }
+    abstract getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string;
+    abstract tableNeedsInnerJoin(table: SqlTable): boolean;
 
     batch: string[] = [];
     facetFactory: FacetFactory;
@@ -25,6 +24,7 @@ export abstract class DataModelList implements IBuildable {
     keyColumn: string;
     filteringFacets: FieldInfo[] = [];
     facetsToFetch: FieldInfo[] = [];
+    dataFields: FieldInfo[] = [];
 
     associatedTarget: string = "";
     associatedDisease: string = "";
@@ -32,7 +32,7 @@ export abstract class DataModelList implements IBuildable {
     ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
     skip: number = 0;
     top: number = 10;
-    modelInfo: { name: string, table: string, column: string };
+    modelInfo: ModelInfo = {name: '', table: '', column: ''};
 
     tcrd: any;
     database: any;
@@ -61,15 +61,18 @@ export abstract class DataModelList implements IBuildable {
         return fieldInfo.map((facet: FieldInfo) => facet.name) || [];
     };
 
-    constructor(tcrd: any, rootTable: string, keyColumn: string, facetFactory: FacetFactory, json: any, extra?: any) {
+    constructor(tcrd: any, modelName: string, json: any, extra?: any) {
         this.tcrd = tcrd;
         this.database = tcrd.db;
         this.databaseConfig = tcrd.tableInfo;
-        this.rootTable = rootTable;
-        this.keyColumn = keyColumn || this.databaseConfig.getPrimaryKey(this.rootTable);
-        this.facetFactory = facetFactory;
-
-        this.modelInfo = this.databaseConfig.modelList.get(this.rootTable) || { name: '', table: '', column: '' };
+        // @ts-ignore
+        this.modelInfo = this.databaseConfig.modelList.get(modelName);
+        if(!this.modelInfo){
+            throw new Error('Unknown model: ' + modelName);
+        }
+        this.rootTable = this.modelInfo.table;
+        this.keyColumn = this.modelInfo.column || this.databaseConfig.getPrimaryKey(this.rootTable);
+        this.facetFactory = new FacetFactory();
 
         if (json) {
             if (json.batch) {
@@ -114,10 +117,6 @@ export abstract class DataModelList implements IBuildable {
             }
             if (json.filter.order) {
                 this.sortField = json.filter.order.substring(1);
-                // if (this.sortField.indexOf('.') > 0) {
-                //     this.sortTable = this.sortField.split('.')[0];
-                //     this.sortField = this.sortField.split('.')[1];
-                // }
                 let ch = json.filter.order.charAt(0);
                 this.direction = (ch == '^') ? 'asc' : 'desc';
             }
@@ -152,7 +151,7 @@ export abstract class DataModelList implements IBuildable {
             [{table: this.rootTable, column: this.keyColumn, group_method: 'count', alias: 'count'} as FieldInfo]);
         const query = queryDefinition.generateBaseQuery(false);
         this.addFacetConstraints(query, this.filteringFacets);
-        this.addModelSpecificFiltering(query);
+        this.addModelSpecificFiltering(query, false, []);
         this.captureQueryPerformance(query, "list count");
         return query;
     };
@@ -160,13 +159,14 @@ export abstract class DataModelList implements IBuildable {
     getListQuery() {
         let dataFields: FieldInfo[];
         if (this.fields && this.fields.length > 0) {
-            dataFields = this.GetDataFields();
+            dataFields = this.GetDataFields('list');
         } else {
-            dataFields = this.getDefaultFields();
+            dataFields = this.getAvailableListFields();
         }
         if(!dataFields.map(f => f.name).includes(this.sortField)) {
-            this.pushOneDataField(this.sortField, dataFields);
+            this.pushOneDataField(this.sortField, 'list', dataFields);
         }
+        this.dataFields = dataFields;
         const sortField = dataFields.find(f => f.name === this.sortField);
 
         const queryDefinition = QueryDefinition.GenerateQueryDefinition(this, dataFields);
@@ -174,7 +174,7 @@ export abstract class DataModelList implements IBuildable {
         const query = queryDefinition.generateBaseQuery(false);
 
         this.addFacetConstraints(query, this.filteringFacets);
-        this.addModelSpecificFiltering(query, true);
+        this.addModelSpecificFiltering(query, true, this.dataFields.map(f => f.table));
 
         if (queryDefinition.hasGroupedColumns()) {
             query.groupBy(this.keyString());
@@ -186,8 +186,8 @@ export abstract class DataModelList implements IBuildable {
         if (this.top) {
             query.limit(this.top);
         }
+        // console.log(query.toString());
         return query;
-
     }
 
     addSort(query: any, queryDefinition: QueryDefinition, sortFieldInfo: FieldInfo | undefined) {
@@ -241,20 +241,19 @@ export abstract class DataModelList implements IBuildable {
         return true;
     }
 
-    GetDataFields(): FieldInfo[] {
+    GetDataFields(context: string): FieldInfo[] {
         const dataFields: FieldInfo[] = [];
-
         dataFields.push(new FieldInfo({table: this.modelInfo.table, column: this.modelInfo.column, alias: 'id'} as FieldInfo));
 
         this.fields.forEach(field => {
-            this.pushOneDataField(field, dataFields);
+            this.pushOneDataField(field, context, dataFields);
         });
         return dataFields;
     }
 
 
-    private pushOneDataField(field: string, dataFields: FieldInfo[]) {
-        const fieldInfo = this.databaseConfig.getOneField(this.modelInfo.name, '', this.getAssociatedModel(), '', field);
+    private pushOneDataField(field: string, context: string, dataFields: FieldInfo[]) {
+        const fieldInfo = this.databaseConfig.getOneField(this.modelInfo.name, context, this.getAssociatedModel(), '', field);
         if (fieldInfo) {
             fieldInfo.alias = field;
             dataFields.push(fieldInfo);
@@ -280,17 +279,6 @@ export abstract class DataModelList implements IBuildable {
             return qpd.elapsedTime();
         }
         return -1;
-    }
-
-    static listToObject(list: string[], lastTable: string) {
-        let obj: any = {};
-        for (let i = 0; i < list.length; i++) {
-            if (lastTable != list[i]) {
-                obj[list[i]] = list[i];
-            }
-        }
-        obj[lastTable] = lastTable; // because apparently it matters the order you add fields to an object, somehow knex adds tables in this order
-        return obj;
     }
 }
 

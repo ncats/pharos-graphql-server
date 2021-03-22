@@ -62,15 +62,19 @@ export class DatabaseTable {
 
     static requiredLinks: Map<string, string[]> = new Map(
         [
+            ["ncats_disease-disease", ["ncats_d2da"]],
+            ["ncats_disease-target", ["t2tc", "protein", "disease", "ncats_d2da"]],
+            ["ncats_disease-protein", ["disease", "ncats_d2da"]],
+            ["disease-target", ["t2tc", "protein"]],
             ["protein-viral_protein", ["viral_ppi"]],
-            // checked
+
             ["protein-virus", ["viral_protein", "viral_ppi"]],
             ["protein-dto", ["p2dto"]],
             ["protein-panther_class", ["p2pc"]],
             ["protein-target", ["t2tc"]],
             ["protein-ncats_idg_list_type", ["ncats_idg_list"]],
-            ["protein-ncats_ligands", ["t2tc", "target", "ncats_ligand_activity"]],
-            ["protein-ncats_ligand_activity", ["t2tc", "target"]]
+            ["protein-ncats_ligands", ["ncats_ligand_activity", "target", "t2tc"]],
+            ["protein-ncats_ligand_activity", ["target", "t2tc"]]
         ]);
 
     static getRequiredLinks(table1: string, table2: string): string[] | undefined {

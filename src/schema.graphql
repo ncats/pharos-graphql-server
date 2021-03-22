@@ -659,7 +659,7 @@ type DataSourceCount @cacheControl(maxAge: 604800){
 
 type PharosConfiguration{
      lists (listNames: [String]): [FieldList]
-     downloadLists (modelName: String): [FieldList]
+     downloadLists (modelName: String, associatedModelName: String): [FieldList]
 }
 
 type FieldList{
@@ -669,11 +669,14 @@ type FieldList{
 
 type FieldDetails{
      order: Int
-     type: String
-     dataTable: String
-     dataColumn: String
+     name: String
+     description: String
+     table: String
+     column: String
+     alias: String
      select: String
-     whereClause: String
+     where_clause: String
+     group_method: String
      null_table: String
      null_column: String
      null_count_column: String
@@ -681,10 +684,7 @@ type FieldDetails{
      dataType: String
      binSize: String
      log: String
-     sourceExplanation: String
-     modelName: String
-     rootTable: String
-     rootColumn: String
+     default: Boolean
 }
 
 type Query{

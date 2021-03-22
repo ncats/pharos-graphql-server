@@ -10,34 +10,52 @@ const {find, filter, slice} = require('lodash');
 
 const resolvers = {
     FieldList: {
-        listName: async function(listObject, args, {dataSources}){
-            return listObject;
+        listName: async function (listObject, args, {dataSources}) {
+            const pieces = listObject.split('-');
+            return pieces[pieces.length - 1];
         },
-        field: async function(listObject, args, {dataSources}){
-            return dataSources.tcrd.tableInfo.fieldLists.get(listObject);
+        field: async function (listObject, args, {dataSources}) {
+            return dataSources.tcrd.tableInfo.availableFieldMap.get(listObject);
         }
     },
 
     PharosConfiguration: {
-        lists: async function(config, args, {dataSources}){
-            if(args.listNames){
+        lists: async function (config, args, {dataSources}) {
+            if (args.listNames) {
                 return [...args.listNames];
             }
-            return  config.fieldLists.keys();
+            return config.availableFieldMap.keys();
         },
-        downloadLists: async function(config, args, {dataSources}){
-            return Array.from(config.fieldLists.keys()).filter(key => key.startsWith(args.modelName + ' Field Group'));
+        downloadLists: async function (config, args, {dataSources}) {
+            console.log(args);
+            return Array.from(config.availableFieldMap.keys()).filter(listKey => {
+                const pieces = listKey.split('-');
+                const reqModel = args.modelName ? args.modelName.toLowerCase() : '';
+                const reqAssocModel = args.associatedModelName ? args.associatedModelName.toLowerCase() : '';
+                if (pieces[1] != 'download'){ // must be download lists
+                    return false;
+                }
+                if (pieces[0] != reqModel) { // must match the model
+                    return false;
+                }
+                if (pieces[2] == ''){        // normal fields should apply no matter the associated model
+                    return true;
+                }
+                if (pieces[2] == reqAssocModel) {  // otherwise, have to have the right associated model
+                    return true;
+                }
+                return false;
+            });
         }
     },
 
     Query: {
-        download: async function (_, args, {dataSources}){
+        download: async function (_, args, {dataSources}) {
             let listQuery;
             try {
                 const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
                 listQuery = listObj.getListQuery();
-            }
-            catch(e){
+            } catch (e) {
                 return {
                     result: false,
                     errorDetails: e.message
@@ -50,7 +68,7 @@ const resolvers = {
             };
         },
 
-        configuration: async function (_, args, {dataSources}){
+        configuration: async function (_, args, {dataSources}) {
             return dataSources.tcrd.tableInfo;
         },
 
@@ -119,7 +137,7 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return dataSources.tcrd.tableInfo.fieldLists.get('Target Facet - All').map(facet => facet.name);
+            return dataSources.tcrd.tableInfo.availableFieldMap.get('target-facet--').map(facet => facet.name);
         },
 
         target: async function (_, args, {dataSources}) {
@@ -247,16 +265,40 @@ const resolvers = {
         },
 
         batch: async function (line, args, {dataSources}, info) {
+            const tryUnbatch = function () {
+                if (info && info.fieldNodes && info.fieldNodes.length > 0 &&
+                    info.fieldNodes[0].arguments && info.fieldNodes[0].arguments.length > 0 &&
+                    info.fieldNodes[0].arguments[0].name) {
+                    return info.fieldNodes[0].arguments[0].name.value;
+                }
+            };
+            const model = tryUnbatch();
+            if(model == 'targets'){
+                return getTargetResult(args, dataSources).then(res => {
+                    return {targetResult: res};
+                })
+            }
+            if(model == 'diseases'){
+                return getDiseaseResult(args, dataSources.tcrd).then(res => {
+                    return {diseaseResult: res};
+                })
+            }
+            if(model == 'ligands'){
+                return getLigandResult(args, dataSources.tcrd).then(res => {
+                    return {ligandResult: res};
+                })
+            }
+            console.log('unbatching failed, executing the whole batch');
             let funcs = [
                 getTargetResult(args, dataSources),
-                // getDiseaseResult(args, dataSources.tcrd),
-                // getLigandResult(args, dataSources.tcrd)
+                getDiseaseResult(args, dataSources.tcrd),
+                getLigandResult(args, dataSources.tcrd)
             ];
             return Promise.all(funcs).then(r => {
                 return {
                     targetResult: r[0],
-                    // diseaseResult: r[1],
-                    // ligandResult: r[2] // sigh
+                    diseaseResult: r[1],
+                    ligandResult: r[2] // sigh
                 };
             }).catch(function (error) {
                 console.error(error);
@@ -464,7 +506,7 @@ const resolvers = {
                     return rowData.tcrdid == target.tcrdid;
                 });
                 if (theRow) {
-                    theRow.score = theRow.score / 1000;
+                    theRow.score = theRow.score;
                     return theRow;
                 }
             }
@@ -495,10 +537,10 @@ const resolvers = {
             diseaseArgs.filter = diseaseArgs.filter || {};
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
-            const q = diseaseList.getAssociatedTargetQuery();
+            const q = diseaseList.getListQuery();
             return q.then(rows => {
                 rows.forEach(x => {
-                    x.value = x.associationCount;
+                    x.value = x.count;
                 });
                 return rows;
             });
@@ -509,13 +551,7 @@ const resolvers = {
             diseaseArgs.filter = diseaseArgs.filter || {};
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
-            const q = diseaseList.getAssociatedTargetQuery();
-            if (args.top) {
-                q.limit(args.top);
-            }
-            if (args.skip) {
-                q.offset(args.skip);
-            }
+            const q = diseaseList.getListQuery();
             return q.then(rows => {
                 let diseases = filter(rows, r => r.name != null
                     && r.associationCount > 0);
@@ -836,7 +872,8 @@ const resolvers = {
             } else {
                 ligandArgs.filter.facets.push({facet: "Type", values: ["Ligand"]});
             }
-            return new LigandList(dataSources.tcrd, ligandArgs).getListQuery()
+            return new LigandList(dataSources.tcrd, ligandArgs)
+                .getListQuery()
                 .then(allResults => {
                     return allResults;
                 })
@@ -862,8 +899,8 @@ const resolvers = {
                     console.error(error);
                 });
         },
-        similarity: async function (target, args, {dataSources}){
-            if(dataSources.similarity) {
+        similarity: async function (target, args, {dataSources}) {
+            if (dataSources.similarity) {
                 return target;
             }
             return null;
@@ -871,14 +908,14 @@ const resolvers = {
         sequence_variants: async function (target, args, {dataSources}) {
             const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
             return targetDetails.getSequenceVariants().then(results => {
-                if(!results || results.length < 1){
+                if (!results || results.length < 1) {
                     return null;
                 }
                 const residueData = [];
                 let currentResidue = [];
                 let lastResidueIndex = -1;
                 results.forEach(row => {
-                    if(lastResidueIndex != row.residue){
+                    if (lastResidueIndex != row.residue) {
                         lastResidueIndex = row.residue;
                         currentResidue = [];
                         residueData.push(currentResidue);
@@ -897,19 +934,19 @@ const resolvers = {
                 return results;
             });
         },
-        facetValueCount: async function(target, args, {dataSources}){
+        facetValueCount: async function (target, args, {dataSources}) {
             if (!args.facetName) {
                 return null;
             }
             const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
             return targetDetails.getFacetValueCount().then(results => {
-                if(results && results.length > 0) {
+                if (results && results.length > 0) {
                     return results[0].value;
                 }
                 return null;
             });
         },
-        facetValues: async function(target, args, {dataSources}) {
+        facetValues: async function (target, args, {dataSources}) {
             if (!args.facetName) {
                 return null;
             }
@@ -919,14 +956,14 @@ const resolvers = {
             });
         }
     },
-    SimilarityDetails:{
-        commonOptions: async function (target, args, {dataSources}){
-            if(target && target.commonOptions && dataSources.similarity) {
+    SimilarityDetails: {
+        commonOptions: async function (target, args, {dataSources}) {
+            if (target && target.commonOptions && dataSources.similarity) {
                 const options = target.commonOptions.split('|');
-                if(options.length <= 20){
+                if (options.length <= 20) {
                     return options;
                 }
-                return [...options.slice(0,20), `...and ${target.overlap - 20} more`];
+                return [...options.slice(0, 20), `...and ${target.overlap - 20} more`];
             }
             return null;
         }
@@ -1329,9 +1366,9 @@ const resolvers = {
                 console.error(error);
             });
         },
-        similarityTarget: async function (target, args, {dataSources}){
-            if(dataSources.similarity && dataSources.similarity.match) {
-                return resolvers.Query.target(null, {q: {uniprot :dataSources.similarity.match}}, {dataSources});
+        similarityTarget: async function (target, args, {dataSources}) {
+            if (dataSources.similarity && dataSources.similarity.match) {
+                return resolvers.Query.target(null, {q: {uniprot: dataSources.similarity.match}}, {dataSources});
             }
             return null;
         },
@@ -1623,7 +1660,7 @@ function getTargetResult(args, dataSources) {
                 count: count,
                 facets: facets
             };
-        }).catch( error => {
+        }).catch(error => {
             console.error(error);
         });
     }

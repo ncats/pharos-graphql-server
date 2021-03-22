@@ -14,16 +14,13 @@ export class SqlTable {
 
     constructor(tableName: string, {alias = "", joinConstraint = ""} = {},
                 linkingTables: string[] = []) {
+
         if (alias) {
             this._alias = alias;
         }
         this.tableName = tableName;
         this.joinConstraint = joinConstraint;
-
         this.linkingTables = linkingTables;
-        if (alias) {
-            this._alias = alias;
-        }
     }
 
     equals(tableName: string, joinConstraint: string | undefined) {
