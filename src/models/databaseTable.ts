@@ -62,6 +62,8 @@ export class DatabaseTable {
 
     static requiredLinks: Map<string, string[]> = new Map(
         [
+            ["ncats_disease-ncats_ligands", ["ncats_ligand_activity", "target", "t2tc", "protein", "disease", "ncats_d2da"]],
+            ["ncats_disease-ncats_ligand_activity", ["target", "t2tc", "protein", "disease", "ncats_d2da"]],
             ["ncats_disease-disease", ["ncats_d2da"]],
             ["ncats_disease-target", ["t2tc", "protein", "disease", "ncats_d2da"]],
             ["ncats_disease-protein", ["disease", "ncats_d2da"]],
