@@ -271,7 +271,7 @@ export class DatabaseConfig {
         let joinTables: string[] = [];
 
         if (dataTable != rootTable) {
-            const links = DatabaseTable.getRequiredLinks(dataTable, rootTable) || [];
+            const links = DatabaseTable.getRequiredLinks(dataTable, rootTable)?.slice().reverse() || [];
             joinTables.push(...links);
             joinTables.push(rootTable);
         }
@@ -298,6 +298,7 @@ export class DatabaseConfig {
         if (facet.where_clause.length > 0) {
             query.whereRaw(facet.where_clause);
         }
+        // console.log(query.toString());
         return query;
     }
 }
