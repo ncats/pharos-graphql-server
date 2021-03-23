@@ -30,7 +30,7 @@ describe('list queries should work', function () {
             top: 10,
             fields: ["Family", "UniProt", "PDB IDs"]
         });
-        console.log(listObj.getListQuery().toString());
+        // console.log(listObj.getListQuery().toString());
         return listObj.getListQuery().then(res => {
             expect(res.length).toBe(10);
             res.forEach(val => {

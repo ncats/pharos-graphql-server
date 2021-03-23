@@ -167,7 +167,7 @@ export abstract class DataModelList implements IBuildable {
             this.pushOneDataField(this.sortField, 'list', dataFields);
         }
         this.dataFields = dataFields;
-        const sortField = dataFields.find(f => f.name.length > 0 && f.name === this.sortField);
+        const sortField = dataFields.find(f => f.name && f.name.length > 0 && f.name === this.sortField);
 
         const queryDefinition = QueryDefinition.GenerateQueryDefinition(this, dataFields);
 

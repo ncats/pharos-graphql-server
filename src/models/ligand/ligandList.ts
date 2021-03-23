@@ -70,6 +70,9 @@ export class LigandList extends DataModelList {
     }
 
     tableNeedsInnerJoin(sqlTable: SqlTable) {
+        if (this.associatedTarget && (sqlTable.tableName === 'protein' || sqlTable.tableName === 'target' || sqlTable.tableName === 'ncats_ligand_activity')) {
+            return true;
+        }
         return false;
     }
 
@@ -84,7 +87,7 @@ export class LigandList extends DataModelList {
                 FROM protein, t2tc 
                 WHERE MATCH (uniprot , sym , stringid) 
                 AGAINST ('${this.associatedTarget}' IN BOOLEAN MODE) 
-                AND t2tc.protein_id     =     protein.id)`;
+                AND t2tc.protein_id = protein.id)`;
         }
         return "";
     }
