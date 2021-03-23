@@ -30,8 +30,8 @@ export abstract class DataModelList implements IBuildable {
     associatedDisease: string = "";
     similarity: { match: string, facet: string } = {match: '', facet: ''};
     ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
-    skip: number = 0;
-    top: number = 10;
+    skip: number | undefined;
+    top: number | undefined;
     modelInfo: ModelInfo = {name: '', table: '', column: ''};
 
     tcrd: any;
@@ -167,7 +167,7 @@ export abstract class DataModelList implements IBuildable {
             this.pushOneDataField(this.sortField, 'list', dataFields);
         }
         this.dataFields = dataFields;
-        const sortField = dataFields.find(f => f.name === this.sortField);
+        const sortField = dataFields.find(f => f.name.length > 0 && f.name === this.sortField);
 
         const queryDefinition = QueryDefinition.GenerateQueryDefinition(this, dataFields);
 
@@ -191,7 +191,7 @@ export abstract class DataModelList implements IBuildable {
     }
 
     addSort(query: any, queryDefinition: QueryDefinition, sortFieldInfo: FieldInfo | undefined) {
-        if (!this.sortField || !sortFieldInfo) {
+        if (!sortFieldInfo) {
             query.orderBy(this.defaultSortParameters());
             return;
         }

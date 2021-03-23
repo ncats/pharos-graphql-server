@@ -67,6 +67,9 @@ export class DiseaseList extends DataModelList {
     };
     defaultSortParameters(): {column: string; order: string}[]
     {
+        if (this.fields.length > 0) {
+            return [{column: 'id', order: 'asc'}];
+        }
         return [{column: 'count', order: 'desc'}]
     };
 

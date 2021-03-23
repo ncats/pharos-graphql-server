@@ -45,11 +45,6 @@ export class TargetList extends DataModelList {
         }
         this.facetsToFetch = FieldInfo.deduplicate(
             this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList, this.isNull())));
-
-        if (json) {
-            this.skip = json.skip;
-            this.top = json.top;
-        }
     }
 
     getAvailableListFields(): FieldInfo[] {
