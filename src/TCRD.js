@@ -109,7 +109,9 @@ class TCRD extends SQLDataSource {
         super(config);
         const _this = this;
         this.tableInfo = new DatabaseConfig(this.db, config.connection.database, config.connection.configDB);
-
+        this.tableInfo.loadPromise.then(() => {
+           console.log('database tables loaded');
+        });
         const root = {
             doid: 'DOID:4',
             name: 'disease',
