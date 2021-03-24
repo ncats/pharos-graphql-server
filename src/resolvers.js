@@ -552,10 +552,11 @@ const resolvers = {
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
             const q = diseaseList.getListQuery();
-            return q.then(rows => {
-                let diseases = filter(rows, r => r.name != null
-                    && r.associationCount > 0);
-                diseases.forEach(x => x.parent = target);
+            return q.then(diseases => {
+                diseases.forEach(x => {
+                    x.associationCount = x.count;
+                    x.parent = target;
+                });
                 return diseases;
             }).catch(function (error) {
                 console.error(error);
