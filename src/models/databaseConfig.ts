@@ -210,7 +210,7 @@ export class DatabaseConfig {
     }
 
     loadModelMap() {
-        let query = this.database({...this.modelTable}).select('*').then((rows: any[]) => {
+        return this.database({...this.modelTable}).select('*').then((rows: any[]) => {
             rows.forEach(row => {
                 this.modelList.set(row.name, new ModelInfo(row));
             });

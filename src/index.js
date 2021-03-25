@@ -71,10 +71,10 @@ server.applyMiddleware({
 });
 
 const PORT = process.env.PORT || 4444;
-setTimeout(() => {
+tcrd.tableInfo.loadPromise.then(() => {
     app.listen({port: PORT}, () => {
         console.log('🏭 using configuration from: ' + cred.CONFIGDB);
         console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`)
     });
-}, 10000);
+});
 
