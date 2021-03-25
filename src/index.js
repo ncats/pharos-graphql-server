@@ -70,7 +70,7 @@ server.applyMiddleware({
     path: '/graphql'
 });
 
-const PORT = process.env.PORT || 4444;
+const PORT = process.env.PORT || 4000;
 tcrd.tableInfo.loadPromise.then(() => {
     app.listen({port: PORT}, () => {
         console.log('🏭 using configuration from: ' + cred.CONFIGDB);
