@@ -67,6 +67,15 @@ export class LigandList extends DataModelList {
         } else if (this.term.length > 0) {
             query.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against('${this.term}*')`);
         }
+        if (this.batch && this.batch.length > 0) {
+            query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.ligand_id', this.keyString());
+        }
+    }
+
+    getBatchQuery(batch: string[]){
+        return this.database('ncats_ligands').distinct({ligand_id: 'id'})
+            .whereIn('identifier', batch)
+            .orWhereIn('name', batch);
     }
 
     tableNeedsInnerJoin(sqlTable: SqlTable) {

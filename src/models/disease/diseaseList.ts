@@ -89,6 +89,14 @@ export class DiseaseList extends DataModelList {
                 query.join(this.getAssociatedTargetQuery().as('assocTarget'), 'assocTarget.name', this.keyString());
             }
         }
+        if (this.batch && this.batch.length > 0) {
+            query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.disease_id', this.keyString());
+        }
+    }
+
+    getBatchQuery(batch: string[]){
+        return this.database('ncats_disease').distinct({disease_id: 'id'})
+            .whereIn('name', batch);
     }
 
     getTermQuery(){

@@ -1379,6 +1379,7 @@ const resolvers = {
         facets: async (result, args, _) => filterResultFacets(result, args),
         diseases: async function (result, args, {dataSources}) {
             args.filter = result.filter;
+            args.batch = result.batch;
             return new DiseaseList(dataSources.tcrd, args).getListQuery()
                 .then(diseases => {
                     diseases.forEach(x => {
@@ -1396,6 +1397,7 @@ const resolvers = {
         facets: async (result, args, _) => filterResultFacets(result, args),
         ligands: async function (result, args, {dataSources}) {
             args.filter = result.filter;
+            args.batch = result.batch;
             let ligandList = new LigandList(dataSources.tcrd, args);
             return ligandList.getListQuery().then(
                 ligands => {
@@ -1668,6 +1670,7 @@ function getTargetResult(args, dataSources) {
 }
 
 function getDiseaseResult(args, tcrd) {
+    args.batch = args.diseases;
     let diseaseList = new DiseaseList(tcrd, args);
     let queries = diseaseList.getFacetQueries();
     queries.unshift(diseaseList.getCountQuery());
@@ -1691,6 +1694,7 @@ function getDiseaseResult(args, tcrd) {
 
         return {
             filter: args.filter,
+            batch: args.diseases,
             count: count,
             facets: facets
         };
@@ -1720,6 +1724,7 @@ function splitOnDelimiters(rowData) {
 }
 
 function getLigandResult(args, tcrd) {
+    args.batch = args.ligands;
     let ligandList = new LigandList(tcrd, args);
     const countQuery = ligandList.getCountQuery();
     const facetQueries = ligandList.getFacetQueries();
@@ -1752,6 +1757,7 @@ function getLigandResult(args, tcrd) {
         }
         return {
             filter: args.filter,
+            batch: args.ligands,
             count: count,
             facets: facets
         };

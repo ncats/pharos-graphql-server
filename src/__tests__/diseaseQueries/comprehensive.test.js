@@ -11,9 +11,35 @@ beforeAll(() => {
 });
 
 describe('all the queries should be consistent with each other', function () {
+    test('Disease batches are a thing too', () => {
+        const diseaseList = ["asthma", "benign ependymoma"];
+        const fullList = new DiseaseList(tcrd);
+        const batchList = new DiseaseList(tcrd, {
+            batch: diseaseList
+        });
+
+        const batchListQuery = batchList.getListQuery();
+        const batchCountQuery = batchList.getCountQuery();
+        const fullTdlFacet = fullList.facetsToFetch.find(f => f.name == 'Target Development Level').getFacetQuery();
+        const batchTdlFacet = batchList.facetsToFetch.find(f => f.name == 'Target Development Level').getFacetQuery();
+
+        return Promise.all([batchCountQuery, batchTdlFacet, fullTdlFacet, batchListQuery]).then(res => {
+            const batchCount = res[0][0].count;
+            expect(batchCount).toBe(diseaseList.length);
+            const batchLength = res[3].length;
+            expect(batchLength).toBe(diseaseList.length);
+
+            const batchTdlCount = res[1].reduce((a, c) => a + c.value, 0);
+            const fullTdlCount = res[2].reduce((a, c) => a + c.value, 0);
+            expect(fullTdlCount).toBeGreaterThan(batchTdlCount);
+            expect(batchTdlCount).toBeGreaterThan(0);
+        });
+    });
+
+
     test('All diseases query', () => {
-        const fullList = new DiseaseList(tcrd, {top:20000});
-        const filteredList = new DiseaseList(tcrd, {top:20000, filter: {facets: [{facet: "Data Source", values: ["CTD"]}]}});
+        const fullList = new DiseaseList(tcrd);
+        const filteredList = new DiseaseList(tcrd, {filter: {facets: [{facet: "Data Source", values: ["CTD"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
         const fullListQuery = fullList.getListQuery();
@@ -59,8 +85,11 @@ describe('all the queries should be consistent with each other', function () {
 
 
     test('term search query', () => {
-        const fullList = new DiseaseList(tcrd, {top:20000, filter: {term:"cancer"}});
-        const filteredList = new DiseaseList(tcrd, {top:20000, filter: {term:"cancer", facets: [{facet: "Data Source", values: ["CTD"]}]}});
+        const fullList = new DiseaseList(tcrd, {top: 20000, filter: {term: "cancer"}});
+        const filteredList = new DiseaseList(tcrd, {
+            top: 20000,
+            filter: {term: "cancer", facets: [{facet: "Data Source", values: ["CTD"]}]}
+        });
 
         const fullCountQuery = fullList.getCountQuery();
         const fullListQuery = fullList.getListQuery();
@@ -83,7 +112,7 @@ describe('all the queries should be consistent with each other', function () {
                 expect(fullCount).toBe(fullListLength);
                 const fullTypeCount = res[2].reduce((a, c) => a + c.value, 0);
                 expect(fullTypeCount).toBeGreaterThanOrEqual(fullListLength);  // only true for TDL because of multiple targets associated with these diseases
-                                                                                    // ideally they'd be equal and add up exactly like in the target / ligand test facets
+                // ideally they'd be equal and add up exactly like in the target / ligand test facets
                 const filteredCount = res[3][0].count;
                 const filteredListLength = res[4].length;
                 expect(filteredCount).toBe(filteredListLength);
@@ -105,8 +134,11 @@ describe('all the queries should be consistent with each other', function () {
     });
 
     test('associated target query', () => {
-        const fullList = new DiseaseList(tcrd, {top:20000, filter: {associatedTarget:"DRD2"}});
-        const filteredList = new DiseaseList(tcrd, {top:20000, filter: {associatedTarget:"DRD2", facets: [{facet: "Data Source", values: ["CTD"]}]}});
+        const fullList = new DiseaseList(tcrd, {top: 20000, filter: {associatedTarget: "DRD2"}});
+        const filteredList = new DiseaseList(tcrd, {
+            top: 20000,
+            filter: {associatedTarget: "DRD2", facets: [{facet: "Data Source", values: ["CTD"]}]}
+        });
 
         const fullCountQuery = fullList.getCountQuery();
         const fullListQuery = fullList.getListQuery();
