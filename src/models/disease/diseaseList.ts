@@ -18,7 +18,7 @@ export class DiseaseList extends DataModelList {
     static getDescendentsQuery(knex: any, diseaseName: string) {
         let finderQuery = knex("ncats_do")
             .min({lft: 'lft', rght: 'rght'})
-            .whereRaw(`name = ?`, diseaseName);
+            .whereRaw(`name = "?"`, diseaseName);
         let query = knex({lst: 'ncats_do', finder: finderQuery})
             .select('lst.name')
             .where('finder.lft', '<=', knex.raw('lst.lft'))

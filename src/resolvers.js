@@ -27,7 +27,6 @@ const resolvers = {
             return config.availableFieldMap.keys();
         },
         downloadLists: async function (config, args, {dataSources}) {
-            console.log(args);
             return Array.from(config.availableFieldMap.keys()).filter(listKey => {
                 const pieces = listKey.split('-');
                 const reqModel = args.modelName ? args.modelName.toLowerCase() : '';
@@ -53,6 +52,11 @@ const resolvers = {
         download: async function (_, args, {dataSources}) {
             let listQuery;
             try {
+                if (args.top) {
+                    args.top = Math.min(args.top, 250000);
+                }else{
+                    args.top = 250000;
+                }
                 const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
                 listQuery = listObj.getListQuery();
             } catch (e) {

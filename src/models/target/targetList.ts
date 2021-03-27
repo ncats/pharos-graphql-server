@@ -217,7 +217,7 @@ ON diseaseList.name = d.ncats_name`));
             FROM
                 ncats_do
             WHERE
-                name = '${this.associatedDisease}') AS finder
+                name = "${this.associatedDisease}") AS finder
             WHERE
                 finder.lft <= lst.lft
                     AND finder.rght + 0 >= lst.rght)`;
