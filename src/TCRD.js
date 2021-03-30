@@ -1787,9 +1787,9 @@ and c.target_id = ?`, [target.tcrdid]));
                 category: this.db.raw("group_concat(`category` separator '|')"),
                 reference_id: this.db.raw("group_concat(ifnull(`reference_id`,'') separator '|')")
             })
-            .where("value", "like", `%${key}%`)
+            .where("value", "like", this.db.raw(`"%${key}%"`))
             .groupBy("value")
-            .orderByRaw(`(case when value like '${key}%' then 1 else 2 end), length(value), count(*) desc`)
+            .orderByRaw(`(case when value like "${key}%" then 1 else 2 end), length(value), count(*) desc`)
             .limit(20);
         return q;
     }

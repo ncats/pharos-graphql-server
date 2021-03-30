@@ -102,7 +102,7 @@ export class DiseaseList extends DataModelList {
     getTermQuery(){
         return this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease'})
             .distinct({id: 'ncats_disease.id'})
-            .whereRaw(`match(disease.ncats_name, disease.description, disease.drug_name) against('${this.term}*' in boolean mode)`)
+            .whereRaw(`match(disease.ncats_name, disease.description, disease.drug_name) against("${this.term}*" in boolean mode)`)
             .andWhere('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
             .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'));
     }
