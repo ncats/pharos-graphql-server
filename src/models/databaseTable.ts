@@ -69,7 +69,8 @@ export class DatabaseTable {
             ["ncats_disease-protein", ["disease", "ncats_d2da"]],
             ["disease-target", ["t2tc", "protein"]],
             ["protein-viral_protein", ["viral_ppi"]],
-
+            ["protein-tinx_disease", ["tinx_importance"]],
+            ["protein-pubmed", ["protein2pubmed"]],
             ["protein-virus", ["viral_protein", "viral_ppi"]],
             ["protein-dto", ["p2dto"]],
             ["protein-panther_class", ["p2pc"]],
