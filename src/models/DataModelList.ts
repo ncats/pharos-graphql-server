@@ -20,6 +20,7 @@ export abstract class DataModelList implements IBuildable {
     facetFactory: FacetFactory;
     term: string = "";
     fields: string[] = [];
+    warnings: string[] = [];
     rootTable: string;
     keyColumn: string;
     filteringFacets: FieldInfo[] = [];
@@ -186,6 +187,7 @@ export abstract class DataModelList implements IBuildable {
         if (this.top) {
             query.limit(this.top);
         }
+        this.doSafetyCheck(query);
         // console.log(query.toString());
         return query;
     }
@@ -249,6 +251,10 @@ export abstract class DataModelList implements IBuildable {
             this.pushOneDataField(field, context, dataFields);
         });
         return dataFields;
+    }
+
+    doSafetyCheck(query: any){
+        // override to get this to do something
     }
 
 

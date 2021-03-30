@@ -9,10 +9,11 @@ export class SqlTable {
     }
 
     joinConstraint: string;
+    rawJoinConstraint: string;
     columns: FieldInfo[] = [];
     linkingTables: string[] = [];
 
-    constructor(tableName: string, {alias = "", joinConstraint = ""} = {},
+    constructor(tableName: string, {alias = "", joinConstraint = "", rawJoinConstraint = ""} = {},
                 linkingTables: string[] = []) {
 
         if (alias) {
@@ -20,12 +21,13 @@ export class SqlTable {
         }
         this.tableName = tableName;
         this.joinConstraint = joinConstraint;
+        this.rawJoinConstraint = rawJoinConstraint;
         this.linkingTables = linkingTables;
     }
 
     equals(tableName: string, joinConstraint: string | undefined) {
-        if (!!this.joinConstraint || !!joinConstraint) {
-            return this.tableName === tableName && this.joinConstraint === joinConstraint;
+        if (this.rawJoinConstraint.length > 0 || !!joinConstraint) {
+            return this.tableName === tableName && this.rawJoinConstraint === joinConstraint;
         }
         return this.tableName === tableName;
     }

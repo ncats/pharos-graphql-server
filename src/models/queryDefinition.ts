@@ -38,10 +38,17 @@ export class QueryDefinition {
             return table.equals(reqData.table, reqData.where_clause);
         });
         if (existingTable) {
+            this.updateTableAliasForColumn(reqData, existingTable.alias);
             existingTable.columns.push(reqData);
             return;
         }
         this.addRequestedDataToNewTable(reqData);
+    }
+
+    updateTableAliasForColumn(reqData: FieldInfo, tableAlias: string){
+        const re = new RegExp('\\b' + reqData.table + '\\b', 'ig');
+        reqData.where_clause = reqData.where_clause?.replace(re, tableAlias);
+        reqData.select = reqData.select?.replace(re, tableAlias);
     }
 
     addRequestedDataToNewTable(reqData: FieldInfo) {
@@ -51,11 +58,10 @@ export class QueryDefinition {
         }).length;
 
         let tableAlias = reqData.table;
+        let original_where_clause = reqData.where_clause;
         if(tableCount > 0){
             tableAlias = reqData.table + tableCount;
-            const re = new RegExp('\\b' + reqData.table + '\\b', 'ig');
-            reqData.where_clause = reqData.where_clause?.replace(re, tableAlias);
-            reqData.select = reqData.select?.replace(re, tableAlias);
+            this.updateTableAliasForColumn(reqData, tableAlias);
         }
 
         if (reqData.table != this.buildable.rootTable) {
@@ -65,7 +71,8 @@ export class QueryDefinition {
 
         const newTable = new SqlTable(reqData.table, {
             alias: tableAlias,
-            joinConstraint: reqData.where_clause
+            joinConstraint: reqData.where_clause,
+            rawJoinConstraint: original_where_clause
         }, links);
         newTable.columns.push(reqData);
         this.tables.push(newTable);
@@ -174,7 +181,9 @@ export class QueryDefinition {
                 let linkInfo = buildableObj.databaseConfig.getLinkInformation(leftTable.tableName, dataTable.tableName);
                 // @ts-ignore
                 query[joinFunction]({[dataTable.alias]: dataTable.tableName}, function (this: any) {
-                    this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${dataTable.alias}.${linkInfo.toCol}`);
+                    if(leftTable.tableName !== dataTable.tableName || !dataTable.joinConstraint) {
+                        this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${dataTable.alias}.${linkInfo.toCol}`);
+                    }
                     if (dataTable.joinConstraint) {
                         this.andOn(buildableObj.database.raw(dataTable.joinConstraint));
                     }

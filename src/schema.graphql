@@ -21,6 +21,7 @@ type DownloadResult {
      data: JSON
      errorDetails: JSON
      sql: String
+     warnings: [String]
 }
 
 

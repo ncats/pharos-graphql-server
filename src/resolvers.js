@@ -40,7 +40,7 @@ const resolvers = {
                 if (pieces[2] == ''){        // normal fields should apply no matter the associated model
                     return true;
                 }
-                if (pieces[2] == reqAssocModel) {  // otherwise, have to have the right associated model
+                if (pieces[2] == reqAssocModel) {  // otherwise, have to have the right associated model, or be for a single entity
                     return true;
                 }
                 return false;
@@ -50,14 +50,14 @@ const resolvers = {
 
     Query: {
         download: async function (_, args, {dataSources}) {
-            let listQuery;
+            let listQuery, listObj;
             try {
                 if (args.top) {
                     args.top = Math.min(args.top, 250000);
                 }else{
                     args.top = 250000;
                 }
-                const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
+                listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
                 listQuery = listObj.getListQuery();
             } catch (e) {
                 return {
@@ -68,7 +68,8 @@ const resolvers = {
             return {
                 result: true,
                 data: args.sqlOnly ? null : listQuery,
-                sql: listQuery.toString()
+                sql: listQuery.toString(),
+                warnings: listObj.warnings
             };
         },
 

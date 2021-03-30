@@ -224,4 +224,18 @@ ON diseaseList.name = d.ncats_name`));
         }
         return "";
     }
+
+
+    doSafetyCheck(query: any){
+        if(this.fields.includes('Abstract')){
+            if(this.top){
+                query.limit(Math.min(this.top, 10000));
+            }
+            else {
+                query.limit(10000);
+            }
+            this.warnings.push('Downloading abstracts is limited to 10,000 rows, due to size.')
+        }
+        // override to get this to do something
+    }
 }
