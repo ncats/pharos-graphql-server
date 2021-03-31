@@ -1,12 +1,12 @@
 import {DatabaseConfig} from "../databaseConfig";
-import {FacetInfo} from "../FacetInfo";
+import {FieldInfo} from "../FieldInfo";
 
 
 export class TargetDetails{
     facetName: string;
     knex: any;
     databaseConfig: DatabaseConfig;
-    facet: FacetInfo;
+    facet: FieldInfo;
     target: any;
     top: number;
     skip: number;
@@ -17,7 +17,9 @@ export class TargetDetails{
         this.databaseConfig = tcrd.tableInfo;
         this.top = args.top || 10;
         this.skip = args.skip || 0;
-        this.facet = new FacetInfo(this.databaseConfig.getFacetConfig('protein', this.facetName));
+
+        // @ts-ignore
+        this.facet = this.databaseConfig.getOneField('Target', 'facet', '', '', this.facetName);
     }
 
     getFacetValueCount(){

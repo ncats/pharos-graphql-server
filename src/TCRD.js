@@ -56,7 +56,7 @@ function validRegex(pattern) {
     try {
         var re = new RegExp(pattern, 'i');
         match = re.test('test pattern doesnt matter');
-    } catch {
+    } catch (e) {
         return false;
     }
     return true;
@@ -866,7 +866,7 @@ and f.itype = ?`, [filter.order]));
             for (var i in args.filter.facets) {
                 let f = args.filter.facets[i];
                 if ('type' == f.facet) {
-                    q.whereRaw(`ppitypes REGEXP '${f.values.join("|")}'`);
+                    q.whereRaw(`ppitypes REGEXP "${f.values.join('|')}"`);
                 } else {
                     q = q.whereIn(f.facet, f.values);
                 }
@@ -890,8 +890,7 @@ and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ?`, [target.tcrdid]));
 
             if (sort) {
-                q = q.orderBy([{column: 'a.p_int', order: 'desc'}, {column: 'a.score', order: 'desc'},
-                ]);
+                q = q.orderBy([{column: 'a.p_int', order: 'desc'}, {column: 'a.score', order: 'desc'}]);
             }
 
             if (args.top) {
@@ -1788,9 +1787,9 @@ and c.target_id = ?`, [target.tcrdid]));
                 category: this.db.raw("group_concat(`category` separator '|')"),
                 reference_id: this.db.raw("group_concat(ifnull(`reference_id`,'') separator '|')")
             })
-            .where("value", "like", `%${key}%`)
+            .where("value", "like", this.db.raw(`"%${key}%"`))
             .groupBy("value")
-            .orderByRaw(`(case when value like '${key}%' then 1 else 2 end), length(value), count(*) desc`)
+            .orderByRaw(`(case when value like "${key}%" then 1 else 2 end), length(value), count(*) desc`)
             .limit(20);
         return q;
     }

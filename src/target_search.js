@@ -2,7 +2,7 @@
 
 module.exports.getProteinListFromPPI = function(ppiTarget, confidence) {
     let proteinIDquery = this.db("protein")
-        .select("id").whereRaw(this.db.raw(`match(uniprot,sym,stringid) against('${ppiTarget}' in boolean mode)`));
+        .select("id").whereRaw(this.db.raw(`match(uniprot,sym,stringid) against("${ppiTarget}" in boolean mode)`));
     let ppiListQuery = this.db("ncats_ppi")
         .select(this.db.raw('distinct other_id as protein_id'))
         .whereIn('protein_id', proteinIDquery)

@@ -1,14 +1,12 @@
 import {DatabaseConfig} from "../databaseConfig";
-import {FacetInfo} from "../FacetInfo";
-import {DatabaseTable} from "../databaseTable";
+import {FieldInfo} from "../FieldInfo";
 
 
 export class Jaccard{
-
     knex: any;
     dbConfig: DatabaseConfig;
     match: string;
-    facet: FacetInfo;
+    facet: FieldInfo;
     rootTable: string;
     matchQuery: string;
     keyString: string;
@@ -21,11 +19,13 @@ export class Jaccard{
         this.rootTable = rootTable;
         const rootTableObj = this.dbConfig.tables.find(table => table.tableName === this.rootTable);
         this.keyString = `${rootTableObj?.tableName}.${rootTableObj?.primaryKey}`;
-        this.facet = new FacetInfo(this.dbConfig.getFacetConfig(this.rootTable ,similarity.facet));
+
+        // @ts-ignore
+        this.facet = this.dbConfig.getOneField('Target', 'overlap', '', '', similarity.facet);
     }
 
     getListQuery(forList: boolean) {
-        if(!this.facet.dataTable) {
+        if(!this.facet.table) {
             return null;}
         const matchCountQuery = this.getCountForMatch();
         const testCountQuery = this.getCountForTest();
@@ -77,8 +77,4 @@ export class Jaccard{
         const testSetQuery = this.dbConfig.getBaseSetQuery(this.rootTable, this.facet);
         return testSetQuery.where(this.knex.raw(`${this.keyString} = testID`));
     }
-
-
-
-
 }

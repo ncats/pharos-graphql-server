@@ -1,2 +1,4 @@
-instance_class: F4
+instance_class: F4_1G
 runtime: nodejs10
+automatic_scaling:
+  min_instances: 1

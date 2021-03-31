@@ -1,7 +1,6 @@
 import {DataModelList} from "../DataModelList";
-import {FacetInfo} from "../FacetInfo";
-import {DiseaseFacetFactory} from "./diseaseFacetFactory";
-import {ConfigKeys} from "../config";
+import {FieldInfo} from "../FieldInfo";
+import {SqlTable} from "../sqlTable";
 
 export class DiseaseList extends DataModelList {
 
@@ -50,7 +49,7 @@ export class DiseaseList extends DataModelList {
     }
 
     constructor(tcrd: any, json: any) {
-        super(tcrd, "disease", "ncats_name", new DiseaseFacetFactory(), json);
+        super(tcrd, 'Disease', json);
 
         let facetList: string[];
         if (this.associatedTarget) {
@@ -58,66 +57,87 @@ export class DiseaseList extends DataModelList {
         } else {
             facetList = this.DefaultFacets;
         }
-        this.facetsToFetch = FacetInfo.deduplicate(
+        this.facetsToFetch = FieldInfo.deduplicate(
             this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
     }
 
     get DefaultFacetsWithTarget() {
-        return this.databaseConfig.fieldLists
-            .get('Disease Facet - Associated Target')?.sort((a,b) => a.order - b.order)
-            .map(a => a.type) || [];
+        return this.databaseConfig.getDefaultFields('Disease', 'facet', 'Target')
+            .map(a => a.name) || [];
     };
     defaultSortParameters(): {column: string; order: string}[]
     {
+        if (this.fields.length > 0) {
+            return [{column: 'id', order: 'asc'}];
+        }
         return [{column: 'count', order: 'desc'}]
     };
 
-    listQueryKey() {
-        return ConfigKeys.Disease_List_Default
+    getAvailableListFields() : FieldInfo[] {
+        if (this.associatedTarget) {
+            return this.databaseConfig.getAvailableFields('Disease', 'list', 'Target');
+        }
+        return this.databaseConfig.getAvailableFields('Disease', 'list');
     };
 
-    addLinkToRootTable(query: any, facet: FacetInfo): void {
-        if (facet.dataTable === 'target') {
-            query.andWhere('target.id', this.database.raw('t2tc.target_id'))
-                .andWhere('disease.protein_id', this.database.raw('t2tc.protein_id'));
+    addModelSpecificFiltering(query: any, list: boolean, tables: string[]): void {
+        if (this.term.length > 0) {
+            query.join(this.getTermQuery().as('termSearch'), 'termSearch.id', this.keyString());
         }
-        if (facet.dataTable === 'ncats_dataSource_map'){
-            query.andWhere('disease.ncats_name', this.database.raw('ncats_dataSource_map.disease_name'));
+        if (this.associatedTarget) {
+            if (!tables.includes('protein') && !tables.includes('target') && !tables.includes('disease')) {
+                query.join(this.getAssociatedTargetQuery().as('assocTarget'), 'assocTarget.name', this.keyString());
+            }
+        }
+        if (this.batch && this.batch.length > 0) {
+            query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.disease_id', this.keyString());
         }
     }
 
-    addModelSpecificFiltering(query: any): void {
-        if (this.associatedTarget) {
-            query.join(this.getAssociatedTargetQuery().as('assocTarget'), 'assocTarget.name', this.keyString());
-        }
-        if (this.term.length > 0) {
-            query.andWhere(this.database.raw(`match(disease.ncats_name, disease.description, disease.drug_name) against('${this.term}*' in boolean mode)`));
-        }
+    getBatchQuery(batch: string[]){
+        return this.database('ncats_disease').distinct({disease_id: 'id'})
+            .whereIn('name', batch);
+    }
+
+    getTermQuery(){
+        return this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease'})
+            .distinct({id: 'ncats_disease.id'})
+            .whereRaw(`match(disease.ncats_name, disease.description, disease.drug_name) against("${this.term}*" in boolean mode)`)
+            .andWhere('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
+            .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'));
     }
 
     getAssociatedTargetQuery(): any {
-        return this.database({disease: "disease", protein: "protein"})
+        return this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
             .distinct({name: this.keyString()}).count('* as associationCount')
-            .whereRaw(this.database.raw(`match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode)`))
-            .andWhere(this.database.raw(`disease.protein_id = protein.id`))
+            .whereRaw(this.database.raw(`match(uniprot,sym,stringid) against("${this.associatedTarget}" in boolean mode)`))
+            .andWhere('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
+            .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
+            .andWhere('disease.protein_id', this.database.raw(`protein.id`))
             .groupBy('name')
             .orderBy("associationCount", "desc");
     }
 
-    getRequiredTablesForFacet(info: FacetInfo): string[] {
-        let tableList = [];
-        tableList.push(this.rootTable);
-        if (info.dataTable == this.rootTable) {
-            return tableList;
+    tableNeedsInnerJoin(sqlTable: SqlTable) {
+        if (this.associatedTarget && (sqlTable.tableName === 'protein' || sqlTable.tableName === 'target' || sqlTable.tableName === 'disease')) {
+            return true;
         }
-        tableList.push(info.dataTable);
-        switch (info.dataTable) {
-            case "target":
-                tableList.push("t2tc");
-                break;
-        }
-
-        return tableList;
+        return false;
     }
+
+    getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string {
+        if (this.associatedTarget && (
+            fieldInfo.table === 'protein' || rootTableOverride === 'protein' ||
+            fieldInfo.table === 'target' || rootTableOverride === 'target' ||
+            fieldInfo.table === 'disease' || rootTableOverride === 'disease')) {
+            const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
+            if(modifiedFacet) {
+                modifiedFacet.typeModifier = this.associatedTarget;
+            }
+            return `disease.protein_id = (select id from protein where MATCH (uniprot , sym , stringid) AGAINST ('${this.associatedTarget}' IN BOOLEAN MODE))`;
+        }
+        return "";
+    }
+
 }
 
