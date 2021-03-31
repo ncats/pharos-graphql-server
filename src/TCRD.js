@@ -1724,7 +1724,8 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
     getDTO(args) {
         let matches = [];
         if (args.dtoid) {
-            let n = this.dto[args.dtoid];
+            const dtoFormat = args.dtoid.replace('_',':');
+            let n = this.dto[dtoFormat];
             while (n) {
                 matches.push(n);
                 n = n.parent;
