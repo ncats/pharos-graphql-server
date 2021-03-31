@@ -138,7 +138,7 @@ export class FieldInfo {
             }
         } else {
             if (this.valuesDelimited) {
-                query.where(this.parent.database.raw(`${this.select} REGEXP '${this.allowedValues.join('|')}'`));
+                query.where(this.parent.database.raw(`${this.select} REGEXP "${this.allowedValues.join('|')}"`));
             } else {
                 query.whereIn(this.parent.database.raw(this.select), this.allowedValues);
             }

@@ -58,7 +58,7 @@ export class LigandList extends DataModelList {
                     protein: "protein"
                 })
                     .distinct("ncats_ligands.identifier")
-                    .whereRaw(this.database.raw(`match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode)`))
+                    .whereRaw(this.database.raw(`match(uniprot,sym,stringid) against("${this.associatedTarget}" in boolean mode)`))
                     .andWhere(this.database.raw(`ncats_ligands.id = ncats_ligand_activity.ncats_ligand_id`))
                     .andWhere(this.database.raw(`ncats_ligand_activity.target_id = t2tc.target_id`))
                     .andWhere(this.database.raw(`t2tc.protein_id = protein.id`)).as('assocTarget');

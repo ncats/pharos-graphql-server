@@ -866,7 +866,7 @@ and f.itype = ?`, [filter.order]));
             for (var i in args.filter.facets) {
                 let f = args.filter.facets[i];
                 if ('type' == f.facet) {
-                    q.whereRaw(`ppitypes REGEXP '${f.values.join("|")}'`);
+                    q.whereRaw(`ppitypes REGEXP "${f.values.join('|')}"`);
                 } else {
                     q = q.whereIn(f.facet, f.values);
                 }
