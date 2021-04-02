@@ -803,6 +803,53 @@ const resolvers = {
             });
         },
 
+        gwasAnalytics: async function (target, args, {dataSources}) {
+            const geneFieldMap = new Map([
+                ['TIGA ENSG ID', 'ensgID'],
+                ['Trait Count for Gene', 'traitCount'],
+                ['Study Count for Gene', 'studyCount']]);
+            const assocFieldMap = new Map([
+                ['EFO ID', 'efoID'],
+                ['GWAS Trait', 'trait'],
+                ['Study Count', 'studyCount'],
+                ['SNP Count', 'snpCount'],
+                ['Weighted SNP Count', 'wSnpCount'],
+                ['Gene Count for Trait', 'geneCountForTrait'],
+                ['Study Count for Trait', 'studyCountForTrait'],
+                ['Median p-value', 'medianPvalue'],
+                ['Median Odds Ratio', 'medianOddsRatio'],
+                ['Beta Count', 'betaCount'],
+                ['Mean Study N', 'meanStudyN'],
+                ['RCRAS', 'rcras'],
+                ['Mean Rank', 'meanRank'],
+                ['Mean Rank Score', 'meanRankScore']
+            ]);
+            const targetList = new TargetList(
+                dataSources.tcrd,
+                {
+                    batch: [target.uniprot],
+                    fields: [...Array.from(geneFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
+                    filter: {order: '!Mean Rank Score'}
+                });
+            return targetList.getListQuery(true).then(rows => {
+                if(!rows || rows.length === 0) {
+                    return null;
+                }
+                const gwasObj = {};
+                geneFieldMap.forEach((v,k) => {
+                    gwasObj[v] = rows[0][k];
+                });
+                gwasObj.associations = [];
+                rows.forEach(row => {
+                    const assoc = {};
+                    assocFieldMap.forEach((v,k) => {
+                        assoc[v] = row[k];
+                    });
+                    gwasObj.associations.push(assoc);
+                });
+                return gwasObj;
+            })
+        },
         goCounts: async function (target, _, {dataSources}) {
             return dataSources.tcrd.getGOCountsForTarget(target)
                 .then(rows => {

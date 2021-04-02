@@ -144,7 +144,7 @@ export class QueryDefinition {
         return dataTable.tableName === this.buildable.rootTable && dataTable.alias === this.buildable.rootTable;
     }
 
-    generateBaseQuery(forFacet: boolean){
+    generateBaseQuery(innerJoinAll: boolean){
         const buildableObj = this.buildable;
         let rootTableObject = this.getRootTable();
         if (rootTableObject == undefined) {
@@ -161,7 +161,7 @@ export class QueryDefinition {
                 return;
             }
             let joinFunction = 'leftJoin';
-            if(forFacet || this.buildable.tableNeedsInnerJoin(dataTable)){
+            if(innerJoinAll || this.buildable.tableNeedsInnerJoin(dataTable)){
                 joinFunction = 'join';
             }
             let leftTable = rootTableObject;

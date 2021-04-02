@@ -507,6 +507,8 @@ type Target @cacheControl(maxAge: 604800){
      gwasCounts: [IntProp]
      gwas(skip: Int=0, top: Int=10, filter: IFilter): [GWAS]
 
+     gwasAnalytics: GwasTargetAnalytics
+
      """GO terms"""
      goCounts: [IntProp]
      go(skip: Int=0, top: Int=20, filter: IFilter): [GO]
@@ -536,6 +538,30 @@ type Target @cacheControl(maxAge: 604800){
 
      facetValueCount(facetName: String!): Int
      facetValues(facetName: String!, skip: Int=0, top: Int=10): [String]
+}
+
+type GwasTargetAnalytics @cacheControl(maxAge: 604800) {
+     ensgID: String
+     traitCount: Int
+     studyCount: Int
+     associations: [GwasTargetAssociation]
+}
+
+type GwasTargetAssociation @cacheControl(maxAge: 604800) {
+     trait: String
+     efoID: String
+     studyCount: Int
+     snpCount: Int
+     wSnpCount: Float
+     geneCountForTrait: Int
+     studyCountForTrait: Int
+     medianPvalue: Float
+     medianOddsRatio: Float
+     betaCount: Int
+     meanStudyN: Float
+     rcras: Float
+     meanRank: Float
+     meanRankScore: Float
 }
 
 type SimilarTargetResult @cacheControl(maxAge: 604800) {
