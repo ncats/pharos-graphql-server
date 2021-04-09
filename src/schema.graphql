@@ -191,6 +191,7 @@ type Disease @cacheControl(maxAge: 604800) {
      parents: [Disease]
      children: [Disease]
      tinx: [TINXTarget]
+     gwasAnalytics: GwasDiseaseAnalytics
 }
 
 type DiseaseID @cacheControl(maxAge: 604800){
@@ -555,6 +556,32 @@ type GwasTargetAssociation @cacheControl(maxAge: 604800) {
      wSnpCount: Float
      geneCountForTrait: Int
      studyCountForTrait: Int
+     medianPvalue: Float
+     medianOddsRatio: Float
+     betaCount: Int
+     meanStudyN: Float
+     rcras: Float
+     meanRank: Float
+     meanRankScore: Float
+     linksToDisease: Boolean
+}
+
+type GwasDiseaseAnalytics @cacheControl(maxAge: 604800) {
+     efoID: String
+     trait: String
+     geneCount: Int
+     studyCount: Int
+     associations: [GwasDiseaseAssociation]
+}
+
+type GwasDiseaseAssociation @cacheControl(maxAge: 604800) {
+     target: Target
+     ensgID: String
+     studyCount: Int
+     snpCount: Int
+     wSnpCount: Float
+     traitCountForGene: Int
+     studyCountForGene: Int
      medianPvalue: Float
      medianOddsRatio: Float
      betaCount: Int

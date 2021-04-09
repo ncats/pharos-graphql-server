@@ -809,6 +809,7 @@ const resolvers = {
                 ['Trait Count for Gene', 'traitCount'],
                 ['Study Count for Gene', 'studyCount']]);
             const assocFieldMap = new Map([
+                ['TIGA Disease ID', 'ncats_disease_id'],
                 ['EFO ID', 'efoID'],
                 ['GWAS Trait', 'trait'],
                 ['Study Count', 'studyCount'],
@@ -845,6 +846,7 @@ const resolvers = {
                     assocFieldMap.forEach((v,k) => {
                         assoc[v] = row[k];
                     });
+                    assoc.linksToDisease = !!assoc.ncats_disease_id;
                     gwasObj.associations.push(assoc);
                 });
                 return gwasObj;
@@ -1280,6 +1282,65 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
+        },
+        gwasAnalytics: async function (disease, args, {dataSources}) {
+            const traitFieldMap = new Map([
+                ['EFO ID', 'efoID'],
+                ['GWAS Trait', 'trait'],
+                ['Gene Count for Trait', 'geneCount'],
+                ['Study Count for Trait', 'studyCount']
+            ]);
+            const assocFieldMap = new Map([
+                ['TIGA Protein ID', 'protein_id'],
+                ['TIGA ENSG ID', 'ensgID'],
+                ['Study Count', 'studyCount'],
+                ['SNP Count', 'snpCount'],
+                ['Weighted SNP Count', 'wSnpCount'],
+                ['Trait Count for Gene', 'traitCountForGene'],
+                ['Study Count for Gene', 'studyCountForGene'],
+                ['Median p-value', 'medianPvalue'],
+                ['Median Odds Ratio', 'medianOddsRatio'],
+                ['Beta Count', 'betaCount'],
+                ['Mean Study N', 'meanStudyN'],
+                ['RCRAS', 'rcras'],
+                ['Mean Rank', 'meanRank'],
+                ['Mean Rank Score', 'meanRankScore']
+            ]);
+            const diseaseList = new DiseaseList(
+                dataSources.tcrd,
+                {
+                    batch: [disease.name],
+                    fields: [...Array.from(traitFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
+                    filter: {order: '!Mean Rank Score'}
+                });
+            return diseaseList.getListQuery(true).then(rows => {
+                if(!rows || rows.length === 0) {
+                    return null;
+                }
+                const gwasObj = {};
+                traitFieldMap.forEach((v,k) => {
+                    gwasObj[v] = rows[0][k];
+                });
+                gwasObj.associations = [];
+                rows.forEach(row => {
+                    const assoc = {};
+                    assocFieldMap.forEach((v,k) => {
+                        assoc[v] = row[k];
+                    });
+                    gwasObj.associations.push(assoc);
+                });
+                return gwasObj;
+            });
+        }
+    },
+    GwasDiseaseAssociation: {
+        target: async function (gwasData, args, {dataSources}) {
+            return dataSources.tcrd.getTarget({protein_id: gwasData.protein_id})
+                .then(rows => {
+                    return rows[0];
+                }).catch(function (error) {
+                    console.error(error);
+                });
         }
     },
 

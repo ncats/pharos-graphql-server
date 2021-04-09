@@ -470,6 +470,11 @@ OR b.id = (SELECT protein_id FROM xref where xtype = 'Ensembl' and value = ? lim
 and b.geneid=?`, [args.geneid]));
         }
 
+        if (args.protein_id) {
+            return this.db.select(this.db.raw(TARGET_SQL + `
+and b.id=?`, [args.protein_id]));
+        }
+
         return this.db.select(this.db.raw(TARGET_SQL + `
 and a.id = ?`, [args.tcrdid]));
     }
