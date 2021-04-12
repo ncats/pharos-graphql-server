@@ -31,13 +31,13 @@ const resolvers = {
                 const pieces = listKey.split('-');
                 const reqModel = args.modelName ? args.modelName.toLowerCase() : '';
                 const reqAssocModel = args.associatedModelName ? args.associatedModelName.toLowerCase() : '';
-                if (pieces[1] != 'download'){ // must be download lists
+                if (pieces[1] != 'download') { // must be download lists
                     return false;
                 }
                 if (pieces[0] != reqModel) { // must match the model
                     return false;
                 }
-                if (pieces[2] == ''){        // normal fields should apply no matter the associated model
+                if (pieces[2] == '') {        // normal fields should apply no matter the associated model
                     return true;
                 }
                 if (pieces[2] == reqAssocModel) {  // otherwise, have to have the right associated model, or be for a single entity
@@ -54,7 +54,7 @@ const resolvers = {
             try {
                 if (args.top) {
                     args.top = Math.min(args.top, 250000);
-                }else{
+                } else {
                     args.top = 250000;
                 }
                 listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
@@ -278,17 +278,17 @@ const resolvers = {
                 }
             };
             const model = tryUnbatch();
-            if(model == 'targets'){
+            if (model == 'targets') {
                 return getTargetResult(args, dataSources).then(res => {
                     return {targetResult: res};
                 })
             }
-            if(model == 'diseases'){
+            if (model == 'diseases') {
                 return getDiseaseResult(args, dataSources.tcrd).then(res => {
                     return {diseaseResult: res};
                 })
             }
-            if(model == 'ligands'){
+            if (model == 'ligands') {
                 return getLigandResult(args, dataSources.tcrd).then(res => {
                     return {ligandResult: res};
                 })
@@ -809,7 +809,7 @@ const resolvers = {
                 ['Trait Count for Gene', 'traitCount'],
                 ['Study Count for Gene', 'studyCount']]);
             const assocFieldMap = new Map([
-                ['TIGA Disease ID', 'ncats_disease_id'],
+                ['TIGA Disease Link', 'ncats_disease_id'],
                 ['EFO ID', 'efoID'],
                 ['GWAS Trait', 'trait'],
                 ['Study Count', 'studyCount'],
@@ -833,20 +833,19 @@ const resolvers = {
                     filter: {order: '!Mean Rank Score'}
                 });
             return targetList.getListQuery(true).then(rows => {
-                if(!rows || rows.length === 0) {
+                if (!rows || rows.length === 0) {
                     return null;
                 }
                 const gwasObj = {};
-                geneFieldMap.forEach((v,k) => {
+                geneFieldMap.forEach((v, k) => {
                     gwasObj[v] = rows[0][k];
                 });
                 gwasObj.associations = [];
                 rows.forEach(row => {
                     const assoc = {};
-                    assocFieldMap.forEach((v,k) => {
+                    assocFieldMap.forEach((v, k) => {
                         assoc[v] = row[k];
                     });
-                    assoc.linksToDisease = !!assoc.ncats_disease_id;
                     gwasObj.associations.push(assoc);
                 });
                 return gwasObj;
@@ -1314,17 +1313,17 @@ const resolvers = {
                     filter: {order: '!Mean Rank Score'}
                 });
             return diseaseList.getListQuery(true).then(rows => {
-                if(!rows || rows.length === 0) {
+                if (!rows || rows.length === 0) {
                     return null;
                 }
                 const gwasObj = {};
-                traitFieldMap.forEach((v,k) => {
+                traitFieldMap.forEach((v, k) => {
                     gwasObj[v] = rows[0][k];
                 });
                 gwasObj.associations = [];
                 rows.forEach(row => {
                     const assoc = {};
-                    assocFieldMap.forEach((v,k) => {
+                    assocFieldMap.forEach((v, k) => {
                         assoc[v] = row[k];
                     });
                     gwasObj.associations.push(assoc);
@@ -1343,25 +1342,20 @@ const resolvers = {
                 });
         }
     },
-
-    DiseaseAssociation: {
-        targetCounts: async function (disease, _, {dataSources}) { // TODO: this really doesn't belong here, it recalculates the same thing for all the associations, I left a stub so that it doesn't break with the client, please delete it, oh great and powerful future developer
-            return resolvers.Disease.targetCounts(disease, _, {dataSources})
-                .then(rows => {
-                    return rows;
-                })
-                .catch(function (error) {
-                    console.error(error);
-                });
-        },
-        targets: async function (disease, args, {dataSources}) { // TODO: this too
-            return resolvers.Disease.targets(disease, args, {dataSources})
-                .then(rows => {
-                    return rows;
-                })
-                .catch(function (error) {
-                    console.error(error);
-                });
+    GwasTargetAssociation: {
+        diseaseName: async function (gwasData, args, {dataSources}) {
+            if (!!gwasData.ncats_disease_id) {
+                const query = dataSources.tcrd.db('ncats_disease')
+                    .select({name: 'name'})
+                    .where('id', gwasData.ncats_disease_id);
+                return query.then(rows => {
+                        if (rows.length > 0) {
+                            return rows[0].name;
+                        }
+                        return null;
+                    });
+            }
+            return null;
         }
     },
 

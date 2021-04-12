@@ -216,9 +216,6 @@ type DiseaseAssociation @cacheControl(maxAge: 604800) {
      pvalue: Float
      score: Float
      source: String
-
-     targetCounts: [IntProp] @deprecated(reason: "use Disease.targetCounts")
-     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target] @deprecated(reason:"use Disease.targets - each association only has one target anyway")
 }
 
 """Target relationships such as PPI"""
@@ -563,7 +560,7 @@ type GwasTargetAssociation @cacheControl(maxAge: 604800) {
      rcras: Float
      meanRank: Float
      meanRankScore: Float
-     linksToDisease: Boolean
+     diseaseName: String
 }
 
 type GwasDiseaseAnalytics @cacheControl(maxAge: 604800) {
