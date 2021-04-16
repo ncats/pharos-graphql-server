@@ -978,7 +978,7 @@ and b.target_id = ?`, [target.tcrdid]));
         }
 
         let q = this.db.select(this.db.raw(p + ` as name,
-avg(a.attr_cdf) as value
+avg(a.attr_cdf) as value, group_concat(distinct concat(b.name,'!',b.url) order by b.name separator '|') as sources
 from hgram_cdf a, gene_attribute_type b, t2tc c
 where a.protein_id = c.protein_id
 and c.target_id = ?

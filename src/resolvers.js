@@ -1587,17 +1587,16 @@ const resolvers = {
 
                 let values = new Map();
                 rows.forEach(r => {
-                    values.set(r.name, r.value);
+                    values.set(r.name, {value: r.value, sources: r.sources.split('|')});
                 });
 
                 let stats = [];
                 map.forEach(r => {
                     let v = values.get(r);
-                    if (v) {
-                    } else {
-                        v = 0;
+                    if (!v) {
+                        v = {value: 0};
                     }
-                    stats.push({name: r, value: v});
+                    stats.push({name: r, value: v.value, sources: v.sources});
                 });
 
                 return stats;

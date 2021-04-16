@@ -42,9 +42,10 @@ type IntProp @cacheControl(maxAge: 604800) {
      value: Int!
 }
 
-type FloatProp @cacheControl(maxAge: 604800) {
+type HSummaryProp @cacheControl(maxAge: 604800) {
      name: String!
      value: Float!
+     sources: [String]
 }
 
 type TemporalCount @cacheControl(maxAge: 604800) {
@@ -300,7 +301,7 @@ type Harmonizome @cacheControl(maxAge: 604800) {
      count: Int
      attrs: [GeneAttribute]
      """which must be one of 'type', 'group', or 'category'"""
-     summary (which: String="type"): [FloatProp]
+     summary (which: String="type"): [HSummaryProp]
 }
 
 type GeneAttribute @cacheControl(maxAge: 604800) {
