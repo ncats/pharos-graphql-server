@@ -3,7 +3,7 @@
 //
 const cred = {
     DBHOST: 'tcrd.ncats.io',
-    DBNAME: 'tcrd684',
+    DBNAME: 'tcrd6100',
     CONFIGDB: 'pharos_config_prod',
     USER: 'tcrd',
     PWORD: ''
