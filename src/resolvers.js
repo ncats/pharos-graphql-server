@@ -804,15 +804,15 @@ const resolvers = {
         },
 
         gwasAnalytics: async function (target, args, {dataSources}) {
-            const geneFieldMap = new Map([
-                ['TIGA ENSG ID', 'ensgID'],
-                ['Trait Count for Gene', 'traitCount'],
-                ['Study Count for Gene', 'studyCount']]);
+            const geneFieldMap = new Map([]); // there aren't any that are the same across all associations because they may be from different ensg's
             const assocFieldMap = new Map([
+                ['TIGA ENSG ID', 'ensgID'],
+                ['Trait Count for Gene', 'traitCountForGene'],
+                ['Study Count for Gene', 'studyCountForGene'],
                 ['TIGA Disease Link', 'ncats_disease_id'],
                 ['EFO ID', 'efoID'],
                 ['GWAS Trait', 'trait'],
-                ['Study Count', 'studyCount'],
+                ['Study Count', 'studyCountForAssoc'],
                 ['SNP Count', 'snpCount'],
                 ['Weighted SNP Count', 'wSnpCount'],
                 ['Gene Count for Trait', 'geneCountForTrait'],
@@ -1007,6 +1007,19 @@ const resolvers = {
             const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
             return targetDetails.getAllFacetValues().then(results => {
                 return results.map(res => res.value);
+            });
+        },
+        drgc_resources: async function (target, args, {dataSources}) {
+            const query = dataSources.tcrd.db('drgc_resource')
+                .select({resourceType: 'resource_type', detailBlob: 'json'})
+                .where('target_id', target.tcrdid);
+            return query.then(rows => {
+                return rows.map(row => {
+                    return {
+                        resourceType: row.resourceType,
+                        detailBlob: TargetDetails.LD2JSON(JSON.parse(row.detailBlob))
+                    };
+                });
             });
         }
     },

@@ -423,11 +423,17 @@ type SeqAnnotationInfo @cacheControl(maxAge: 604800){
      name: String
 }
 
+type DRGCResource @cacheControl(maxAge: 604800){
+     resourceType: String
+     detailBlob: JSON
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
      similarity: SimilarityDetails
      sequence_variants: SeqVariantInfo
      sequence_annotations: [SeqAnnotationInfo]
+     drgc_resources: [DRGCResource]
 
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
@@ -540,16 +546,16 @@ type Target @cacheControl(maxAge: 604800){
 }
 
 type GwasTargetAnalytics @cacheControl(maxAge: 604800) {
-     ensgID: String
-     traitCount: Int
-     studyCount: Int
      associations: [GwasTargetAssociation]
 }
 
 type GwasTargetAssociation @cacheControl(maxAge: 604800) {
+     ensgID: String
+     traitCountForGene: Int
+     studyCountForGene: Int
      trait: String
      efoID: String
-     studyCount: Int
+     studyCountForAssoc: Int
      snpCount: Int
      wSnpCount: Float
      geneCountForTrait: Int
