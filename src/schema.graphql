@@ -372,12 +372,11 @@ type DTO @cacheControl(maxAge: 604800) {
 }
 
 type TINXDisease @cacheControl(maxAge: 604800) {
-     tinxid: Int!
      """Disease novelty"""
      novelty: Float
      """Importance of disease-target combination"""
      score: Float
-     disease: DiseaseOntology!
+     disease: DiseaseOntology
 }
 
 type TINXTargetDetails @cacheControl(maxAge: 604800) {

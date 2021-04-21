@@ -1717,9 +1717,10 @@ const resolvers = {
     TINXDisease: {
         disease: async function (tinx, _, {dataSources}) {
             //console.log('~~~~~ tinx: '+tinx.doid);
-            if (tinx.doid)
+            if (tinx.doid && dataSources.tcrd.doTree[tinx.doid]) {
                 return dataSources.tcrd.doTree[tinx.doid];
-            console.error('No doid in TINX ' + tinx.tinxid);
+            }
+            // console.error('No doid in TINX ' + JSON.stringify(tinx));
             return null;
         }
     }

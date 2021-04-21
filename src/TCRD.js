@@ -1757,7 +1757,7 @@ and b.target_id = ?`, [target.tcrdid]));
 
     getTINXForTarget(target, args) {
         let q = this.db.select(this.db.raw(`
-a.*,b.doid, b.score as novelty, a.id as tinxid
+a.*, b.doid, b.score as novelty
 from tinx_importance a, tinx_disease b, t2tc c`));
 
         let sort = true;
@@ -1769,7 +1769,7 @@ match(b.name,b.summary) against(? in boolean mode)`, [t]));
                 sort = false;
             }
         }
-        q = q.andWhere(this.db.raw(`a.disease_id = b.id
+        q = q.andWhere(this.db.raw(`a.doid = b.doid
 and a.protein_id = c.protein_id
 and c.target_id = ?`, [target.tcrdid]));
 
