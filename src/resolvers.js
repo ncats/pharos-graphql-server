@@ -1362,11 +1362,11 @@ const resolvers = {
                     .select({name: 'name'})
                     .where('id', gwasData.ncats_disease_id);
                 return query.then(rows => {
-                        if (rows.length > 0) {
-                            return rows[0].name;
-                        }
-                        return null;
-                    });
+                    if (rows.length > 0) {
+                        return rows[0].name;
+                    }
+                    return null;
+                });
             }
             return null;
         }
@@ -1700,6 +1700,12 @@ const resolvers = {
             }
             return parser(ligand);
 
+        },
+        preferred_terms: async function (ligand, args, {dataSources}) {
+            return dataSources.tcrd.db({ncats_ligand_map: 'ncats_ligand_map', ncats_ligands: 'ncats_ligands'})
+                .select({term: 'ncats_ligand_map.pt', unii: 'ncats_ligand_map.unii', cas: 'ncats_ligand_map.cas'})
+                .where('ncats_ligand_map.ncats_ligand_id', dataSources.tcrd.db.raw('ncats_ligands.id'))
+                .andWhere('ncats_ligands.identifier', ligand.ligid);
         }
     },
 
