@@ -341,13 +341,6 @@ type Ligand @cacheControl(maxAge: 604800) {
      """Activity count"""
      actcnt: Int
      activities (all: Boolean = true): [LigandActivity]
-     preferred_terms: [ResolverResult]
-}
-
-type ResolverResult @cacheControl(maxAge: 604800) {
-     term: String
-     unii: String
-     cas: String
 }
 
 type LigandActivity @cacheControl(maxAge: 604800) {

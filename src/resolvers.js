@@ -1680,7 +1680,7 @@ const resolvers = {
         synonyms: async function (ligand, args, {dataSources}) {
             const parser = function (row) {
                 let synonyms = [];
-                for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
+                for (let field of ['unii', 'PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral', 'pt']) {
                     if (row[field]) {
                         synonyms.push({name: field, value: row[field]});
                     }
@@ -1690,23 +1690,17 @@ const resolvers = {
             };
 
             let synonyms = [];
-            if (!ligand['PubChem'] && !ligand['Guide to Pharmacology'] && !ligand['ChEMBL'] && !ligand['DrugCentral']) {
+            if (!ligand['PubChem'] && !ligand['Guide to Pharmacology'] && !ligand['ChEMBL'] && !ligand['DrugCentral'] && !ligand['unii'] && !ligand['pt']) {
                 let query = dataSources.tcrd.db('ncats_ligands')
-                    .select(['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral'])
+                    .select(['unii', 'PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral', 'pt'])
                     .where('identifier', ligand.ligid);
                 return query.then(rows => {
                     return parser(rows[0]);
-                })
+                });
             }
             return parser(ligand);
 
         },
-        preferred_terms: async function (ligand, args, {dataSources}) {
-            return dataSources.tcrd.db({ncats_ligand_map: 'ncats_ligand_map', ncats_ligands: 'ncats_ligands'})
-                .select({term: 'ncats_ligand_map.pt', unii: 'ncats_ligand_map.unii', cas: 'ncats_ligand_map.cas'})
-                .where('ncats_ligand_map.ncats_ligand_id', dataSources.tcrd.db.raw('ncats_ligands.id'))
-                .andWhere('ncats_ligands.identifier', ligand.ligid);
-        }
     },
 
     LigandActivity: {
