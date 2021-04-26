@@ -61,4 +61,17 @@ export class TargetDetails{
             .orderBy(['startResidue', 'endResidue']);
         return query;
     }
+
+    static LD2JSON(ldObject: any){
+        const jsonObject: any = {};
+        for (const prop in ldObject) {
+            if (ldObject[prop]['@value']) {
+                jsonObject[prop] = ldObject[prop]['@value'];
+            }
+            else if (ldObject[prop]['rdfs:label']) {
+                jsonObject[prop] = ldObject[prop]['rdfs:label'];
+            }
+        }
+        return jsonObject;
+    }
 }

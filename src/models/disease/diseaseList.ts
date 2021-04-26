@@ -41,7 +41,7 @@ export class DiseaseList extends DataModelList {
                 importance:knex.raw('(tinx_importance.score)')
             })
             .join(doidList.as('idList'), 'idList.did', 'tinx_disease.doid')
-            .where(knex.raw('tinx_importance.disease_id = tinx_disease.id'))
+            .where(knex.raw('tinx_importance.doid = tinx_disease.doid'))
             .andWhere(knex.raw('tinx_importance.protein_id = t2tc.protein_id'))
             .andWhere(knex.raw('tinx_importance.protein_id = tinx_novelty.protein_id'))
             .andWhere(knex.raw('t2tc.target_id = target.id'));

@@ -470,6 +470,11 @@ OR b.id = (SELECT protein_id FROM xref where xtype = 'Ensembl' and value = ? lim
 and b.geneid=?`, [args.geneid]));
         }
 
+        if (args.protein_id) {
+            return this.db.select(this.db.raw(TARGET_SQL + `
+and b.id=?`, [args.protein_id]));
+        }
+
         return this.db.select(this.db.raw(TARGET_SQL + `
 and a.id = ?`, [args.tcrdid]));
     }
@@ -973,7 +978,7 @@ and b.target_id = ?`, [target.tcrdid]));
         }
 
         let q = this.db.select(this.db.raw(p + ` as name,
-avg(a.attr_cdf) as value
+avg(a.attr_cdf) as value, group_concat(distinct concat(b.name,'!',b.url) order by b.name separator '|') as sources
 from hgram_cdf a, gene_attribute_type b, t2tc c
 where a.protein_id = c.protein_id
 and c.target_id = ?
@@ -1724,7 +1729,8 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
     getDTO(args) {
         let matches = [];
         if (args.dtoid) {
-            let n = this.dto[args.dtoid];
+            const dtoFormat = args.dtoid.replace('_',':');
+            let n = this.dto[dtoFormat];
             while (n) {
                 matches.push(n);
                 n = n.parent;
@@ -1751,7 +1757,7 @@ and b.target_id = ?`, [target.tcrdid]));
 
     getTINXForTarget(target, args) {
         let q = this.db.select(this.db.raw(`
-a.*,b.doid, b.score as novelty, a.id as tinxid
+a.*, b.doid, b.score as novelty
 from tinx_importance a, tinx_disease b, t2tc c`));
 
         let sort = true;
@@ -1763,7 +1769,7 @@ match(b.name,b.summary) against(? in boolean mode)`, [t]));
                 sort = false;
             }
         }
-        q = q.andWhere(this.db.raw(`a.disease_id = b.id
+        q = q.andWhere(this.db.raw(`a.doid = b.doid
 and a.protein_id = c.protein_id
 and c.target_id = ?`, [target.tcrdid]));
 

@@ -54,13 +54,13 @@
           diseases {
             name
             associationCount
-            associations{
-            did
             targets {
               sym
               tdl
               novelty
             }
+            associations{
+            did
           }
           }
         }
@@ -72,6 +72,25 @@
       diseases(skip: 40) {
         name
         associationCount
+        targetCounts {
+          name
+          value
+        }
+        targets(
+          filter: {
+            facets: [
+              { facet: "tdl", values: ["Tclin"] }
+              { facet: "fam", values: ["Kinase", "Transporter"] }
+            ]
+          }
+        ) {
+          sym
+          uniprot
+          name
+          tdl
+          fam
+          novelty
+        }
         associations {
           type
           did
@@ -80,25 +99,7 @@
           drug
           pvalue
           source
-          targetCounts {
-            name
-            value
-          }
-          targets(
-            filter: {
-              facets: [
-                { facet: "tdl", values: ["Tclin"] }
-                { facet: "fam", values: ["Kinase", "Transporter"] }
-              ]
-            }
-          ) {
-            sym
-            uniprot
-            name
-            tdl
-            fam
-            novelty
-          }
+
         }
       }
         patentCounts {

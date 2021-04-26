@@ -31,13 +31,13 @@ const resolvers = {
                 const pieces = listKey.split('-');
                 const reqModel = args.modelName ? args.modelName.toLowerCase() : '';
                 const reqAssocModel = args.associatedModelName ? args.associatedModelName.toLowerCase() : '';
-                if (pieces[1] != 'download'){ // must be download lists
+                if (pieces[1] != 'download') { // must be download lists
                     return false;
                 }
                 if (pieces[0] != reqModel) { // must match the model
                     return false;
                 }
-                if (pieces[2] == ''){        // normal fields should apply no matter the associated model
+                if (pieces[2] == '') {        // normal fields should apply no matter the associated model
                     return true;
                 }
                 if (pieces[2] == reqAssocModel) {  // otherwise, have to have the right associated model, or be for a single entity
@@ -54,7 +54,7 @@ const resolvers = {
             try {
                 if (args.top) {
                     args.top = Math.min(args.top, 250000);
-                }else{
+                } else {
                     args.top = 250000;
                 }
                 listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
@@ -278,17 +278,17 @@ const resolvers = {
                 }
             };
             const model = tryUnbatch();
-            if(model == 'targets'){
+            if (model == 'targets') {
                 return getTargetResult(args, dataSources).then(res => {
                     return {targetResult: res};
                 })
             }
-            if(model == 'diseases'){
+            if (model == 'diseases') {
                 return getDiseaseResult(args, dataSources.tcrd).then(res => {
                     return {diseaseResult: res};
                 })
             }
-            if(model == 'ligands'){
+            if (model == 'ligands') {
                 return getLigandResult(args, dataSources.tcrd).then(res => {
                     return {ligandResult: res};
                 })
@@ -803,6 +803,54 @@ const resolvers = {
             });
         },
 
+        gwasAnalytics: async function (target, args, {dataSources}) {
+            const geneFieldMap = new Map([]); // there aren't any that are the same across all associations because they may be from different ensg's
+            const assocFieldMap = new Map([
+                ['TIGA ENSG ID', 'ensgID'],
+                ['Trait Count for Gene', 'traitCountForGene'],
+                ['Study Count for Gene', 'studyCountForGene'],
+                ['TIGA Disease Link', 'ncats_disease_id'],
+                ['EFO ID', 'efoID'],
+                ['GWAS Trait', 'trait'],
+                ['Study Count', 'studyCountForAssoc'],
+                ['SNP Count', 'snpCount'],
+                ['Weighted SNP Count', 'wSnpCount'],
+                ['Gene Count for Trait', 'geneCountForTrait'],
+                ['Study Count for Trait', 'studyCountForTrait'],
+                ['Median p-value', 'medianPvalue'],
+                ['Median Odds Ratio', 'medianOddsRatio'],
+                ['Beta Count', 'betaCount'],
+                ['Mean Study N', 'meanStudyN'],
+                ['RCRAS', 'rcras'],
+                ['Mean Rank', 'meanRank'],
+                ['Mean Rank Score', 'meanRankScore']
+            ]);
+            const targetList = new TargetList(
+                dataSources.tcrd,
+                {
+                    batch: [target.uniprot],
+                    fields: [...Array.from(geneFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
+                    filter: {order: '!Mean Rank Score'}
+                });
+            return targetList.getListQuery(true).then(rows => {
+                if (!rows || rows.length === 0) {
+                    return null;
+                }
+                const gwasObj = {};
+                geneFieldMap.forEach((v, k) => {
+                    gwasObj[v] = rows[0][k];
+                });
+                gwasObj.associations = [];
+                rows.forEach(row => {
+                    const assoc = {};
+                    assocFieldMap.forEach((v, k) => {
+                        assoc[v] = row[k];
+                    });
+                    gwasObj.associations.push(assoc);
+                });
+                return gwasObj;
+            })
+        },
         goCounts: async function (target, _, {dataSources}) {
             return dataSources.tcrd.getGOCountsForTarget(target)
                 .then(rows => {
@@ -959,6 +1007,19 @@ const resolvers = {
             const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
             return targetDetails.getAllFacetValues().then(results => {
                 return results.map(res => res.value);
+            });
+        },
+        drgc_resources: async function (target, args, {dataSources}) {
+            const query = dataSources.tcrd.db('drgc_resource')
+                .select({resourceType: 'resource_type', detailBlob: 'json'})
+                .where('target_id', target.tcrdid);
+            return query.then(rows => {
+                return rows.map(row => {
+                    return {
+                        resourceType: row.resourceType,
+                        detailBlob: TargetDetails.LD2JSON(JSON.parse(row.detailBlob))
+                    };
+                });
             });
         }
     },
@@ -1233,27 +1294,81 @@ const resolvers = {
             }).catch(function (error) {
                 console.error(error);
             });
+        },
+        gwasAnalytics: async function (disease, args, {dataSources}) {
+            const traitFieldMap = new Map([
+                ['EFO ID', 'efoID'],
+                ['GWAS Trait', 'trait'],
+                ['Gene Count for Trait', 'geneCount'],
+                ['Study Count for Trait', 'studyCount']
+            ]);
+            const assocFieldMap = new Map([
+                ['TIGA Protein ID', 'protein_id'],
+                ['TIGA ENSG ID', 'ensgID'],
+                ['Study Count', 'studyCount'],
+                ['SNP Count', 'snpCount'],
+                ['Weighted SNP Count', 'wSnpCount'],
+                ['Trait Count for Gene', 'traitCountForGene'],
+                ['Study Count for Gene', 'studyCountForGene'],
+                ['Median p-value', 'medianPvalue'],
+                ['Median Odds Ratio', 'medianOddsRatio'],
+                ['Beta Count', 'betaCount'],
+                ['Mean Study N', 'meanStudyN'],
+                ['RCRAS', 'rcras'],
+                ['Mean Rank', 'meanRank'],
+                ['Mean Rank Score', 'meanRankScore']
+            ]);
+            const diseaseList = new DiseaseList(
+                dataSources.tcrd,
+                {
+                    batch: [disease.name],
+                    fields: [...Array.from(traitFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
+                    filter: {order: '!Mean Rank Score'}
+                });
+            return diseaseList.getListQuery(true).then(rows => {
+                if (!rows || rows.length === 0) {
+                    return null;
+                }
+                const gwasObj = {};
+                traitFieldMap.forEach((v, k) => {
+                    gwasObj[v] = rows[0][k];
+                });
+                gwasObj.associations = [];
+                rows.forEach(row => {
+                    const assoc = {};
+                    assocFieldMap.forEach((v, k) => {
+                        assoc[v] = row[k];
+                    });
+                    gwasObj.associations.push(assoc);
+                });
+                return gwasObj;
+            });
         }
     },
-
-    DiseaseAssociation: {
-        targetCounts: async function (disease, _, {dataSources}) { // TODO: this really doesn't belong here, it recalculates the same thing for all the associations, I left a stub so that it doesn't break with the client, please delete it, oh great and powerful future developer
-            return resolvers.Disease.targetCounts(disease, _, {dataSources})
+    GwasDiseaseAssociation: {
+        target: async function (gwasData, args, {dataSources}) {
+            return dataSources.tcrd.getTarget({protein_id: gwasData.protein_id})
                 .then(rows => {
-                    return rows;
-                })
-                .catch(function (error) {
+                    return rows[0];
+                }).catch(function (error) {
                     console.error(error);
                 });
-        },
-        targets: async function (disease, args, {dataSources}) { // TODO: this too
-            return resolvers.Disease.targets(disease, args, {dataSources})
-                .then(rows => {
-                    return rows;
-                })
-                .catch(function (error) {
-                    console.error(error);
+        }
+    },
+    GwasTargetAssociation: {
+        diseaseName: async function (gwasData, args, {dataSources}) {
+            if (!!gwasData.ncats_disease_id) {
+                const query = dataSources.tcrd.db('ncats_disease')
+                    .select({name: 'name'})
+                    .where('id', gwasData.ncats_disease_id);
+                return query.then(rows => {
+                    if (rows.length > 0) {
+                        return rows[0].name;
+                    }
+                    return null;
                 });
+            }
+            return null;
         }
     },
 
@@ -1485,17 +1600,16 @@ const resolvers = {
 
                 let values = new Map();
                 rows.forEach(r => {
-                    values.set(r.name, r.value);
+                    values.set(r.name, {value: r.value, sources: r.sources.split('|')});
                 });
 
                 let stats = [];
                 map.forEach(r => {
                     let v = values.get(r);
-                    if (v) {
-                    } else {
-                        v = 0;
+                    if (!v) {
+                        v = {value: 0};
                     }
-                    stats.push({name: r, value: v});
+                    stats.push({name: r, value: v.value, sources: v.sources});
                 });
 
                 return stats;
@@ -1566,7 +1680,7 @@ const resolvers = {
         synonyms: async function (ligand, args, {dataSources}) {
             const parser = function (row) {
                 let synonyms = [];
-                for (let field of ['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral']) {
+                for (let field of ['unii', 'PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral', 'pt']) {
                     if (row[field]) {
                         synonyms.push({name: field, value: row[field]});
                     }
@@ -1576,17 +1690,17 @@ const resolvers = {
             };
 
             let synonyms = [];
-            if (!ligand['PubChem'] && !ligand['Guide to Pharmacology'] && !ligand['ChEMBL'] && !ligand['DrugCentral']) {
+            if (!ligand['PubChem'] && !ligand['Guide to Pharmacology'] && !ligand['ChEMBL'] && !ligand['DrugCentral'] && !ligand['unii'] && !ligand['pt']) {
                 let query = dataSources.tcrd.db('ncats_ligands')
-                    .select(['PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral'])
+                    .select(['unii', 'PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral', 'pt'])
                     .where('identifier', ligand.ligid);
                 return query.then(rows => {
                     return parser(rows[0]);
-                })
+                });
             }
             return parser(ligand);
 
-        }
+        },
     },
 
     LigandActivity: {
@@ -1603,9 +1717,10 @@ const resolvers = {
     TINXDisease: {
         disease: async function (tinx, _, {dataSources}) {
             //console.log('~~~~~ tinx: '+tinx.doid);
-            if (tinx.doid)
+            if (tinx.doid && dataSources.tcrd.doTree[tinx.doid]) {
                 return dataSources.tcrd.doTree[tinx.doid];
-            console.error('No doid in TINX ' + tinx.tinxid);
+            }
+            // console.error('No doid in TINX ' + JSON.stringify(tinx));
             return null;
         }
     }

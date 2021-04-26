@@ -157,7 +157,7 @@ export abstract class DataModelList implements IBuildable {
         return query;
     };
 
-    getListQuery() {
+    getListQuery(innerJoinAll: boolean = false) {
         let dataFields: FieldInfo[];
         if (this.fields && this.fields.length > 0) {
             dataFields = this.GetDataFields('list');
@@ -172,7 +172,7 @@ export abstract class DataModelList implements IBuildable {
 
         const queryDefinition = QueryDefinition.GenerateQueryDefinition(this, dataFields);
 
-        const query = queryDefinition.generateBaseQuery(false);
+        const query = queryDefinition.generateBaseQuery(innerJoinAll);
 
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query, true, this.dataFields.map(f => f.table));

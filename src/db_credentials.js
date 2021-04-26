@@ -3,9 +3,9 @@
 //
 const cred = {
     DBHOST: 'tcrd.ncats.io',
-    DBNAME: 'tcrd684',
-    CONFIGDB: 'pharos_config_prod',
+    DBNAME: 'tcrd6110',
     USER: 'tcrd',
-    PWORD: ''
+    PWORD: '',
+    CONFIGDB: 'pharos_config_prod',
 };
 module.exports.cred = cred;

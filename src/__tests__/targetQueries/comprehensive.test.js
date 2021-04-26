@@ -225,8 +225,8 @@ describe('all the queries should be consistent with each other', function () {
     });
 
     test('Similarity query', () => {
-        const fullList = new TargetList(tcrd, {top:1000000, filter: {similarity: "(Q6P1J9, GWAS)"}});
-        const filteredList = new TargetList(tcrd, {filter: {similarity: "(Q6P1J9, GWAS)", facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
+        const fullList = new TargetList(tcrd, {top:1000000, filter: {similarity: "(DRD2, GWAS)"}});
+        const filteredList = new TargetList(tcrd, {filter: {similarity: "(DRD2, GWAS)", facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
         const fullListQuery = fullList.getListQuery();

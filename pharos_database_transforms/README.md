@@ -33,14 +33,17 @@ Here's what that looks like for our AWS server
     USER = 'ncats'
     PWORD = '<set password, don't commit it to a repo!>'
     ```
-4. Run the pharos specific transformations
-    * Run these python files at the terminal, they will use credentials from credentials.py to update the database
+4. Run the pharos specific transformations 
+    * all of these have been moved to pharos-etl repo, go there to do the knex migrations
+    The only one here that you might want to do is the lychi one if the drug tables have changed
+    * ~~Run these python files at the terminal, they will use credentials from credentials.py to update the database~~
 
-    * First
+    * ~~First~~
         * create indices and columns necessary for pharos
         ```
       python executeSQLfile.py tcrd-create-indexes.sql
         ```
+    
     * Second
         * Populate lychi_h4 keys for all ligands and drugs
             * write smiles to files
@@ -67,7 +70,7 @@ Here's what that looks like for our AWS server
             python lychi-set.py
             ```
             
-    * Later
+    * ~~Later~~
         * create and populate the table that hold the lists of IDG targets
         ```
         python executeSQLfile.py tcrd-create-idg-lists.sql
@@ -98,7 +101,7 @@ Here's what that looks like for our AWS server
         ```
         python tcrd-create-generif-pubmed-map.py
         ```
-    * Later still
+    * ~~Later still~~
         * create mapping between data sources and all the targets, diseases, and ligands we have data from there for
         ```
         python tcrd-create-datasource-table.py

@@ -42,9 +42,10 @@ type IntProp @cacheControl(maxAge: 604800) {
      value: Int!
 }
 
-type FloatProp @cacheControl(maxAge: 604800) {
+type HSummaryProp @cacheControl(maxAge: 604800) {
      name: String!
      value: Float!
+     sources: [String]
 }
 
 type TemporalCount @cacheControl(maxAge: 604800) {
@@ -191,6 +192,7 @@ type Disease @cacheControl(maxAge: 604800) {
      parents: [Disease]
      children: [Disease]
      tinx: [TINXTarget]
+     gwasAnalytics: GwasDiseaseAnalytics
 }
 
 type DiseaseID @cacheControl(maxAge: 604800){
@@ -215,9 +217,6 @@ type DiseaseAssociation @cacheControl(maxAge: 604800) {
      pvalue: Float
      score: Float
      source: String
-
-     targetCounts: [IntProp] @deprecated(reason: "use Disease.targetCounts")
-     targets (skip: Int=0, top: Int=10, filter: IFilter): [Target] @deprecated(reason:"use Disease.targets - each association only has one target anyway")
 }
 
 """Target relationships such as PPI"""
@@ -302,7 +301,7 @@ type Harmonizome @cacheControl(maxAge: 604800) {
      count: Int
      attrs: [GeneAttribute]
      """which must be one of 'type', 'group', or 'category'"""
-     summary (which: String="type"): [FloatProp]
+     summary (which: String="type"): [HSummaryProp]
 }
 
 type GeneAttribute @cacheControl(maxAge: 604800) {
@@ -373,12 +372,11 @@ type DTO @cacheControl(maxAge: 604800) {
 }
 
 type TINXDisease @cacheControl(maxAge: 604800) {
-     tinxid: Int!
      """Disease novelty"""
      novelty: Float
      """Importance of disease-target combination"""
      score: Float
-     disease: DiseaseOntology!
+     disease: DiseaseOntology
 }
 
 type TINXTargetDetails @cacheControl(maxAge: 604800) {
@@ -424,11 +422,17 @@ type SeqAnnotationInfo @cacheControl(maxAge: 604800){
      name: String
 }
 
+type DRGCResource @cacheControl(maxAge: 604800){
+     resourceType: String
+     detailBlob: JSON
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
      similarity: SimilarityDetails
      sequence_variants: SeqVariantInfo
      sequence_annotations: [SeqAnnotationInfo]
+     drgc_resources: [DRGCResource]
 
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
@@ -507,6 +511,8 @@ type Target @cacheControl(maxAge: 604800){
      gwasCounts: [IntProp]
      gwas(skip: Int=0, top: Int=10, filter: IFilter): [GWAS]
 
+     gwasAnalytics: GwasTargetAnalytics
+
      """GO terms"""
      goCounts: [IntProp]
      go(skip: Int=0, top: Int=20, filter: IFilter): [GO]
@@ -536,6 +542,56 @@ type Target @cacheControl(maxAge: 604800){
 
      facetValueCount(facetName: String!): Int
      facetValues(facetName: String!, skip: Int=0, top: Int=10): [String]
+}
+
+type GwasTargetAnalytics @cacheControl(maxAge: 604800) {
+     associations: [GwasTargetAssociation]
+}
+
+type GwasTargetAssociation @cacheControl(maxAge: 604800) {
+     ensgID: String
+     traitCountForGene: Int
+     studyCountForGene: Int
+     trait: String
+     efoID: String
+     studyCountForAssoc: Int
+     snpCount: Int
+     wSnpCount: Float
+     geneCountForTrait: Int
+     studyCountForTrait: Int
+     medianPvalue: Float
+     medianOddsRatio: Float
+     betaCount: Int
+     meanStudyN: Float
+     rcras: Float
+     meanRank: Float
+     meanRankScore: Float
+     diseaseName: String
+}
+
+type GwasDiseaseAnalytics @cacheControl(maxAge: 604800) {
+     efoID: String
+     trait: String
+     geneCount: Int
+     studyCount: Int
+     associations: [GwasDiseaseAssociation]
+}
+
+type GwasDiseaseAssociation @cacheControl(maxAge: 604800) {
+     target: Target
+     ensgID: String
+     studyCount: Int
+     snpCount: Int
+     wSnpCount: Float
+     traitCountForGene: Int
+     studyCountForGene: Int
+     medianPvalue: Float
+     medianOddsRatio: Float
+     betaCount: Int
+     meanStudyN: Float
+     rcras: Float
+     meanRank: Float
+     meanRankScore: Float
 }
 
 type SimilarTargetResult @cacheControl(maxAge: 604800) {

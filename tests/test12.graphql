@@ -27,7 +27,6 @@
         }
         tinxCount
         tinx(top:50){
-          tinxid
           novelty
           score
           disease{
