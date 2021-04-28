@@ -210,7 +210,7 @@ export abstract class DataModelList implements IBuildable {
         } else if (this.databaseConfig.tables.find(t => t.tableName === sortTable.tableName)?.columnIsNumeric(sortFieldInfo.column)) {
             query.orderByRaw((dir === "asc" ? "-" : "") + col + " desc");
         } else {
-            query.orderBy(col, dir);
+            query.orderByRaw(`${col} ${dir}`);
         }
     }
 
