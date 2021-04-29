@@ -341,6 +341,22 @@ const resolvers = {
     },
 
     Target: {
+        affiliate_links: async function (target, args, {dataSources}) {
+            let query = dataSources.tcrd.db({extlink: 'extlink', t2tc: 't2tc', affiliate: 'affiliate'})
+                .select(
+                    {
+                        url: 'url',
+                        sourceName: 'display_name',
+                        description: 'description',
+                        image: 'image'
+                    })
+                .where(dataSources.tcrd.db.raw('extlink.protein_id = t2tc.protein_id'))
+                .andWhere('t2tc.target_id', target.tcrdid)
+                .andWhere(dataSources.tcrd.db.raw('extlink.source = affiliate.source'))
+                .groupBy('extlink.source')
+                .orderBy('affiliate.id');
+            return query;
+        },
         dataSources: async function (target, args, {dataSources}) {
             let query = dataSources.tcrd.db({ncats_dataSource_map: "ncats_dataSource_map", t2tc: "t2tc"})
                 .distinct('ncats_dataSource_map.dataSource')

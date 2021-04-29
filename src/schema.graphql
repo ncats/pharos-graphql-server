@@ -427,12 +427,20 @@ type DRGCResource @cacheControl(maxAge: 604800){
      detailBlob: JSON
 }
 
+type LinkInfo @cacheControl(maxAge: 604800) {
+     sourceName: String
+     description: String
+     url: String
+     image: String
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
      similarity: SimilarityDetails
      sequence_variants: SeqVariantInfo
      sequence_annotations: [SeqAnnotationInfo]
      drgc_resources: [DRGCResource]
+     affiliate_links: [LinkInfo]
 
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
