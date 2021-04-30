@@ -7,5 +7,7 @@ const cred = {
     USER: 'tcrd',
     PWORD: '',
     CONFIGDB: 'pharos_config_prod',
+    REDIS_HOST: 'redis-internal.ncats.nih.gov:6379',
+    REDIS_PASS: 'nice_try_snooper!'
 };
 module.exports.cred = cred;
