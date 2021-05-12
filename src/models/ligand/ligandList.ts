@@ -40,9 +40,11 @@ export class LigandList extends DataModelList {
         this.facetsToFetch = FieldInfo.deduplicate(
             this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
         if (this.associatedLigand) {
-            const dynField = LigandList.ligandSimilarityFacet;
+            const dynField = LigandList.ligandSimilarityFacet.copy();
             if (this.associatedLigandMethod === 'sub') {
                 dynField.name = 'Substructure Similarity';
+            } else {
+                dynField.name = 'Structure Similarity';
             }
             dynField.parent = this;
             if(json.filter && json.filter.facets) {
@@ -84,7 +86,7 @@ export class LigandList extends DataModelList {
         }
         if (this.associatedLigand) {
             const dataFields = this.databaseConfig.getAvailableFields('Ligand', 'list', 'Ligand');
-            dataFields.push(LigandList.ligandSimilarityFacet);
+            dataFields.push(LigandList.ligandSimilarityFacet.copy());
             return dataFields;
         }
         return this.databaseConfig.getAvailableFields('Ligand', 'list');

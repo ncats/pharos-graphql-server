@@ -162,8 +162,8 @@ export class DatabaseConfig {
                     }
                 });
             });
-            this.availableFieldMap.get('ligand-list-ligand-')?.push(LigandList.ligandSimilarityFacet);
-            this.availableFieldMap.get('ligand-download--Single Value Fields')?.push(LigandList.ligandSimilarityFacet);
+            this.availableFieldMap.get('ligand-list-ligand-')?.push(LigandList.ligandSimilarityFacet.copy());
+            this.availableFieldMap.get('ligand-download--Single Value Fields')?.push(LigandList.ligandSimilarityFacet.copy());
         });
     }
 
