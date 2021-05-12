@@ -54,6 +54,13 @@ export class DatabaseTable {
         });
     }
 
+    static nonStandardLinks: Map<string, string> = new Map(
+        [
+            ["structure_search_results-ncats_ligands", "ncats_ligand_id-id"],
+            ["ncats_ligands-structure_search_results", "id-ncats_ligand_id"]
+        ]
+    );
+
     static preferredLink: Map<string, string> = new Map(
         [
             ["ncats_ppi-protein", "protein_id"]

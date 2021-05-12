@@ -9,7 +9,7 @@ export interface IBuildable {
 
     associatedTarget: string;
     associatedDisease: string;
-    rootTable: string;
+    rootTable: string | SqlTable;
     ppiConfidence: number;
 
     getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string;

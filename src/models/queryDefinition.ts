@@ -9,6 +9,7 @@ import {IBuildable} from "./IBuildable";
 export class QueryDefinition {
     buildable: IBuildable;
     dataList: FieldInfo[];
+    rootTable: SqlTable;
     static GenerateQueryDefinition(buildabelObj: IBuildable, dataList: FieldInfo[]): QueryDefinition {
         let qd = new QueryDefinition(buildabelObj, dataList);
         for (let i = 0; i < dataList.length; i++) {
@@ -20,12 +21,17 @@ export class QueryDefinition {
     tables: SqlTable[] = [];
 
     private constructor(buildableObj: IBuildable, dataList: FieldInfo[]) {
+        if(buildableObj.rootTable instanceof SqlTable){
+            this.rootTable = buildableObj.rootTable;
+        }else{
+            this.rootTable = new SqlTable(buildableObj.rootTable);
+        }
         this.dataList = dataList;
         this.buildable = buildableObj;
     }
 
     addRequestedData(reqData: FieldInfo) {
-        const specialWhereClause = this.buildable.getSpecialModelWhereClause(reqData, this.buildable.rootTable);
+        const specialWhereClause = this.buildable.getSpecialModelWhereClause(reqData, this.rootTable.tableName);
         if(specialWhereClause){
             if(reqData.where_clause){
                 reqData.where_clause = reqData.where_clause + ' and ' + specialWhereClause;
@@ -64,15 +70,16 @@ export class QueryDefinition {
             this.updateTableAliasForColumn(reqData, tableAlias);
         }
 
-        if (reqData.table != this.buildable.rootTable) {
-            links = DatabaseTable.getRequiredLinks(reqData.table, this.buildable.rootTable) || [];
+        if (reqData.table != this.rootTable.tableName) {
+            links = DatabaseTable.getRequiredLinks(reqData.table, this.rootTable.tableName) || [];
         }
 
 
         const newTable = new SqlTable(reqData.table, {
             alias: tableAlias,
             joinConstraint: reqData.where_clause,
-            rawJoinConstraint: original_where_clause
+            rawJoinConstraint: original_where_clause,
+            schema: reqData.schema
         }, links);
         newTable.columns.push(reqData);
         this.tables.push(newTable);
@@ -137,21 +144,22 @@ export class QueryDefinition {
         if (rootTable) {
             return rootTable;
         }
-        return new SqlTable(this.buildable.rootTable);
+        return new SqlTable(this.rootTable.tableName);
     }
 
     isRootTable(dataTable: SqlTable): boolean {
-        return dataTable.tableName === this.buildable.rootTable && dataTable.alias === this.buildable.rootTable;
+        return dataTable.tableName === this.rootTable.tableName && dataTable.alias === this.rootTable.tableName;
     }
 
     generateBaseQuery(innerJoinAll: boolean){
         const buildableObj = this.buildable;
-        let rootTableObject = this.getRootTable();
+        let rootTableObject = this.rootTable;
         if (rootTableObject == undefined) {
             throw new Error('failed to build SQL query');
         }
         let joinTables = this.getJoinTables();
-        let query = buildableObj.database(rootTableObject.tableName)
+        const rootTableName = rootTableObject.schema.length > 0 ? (rootTableObject.schema + '.' + rootTableObject.tableName) : rootTableObject.tableName;
+        let query = buildableObj.database(rootTableName)
             .select(this.getColumnList(buildableObj.database));
 
 
@@ -166,10 +174,15 @@ export class QueryDefinition {
             }
             let leftTable = rootTableObject;
             dataTable.linkingTables.forEach(linkTableName => {
+                const linkTableObj = this.tables.find(t => t.tableName === linkTableName);
                 if(!tablesInQuery.includes(linkTableName)) {
                     let linkInfo = buildableObj.databaseConfig.getLinkInformation(leftTable.tableName, linkTableName);
+                    let tableNameToUse = linkTableName;
+                    if(linkTableObj && linkTableObj.schema.length > 0){
+                        tableNameToUse = linkTableObj.schema + '.' + linkTableName;
+                    }
                     // @ts-ignore
-                    query[joinFunction](linkTableName, function (this: any) {
+                    query[joinFunction](tableNameToUse, function (this: any) {
                         this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${linkTableName}.${linkInfo.toCol}`);
                     });
                     tablesInQuery.push(linkTableName);
@@ -179,8 +192,12 @@ export class QueryDefinition {
 
             if(!tablesInQuery.includes(dataTable.alias)) {
                 let linkInfo = buildableObj.databaseConfig.getLinkInformation(leftTable.tableName, dataTable.tableName);
+                let tableNameToUse = dataTable.tableName;
+                if(dataTable.schema.length > 0){
+                    tableNameToUse = dataTable.schema + '.' + dataTable.tableName;
+                }
                 // @ts-ignore
-                query[joinFunction]({[dataTable.alias]: dataTable.tableName}, function (this: any) {
+                query[joinFunction]({[dataTable.alias]: tableNameToUse}, function (this: any) {
                     if(leftTable.tableName !== dataTable.tableName || !dataTable.joinConstraint) {
                         this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${dataTable.alias}.${linkInfo.toCol}`);
                     }

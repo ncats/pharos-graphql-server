@@ -1,5 +1,6 @@
 import {DatabaseTable, TableLink, TableLinkInfo} from "./databaseTable";
 import {FieldInfo} from "./FieldInfo";
+import {LigandList} from "./ligand/ligandList";
 
 export class ModelInfo {
     name: string;
@@ -161,8 +162,9 @@ export class DatabaseConfig {
                     }
                 });
             });
+            this.availableFieldMap.get('ligand-list-ligand-')?.push(LigandList.ligandSimilarityFacet);
+            this.availableFieldMap.get('ligand-download--Single Value Fields')?.push(LigandList.ligandSimilarityFacet);
         });
-
     }
 
     modelList: Map<string, ModelInfo> = new Map<string, { name: string, table: string, column: string }>();
@@ -235,7 +237,16 @@ export class DatabaseConfig {
         return linkInfo;
     }
 
+
+
     private _getLinkInformation(fromTable: string, toTable: string, reverse: boolean = false): TableLinkInfo | null {
+        if (DatabaseTable.nonStandardLinks.has(`${fromTable}-${toTable}`)){
+            const nonStandardLink = DatabaseTable.nonStandardLinks.get(`${fromTable}-${toTable}`);
+            if(nonStandardLink){
+                const pieces = nonStandardLink.split(('-'));
+                return new TableLinkInfo(pieces[0], pieces[1]);
+            }
+        }
         if (fromTable === toTable) {
             const selfTable = this.tables.find(table => table.tableName === fromTable);
             if (!selfTable || !selfTable.primaryKey) {

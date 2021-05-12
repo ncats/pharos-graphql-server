@@ -104,6 +104,7 @@ input IFilter {
      order: String
      associatedTarget: String
      associatedDisease: String
+     associatedLigand: String
      similarity: String
      ppiConfidence: Int = 400
 }
@@ -341,6 +342,7 @@ type Ligand @cacheControl(maxAge: 604800) {
      """Activity count"""
      actcnt: Int
      activities (all: Boolean = true): [LigandActivity]
+     similarity: Float
 }
 
 type LigandActivity @cacheControl(maxAge: 604800) {

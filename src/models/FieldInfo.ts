@@ -1,5 +1,6 @@
 import {DataModelList} from "./DataModelList";
 import {QueryDefinition} from "./queryDefinition";
+import {SqlTable} from "./sqlTable";
 
 export enum FacetDataType {
     category = 'category',
@@ -10,6 +11,7 @@ export class FieldInfo {
     name: string;
     description: string;
 
+    schema: string;
     table: string;
     column: string;
     alias: string;
@@ -39,6 +41,7 @@ export class FieldInfo {
 
     constructor(obj: any) {
         this.name = obj?.name || '';
+        this.schema = obj?.schema || '';
         this.description = obj?.description || '';
 
         this.table = obj?.table || '';
@@ -113,7 +116,7 @@ export class FieldInfo {
                 databaseConfig: this.parent.databaseConfig,
                 associatedTarget: this.parent.associatedTarget,
                 associatedDisease: this.parent.associatedDisease,
-                rootTable: this.table,
+                rootTable: new SqlTable(this.table, {schema: this.schema}),
                 ppiConfidence: this.parent.ppiConfidence,
                 getSpecialModelWhereClause: this.parent.getSpecialModelWhereClause.bind(this.parent),
                 tableNeedsInnerJoin: this.parent.tableNeedsInnerJoin.bind(this.parent)
@@ -147,6 +150,7 @@ export class FieldInfo {
             query.whereRaw(this.where_clause);
         }
         query.whereNotNull(`${this.parent.rootTable}.${this.parent.keyColumn}`);
+        // console.log(query.toString());
         return query;
     }
 

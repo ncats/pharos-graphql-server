@@ -29,6 +29,8 @@ export abstract class DataModelList implements IBuildable {
 
     associatedTarget: string = "";
     associatedDisease: string = "";
+    associatedLigand: string = "";
+    associatedLigandMethod: string = 'sim';
     similarity: { match: string, facet: string } = {match: '', facet: ''};
     ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
     skip: number | undefined;
@@ -48,6 +50,9 @@ export abstract class DataModelList implements IBuildable {
         }
         if (this.associatedDisease) {
             return 'Disease';
+        }
+        if (this.associatedLigand) {
+            return 'Ligand';
         }
         return '';
     }
@@ -99,6 +104,17 @@ export abstract class DataModelList implements IBuildable {
             }
             if (json.filter.associatedDisease) {
                 this.associatedDisease = json.filter.associatedDisease;
+            }
+            if (json.filter.associatedLigand){
+                const pieces = json.filter.associatedLigand.split('!');
+                pieces.forEach((p: string) => {
+                    const method = p.toLowerCase().substr(0,3);
+                    if(method === 'sim' || method === 'sub'){
+                        this.associatedLigandMethod = method;
+                    } else {
+                        this.associatedLigand = p;
+                    }
+                });
             }
             if (json.filter.similarity) {
 
@@ -154,6 +170,7 @@ export abstract class DataModelList implements IBuildable {
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query, false, []);
         this.captureQueryPerformance(query, "list count");
+        // console.log(query.toString());
         return query;
     };
 
@@ -216,7 +233,7 @@ export abstract class DataModelList implements IBuildable {
 
     addFacetConstraints(query: any, filteringFacets: FieldInfo[], facetToIgnore?: string) {
         for (let i = 0; i < filteringFacets.length; i++) {
-            if (facetToIgnore == null || facetToIgnore != filteringFacets[i].name) {
+            if (facetToIgnore == null || (facetToIgnore !== filteringFacets[i].name)) {
                 const sqAlias = filteringFacets[i].name;
                 let subQuery = filteringFacets[i].getFacetConstraintQuery().as(sqAlias);
                 query.join(subQuery, sqAlias + '.' + this.keyColumn, this.keyString());
@@ -235,6 +252,9 @@ export abstract class DataModelList implements IBuildable {
             return false;
         }
         if (this.associatedDisease.length > 0) {
+            return false;
+        }
+        if (this.associatedLigand.length > 0) {
             return false;
         }
         if (this.filteringFacets.length > 0) {

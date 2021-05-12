@@ -58,6 +58,9 @@ const resolvers = {
                     args.top = 250000;
                 }
                 listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
+                if(listObj instanceof LigandList){
+                    await listObj.getSimilarLigands();
+                }
                 listQuery = listObj.getListQuery();
             } catch (e) {
                 return {
@@ -214,7 +217,7 @@ const resolvers = {
             });
         },
         ligands: async function (_, args, {dataSources}) {
-            return getLigandResult(args, dataSources.tcrd);
+            return getLigandResult(args, dataSources);
         },
 
         xref: async function (_, args, {dataSources}) {
@@ -289,7 +292,7 @@ const resolvers = {
                 })
             }
             if (model == 'ligands') {
-                return getLigandResult(args, dataSources.tcrd).then(res => {
+                return getLigandResult(args, dataSources).then(res => {
                     return {ligandResult: res};
                 })
             }
@@ -297,7 +300,7 @@ const resolvers = {
             let funcs = [
                 getTargetResult(args, dataSources),
                 getDiseaseResult(args, dataSources.tcrd),
-                getLigandResult(args, dataSources.tcrd)
+                getLigandResult(args, dataSources)
             ];
             return Promise.all(funcs).then(r => {
                 return {
@@ -1535,6 +1538,7 @@ const resolvers = {
             args.filter = result.filter;
             args.batch = result.batch;
             let ligandList = new LigandList(dataSources.tcrd, args);
+            await ligandList.getSimilarLigands();
             return ligandList.getListQuery().then(
                 ligands => {
                     return ligands;
@@ -1859,13 +1863,14 @@ function splitOnDelimiters(rowData) {
     return returnArray;
 }
 
-function getLigandResult(args, tcrd) {
+async function getLigandResult(args, dataSources) {
     args.batch = args.ligands;
-    let ligandList = new LigandList(tcrd, args);
+    let ligandList = new LigandList(dataSources.tcrd, args);
+    await ligandList.getSimilarLigands();
     const countQuery = ligandList.getCountQuery();
     const facetQueries = ligandList.getFacetQueries();
     facetQueries.unshift(countQuery);
-    return Promise.all(Array.from(facetQueries.values())).then(rows => {
+    return Promise.all(facetQueries).then(rows => {
         let count = rows.shift()[0].count;
         let facets = [];
         for (var i in rows) {
