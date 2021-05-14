@@ -725,7 +725,6 @@ type DataSourceCount @cacheControl(maxAge: 604800){
 }
 
 type PharosConfiguration{
-     lists (listNames: [String]): [FieldList]
      downloadLists (modelName: String, associatedModelName: String): [FieldList]
 }
 
@@ -738,6 +737,7 @@ type FieldDetails{
      order: Int
      name: String
      description: String
+     schema: String
      table: String
      column: String
      alias: String

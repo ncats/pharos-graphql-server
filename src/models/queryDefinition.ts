@@ -169,7 +169,7 @@ export class QueryDefinition {
                 return;
             }
             let joinFunction = 'leftJoin';
-            if(innerJoinAll || this.buildable.tableNeedsInnerJoin(dataTable)){
+            if(innerJoinAll || this.buildable.tableJoinShouldFilterList(dataTable)){
                 joinFunction = 'join';
             }
             let leftTable = rootTableObject;

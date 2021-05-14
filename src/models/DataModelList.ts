@@ -1,6 +1,5 @@
 import now from "performance-now";
 import {FieldInfo} from "./FieldInfo";
-import {FacetFactory} from "./FacetFactory";
 import {DatabaseConfig, ModelInfo} from "./databaseConfig";
 // @ts-ignore
 import * as CONSTANTS from "../constants";
@@ -10,14 +9,12 @@ import {SqlTable} from "./sqlTable";
 
 export abstract class DataModelList implements IBuildable {
     abstract addModelSpecificFiltering(query: any, list: boolean, tables: string[]): void;
-    abstract getAvailableListFields(): FieldInfo[];
     abstract defaultSortParameters(): { column: string, order: string } [];
 
     abstract getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string;
-    abstract tableNeedsInnerJoin(table: SqlTable): boolean;
+    abstract tableJoinShouldFilterList(table: SqlTable): boolean;
 
     batch: string[] = [];
-    facetFactory: FacetFactory;
     term: string = "";
     fields: string[] = [];
     warnings: string[] = [];
@@ -57,16 +54,6 @@ export abstract class DataModelList implements IBuildable {
         return '';
     }
 
-    get AllFacets(): string[] {
-        const fieldInfo = this.databaseConfig.getAvailableFields(this.modelInfo.name, 'facet');
-        return fieldInfo.map((facet: FieldInfo) => facet.name) || [];
-    }
-
-    get DefaultFacets() {
-        const fieldInfo = this.databaseConfig.getDefaultFields(this.modelInfo.name, 'facet');
-        return fieldInfo.map((facet: FieldInfo) => facet.name) || [];
-    };
-
     constructor(tcrd: any, modelName: string, json: any, extra?: any) {
         this.tcrd = tcrd;
         this.database = tcrd.db;
@@ -78,7 +65,6 @@ export abstract class DataModelList implements IBuildable {
         }
         this.rootTable = this.modelInfo.table;
         this.keyColumn = this.modelInfo.column || this.databaseConfig.getPrimaryKey(this.rootTable);
-        this.facetFactory = new FacetFactory();
 
         if (json) {
             if (json.batch) {
@@ -139,15 +125,25 @@ export abstract class DataModelList implements IBuildable {
             }
         }
 
-        if (json && json.filter && json.filter.facets && json.filter.facets.length > 0) {
-            for (let i = 0; i < json.filter.facets.length; i++) {
-                let fieldInfo = this.facetFactory.GetFacet(
-                    this, json.filter.facets[i].facet, json.filter.facets[i].values, extra);
-                if (fieldInfo.table != "" && fieldInfo.allowedValues.length > 0) {
-                    this.filteringFacets.push(fieldInfo);
-                    this.facetsToFetch.push(fieldInfo);
-                }
+        if (json && json.facets) {
+            if(json.facets === 'all' || json.facets[0] === 'all'){
+                this.facetsToFetch = this.databaseConfig.listManager.getAllFields(this, 'facet');
+            }else {
+                this.facetsToFetch = this.databaseConfig.listManager.getTheseFields(this, 'facet', json.facets);
             }
+        } else {
+            this.facetsToFetch = this.databaseConfig.listManager.getDefaultFields(this, 'facet');
+        }
+        if (json && json.filter && json.filter.facets && json.filter.facets.length > 0) {
+            const facets = this.databaseConfig.listManager.getTheseFilteringFields(this, 'facet', json.filter.facets);
+            this.filteringFacets = facets;
+            facets.forEach(filteringFacet => {
+                const index = this.facetsToFetch.findIndex(f => f.name === filteringFacet.name);
+                if (index > 0) {
+                    this.facetsToFetch.splice(index, 1);
+                }
+                this.facetsToFetch.unshift(filteringFacet);
+            });
         }
     }
 
@@ -174,15 +170,19 @@ export abstract class DataModelList implements IBuildable {
         return query;
     };
 
-    getListQuery(innerJoinAll: boolean = false) {
+    getListQuery(context: string, innerJoinAll: boolean = false) {
         let dataFields: FieldInfo[];
         if (this.fields && this.fields.length > 0) {
-            dataFields = this.GetDataFields('list');
+            dataFields = this.databaseConfig.listManager.getTheseFields(this, context, this.fields);
         } else {
-            dataFields = this.getAvailableListFields();
+            dataFields = this.databaseConfig.listManager.getDefaultFields(this, context);
         }
         if(!dataFields.map(f => f.name).includes(this.sortField)) {
-            this.pushOneDataField(this.sortField, 'list', dataFields);
+            const sortField = this.databaseConfig.listManager.getOneField(this, context, this.sortField);
+            if(sortField) {
+                sortField.alias = this.sortField;
+                dataFields.push(sortField);
+            }
         }
         this.dataFields = dataFields;
         const sortField = dataFields.find(f => f.name && f.name.length > 0 && f.name === this.sortField);
@@ -263,27 +263,8 @@ export abstract class DataModelList implements IBuildable {
         return true;
     }
 
-    GetDataFields(context: string): FieldInfo[] {
-        const dataFields: FieldInfo[] = [];
-        dataFields.push(new FieldInfo({table: this.modelInfo.table, column: this.modelInfo.column, alias: 'id'} as FieldInfo));
-
-        this.fields.forEach(field => {
-            this.pushOneDataField(field, context, dataFields);
-        });
-        return dataFields;
-    }
-
     doSafetyCheck(query: any){
         // override to get this to do something
-    }
-
-
-    private pushOneDataField(field: string, context: string, dataFields: FieldInfo[]) {
-        const fieldInfo = this.databaseConfig.getOneField(this.modelInfo.name, context, this.getAssociatedModel(), '', field);
-        if (fieldInfo) {
-            fieldInfo.alias = field;
-            dataFields.push(fieldInfo);
-        }
     }
 
     perfData: QueryPerformanceData[] = [];

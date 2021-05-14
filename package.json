@@ -22,7 +22,7 @@
     "apollo-server-testing": "^2.15.0",
     "axios": "^0.21.1",
     "crypto": "^1.0.1",
-    "datasource-sql": "^1.0.2",
+    "datasource-sql": "^1.4.1",
     "express": "^4.17.1",
     "graphql": "^14.5.8",
     "graphql-tester": "0.0.5",

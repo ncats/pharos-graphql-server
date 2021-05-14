@@ -13,5 +13,5 @@ export interface IBuildable {
     ppiConfidence: number;
 
     getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string;
-    tableNeedsInnerJoin(sqlTable: SqlTable): boolean;
+    tableJoinShouldFilterList(sqlTable: SqlTable): boolean;
 }

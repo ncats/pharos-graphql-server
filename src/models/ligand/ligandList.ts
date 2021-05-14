@@ -6,17 +6,6 @@ import {StructureSearch} from "../externalAPI/StructureSearch";
 export class LigandList extends DataModelList {
     structureQueryHash: string = '';
 
-    static ligandSimilarityFacet = new FieldInfo({
-        name: 'Structure Similarity',
-        description: 'Tanimoto similarity between each ligands structure and the query structure.',
-        isFromListQuery: true,
-        schema: 'result_cache',
-        table: "structure_search_results",
-        column: "similarity"
-        , dataType: FacetDataType.numeric,
-        binSize: 0.01
-    });
-
     static getAutocomplete(knex: any, term: string) {
         let query = knex("ncats_ligands")
             .select({value: knex.raw('distinct name'), source: knex.raw("'Ligand'")})
@@ -31,31 +20,6 @@ export class LigandList extends DataModelList {
 
     constructor(tcrd: any, json: any) {
         super(tcrd, 'Ligand', json);
-        let facetList: string[];
-        if (this.associatedTarget) {
-            facetList = this.DefaultFacetsWithTarget;
-        } else {
-            facetList = this.DefaultFacets;
-        }
-        this.facetsToFetch = FieldInfo.deduplicate(
-            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
-        if (this.associatedLigand) {
-            const dynField = LigandList.ligandSimilarityFacet.copy();
-            if (this.associatedLigandMethod === 'sub') {
-                dynField.name = 'Substructure Similarity';
-            } else {
-                dynField.name = 'Structure Similarity';
-            }
-            dynField.parent = this;
-            if(json.filter && json.filter.facets) {
-                dynField.allowedValues = json.filter.facets.find((f: any) => {
-                    return (f.facet === 'Structure Similarity') || (f.facet === 'Substructure Similarity')
-                })?.values || [];
-                this.filteringFacets.push(dynField);
-            }
-            this.facetsToFetch.unshift(dynField);
-        }
-
     }
 
     getSimilarLigands() {
@@ -63,11 +27,6 @@ export class LigandList extends DataModelList {
         this.structureQueryHash = sSearch.queryHash;
         return sSearch.getSimilarStructures();
     }
-
-    get DefaultFacetsWithTarget() {
-        return this.databaseConfig.getDefaultFields('Ligand', 'facet', 'Target')
-            .map(a => a.name) || [];
-    };
 
     defaultSortParameters(): { column: string; order: string }[] {
         if (this.fields.length > 0) {
@@ -78,19 +37,6 @@ export class LigandList extends DataModelList {
         }
         return [{column: 'actcnt', order: 'desc'}];
     };
-
-    getAvailableListFields(): FieldInfo[] {
-        if (this.associatedTarget) {
-            const fieldList = this.databaseConfig.getAvailableFields('Ligand', 'list', 'Target');
-            return fieldList;
-        }
-        if (this.associatedLigand) {
-            const dataFields = this.databaseConfig.getAvailableFields('Ligand', 'list', 'Ligand');
-            dataFields.push(LigandList.ligandSimilarityFacet.copy());
-            return dataFields;
-        }
-        return this.databaseConfig.getAvailableFields('Ligand', 'list');
-    }
 
     addModelSpecificFiltering(query: any, list: boolean, tables: string[]): void {
         if (this.associatedTarget) {
@@ -111,11 +57,13 @@ export class LigandList extends DataModelList {
         } else if (this.term.length > 0) {
             query.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against("${this.term}*")`);
         } else if (this.associatedLigand) {
-            const that = this;
-            query.join('result_cache.structure_search_results', function (this: any) {
-                this.on('structure_search_results.ncats_ligand_id', that.keyString());
-                this.andOn('structure_search_results.query_hash', '=', that.database.raw(`"${that.structureQueryHash}"`));
-            });
+            if (!tables.includes('structure_search_results')) {
+                const that = this;
+                query.join('result_cache.structure_search_results', function (this: any) {
+                    this.on('structure_search_results.ncats_ligand_id', that.keyString());
+                    this.andOn('structure_search_results.query_hash', '=', that.database.raw(`"${that.structureQueryHash}"`));
+                });
+            }
         }
         if (this.batch && this.batch.length > 0) {
             query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.ligand_id', this.keyString());
@@ -128,8 +76,11 @@ export class LigandList extends DataModelList {
             .orWhereIn('name', batch);
     }
 
-    tableNeedsInnerJoin(sqlTable: SqlTable) {
+    tableJoinShouldFilterList(sqlTable: SqlTable) {
         if (this.associatedTarget && (sqlTable.tableName === 'protein' || sqlTable.tableName === 'target' || sqlTable.tableName === 'ncats_ligand_activity')) {
+            return true;
+        }
+        if (this.associatedLigand && (sqlTable.tableName === 'structure_search_results')){
             return true;
         }
         return false;
@@ -147,6 +98,9 @@ export class LigandList extends DataModelList {
                 WHERE MATCH (uniprot , sym , stringid) 
                 AGAINST ('${this.associatedTarget}' IN BOOLEAN MODE) 
                 AND t2tc.protein_id = protein.id)`;
+        }
+        if (this.associatedLigand && (fieldInfo.table === 'structure_search_results' || rootTableOverride === 'structure_search_results')) {
+            return `structure_search_results.query_hash = "${this.structureQueryHash}"`;
         }
         return "";
     }

@@ -1,3 +1,4 @@
+const {ListContext} = require("./models/listManager");
 const {DataModelListFactory} = require("./models/DataModelListFactory");
 const {TargetDetails} = require("./models/target/targetDetails");
 const {FacetDataType} = require("./models/FieldInfo");
@@ -9,42 +10,18 @@ const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 
 const resolvers = {
-    FieldList: {
-        listName: async function (listObject, args, {dataSources}) {
-            const pieces = listObject.split('-');
-            return pieces[pieces.length - 1];
-        },
-        field: async function (listObject, args, {dataSources}) {
-            return dataSources.tcrd.tableInfo.availableFieldMap.get(listObject);
-        }
-    },
 
     PharosConfiguration: {
-        lists: async function (config, args, {dataSources}) {
-            if (args.listNames) {
-                return [...args.listNames];
-            }
-            return config.availableFieldMap.keys();
-        },
         downloadLists: async function (config, args, {dataSources}) {
-            return Array.from(config.availableFieldMap.keys()).filter(listKey => {
-                const pieces = listKey.split('-');
-                const reqModel = args.modelName ? args.modelName.toLowerCase() : '';
-                const reqAssocModel = args.associatedModelName ? args.associatedModelName.toLowerCase() : '';
-                if (pieces[1] != 'download') { // must be download lists
-                    return false;
-                }
-                if (pieces[0] != reqModel) { // must match the model
-                    return false;
-                }
-                if (pieces[2] == '') {        // normal fields should apply no matter the associated model
-                    return true;
-                }
-                if (pieces[2] == reqAssocModel) {  // otherwise, have to have the right associated model, or be for a single entity
-                    return true;
-                }
-                return false;
+            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName);
+            const retArray = [];
+            lists.forEach((fields, listName) => {
+                retArray.push({
+                    listName: listName,
+                    field: fields
+                })
             });
+            return retArray;
         }
     },
 
@@ -61,7 +38,7 @@ const resolvers = {
                 if(listObj instanceof LigandList){
                     await listObj.getSimilarLigands();
                 }
-                listQuery = listObj.getListQuery();
+                listQuery = listObj.getListQuery('download');
             } catch (e) {
                 return {
                     result: false,
@@ -145,7 +122,9 @@ const resolvers = {
         },
 
         targetFacets: async function (_, args, {dataSources}) {
-            return dataSources.tcrd.tableInfo.availableFieldMap.get('target-facet--').map(facet => facet.name);
+            const context = new ListContext('Target', '', 'facet');
+            const fields = this.listMap.get(context.toString()) || [];
+            return fields.map(f => f.name);
         },
 
         target: async function (_, args, {dataSources}) {
@@ -561,7 +540,7 @@ const resolvers = {
             diseaseArgs.filter = diseaseArgs.filter || {};
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
-            const q = diseaseList.getListQuery();
+            const q = diseaseList.getListQuery('list');
             return q.then(rows => {
                 rows.forEach(x => {
                     x.value = x.count;
@@ -575,7 +554,7 @@ const resolvers = {
             diseaseArgs.filter = diseaseArgs.filter || {};
             diseaseArgs.filter.associatedTarget = target.uniprot;
             let diseaseList = new DiseaseList(dataSources.tcrd, diseaseArgs);
-            const q = diseaseList.getListQuery();
+            const q = diseaseList.getListQuery('list');
             return q.then(diseases => {
                 diseases.forEach(x => {
                     x.associationCount = x.count;
@@ -851,7 +830,7 @@ const resolvers = {
                     fields: [...Array.from(geneFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
                     filter: {order: '!Mean Rank Score'}
                 });
-            return targetList.getListQuery(true).then(rows => {
+            return targetList.getListQuery('download',true).then(rows => {
                 if (!rows || rows.length === 0) {
                     return null;
                 }
@@ -914,7 +893,8 @@ const resolvers = {
             ligandArgs.filter = ligandArgs.filter || {};
             ligandArgs.filter.associatedTarget = target.uniprot;
             let ligandList = new LigandList(dataSources.tcrd, ligandArgs);
-            ligandList.facetsToFetch = [ligandList.facetFactory.GetFacet(ligandList, "Type")];
+
+            ligandList.facetsToFetch = [ligandList.databaseConfig.listManager.getOneField(ligandList, 'facet', 'Type')];
             return ligandList.getFacetQueries()[0]
                 .then(results => {
                     return [{
@@ -946,7 +926,7 @@ const resolvers = {
                 ligandArgs.filter.facets.push({facet: "Type", values: ["Ligand"]});
             }
             return new LigandList(dataSources.tcrd, ligandArgs)
-                .getListQuery()
+                .getListQuery('list')
                 .then(allResults => {
                     return allResults;
                 })
@@ -1246,7 +1226,7 @@ const resolvers = {
             targetArgs.filter = targetArgs.filter || {};
             targetArgs.filter.associatedDisease = disease.name;
             let targetList = new TargetList(dataSources.tcrd, targetArgs);
-            return targetList.getListQuery().then(rows => {
+            return targetList.getListQuery('list').then(rows => {
                 rows.forEach(x => {
                     x.parent = disease;
                 });
@@ -1344,7 +1324,7 @@ const resolvers = {
                     fields: [...Array.from(traitFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
                     filter: {order: '!Mean Rank Score'}
                 });
-            return diseaseList.getListQuery(true).then(rows => {
+            return diseaseList.getListQuery('download',true).then(rows => {
                 if (!rows || rows.length === 0) {
                     return null;
                 }
@@ -1497,7 +1477,7 @@ const resolvers = {
         targets: async function (result, args, {dataSources}) {
             args.filter = result.filter;
             args.batch = result.batch;
-            let q = new TargetList(dataSources.tcrd, args).getListQuery();
+            let q = new TargetList(dataSources.tcrd, args).getListQuery('list');
             //console.log(q.toString());
             return q.then(targets => {
                 dataSources.listResults = targets;
@@ -1519,7 +1499,7 @@ const resolvers = {
         diseases: async function (result, args, {dataSources}) {
             args.filter = result.filter;
             args.batch = result.batch;
-            return new DiseaseList(dataSources.tcrd, args).getListQuery()
+            return new DiseaseList(dataSources.tcrd, args).getListQuery('list')
                 .then(diseases => {
                     diseases.forEach(x => {
                         x.filter = result.filter;
@@ -1539,7 +1519,7 @@ const resolvers = {
             args.batch = result.batch;
             let ligandList = new LigandList(dataSources.tcrd, args);
             await ligandList.getSimilarLigands();
-            return ligandList.getListQuery().then(
+            return ligandList.getListQuery('list').then(
                 ligands => {
                     return ligands;
                 }

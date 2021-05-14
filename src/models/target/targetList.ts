@@ -28,47 +28,20 @@ export class TargetList extends DataModelList {
 
     constructor(tcrd: any, json: any) {
         super(tcrd, 'Target', json);
-
-        let facetList: string[];
-        if (!json || !json.facets || json.facets.length == 0) {
-            if (this.associatedTarget) {
-                facetList = this.DefaultPPIFacets;
-            } else if (this.associatedDisease) {
-                facetList = this.DefaultDiseaseFacets;
-            } else {
-                facetList = this.DefaultFacets;
-            }
-        } else if (json.facets == "all") {
-            facetList = this.AllFacets;
-        } else {
-            facetList = json.facets;
-        }
-        this.facetsToFetch = FieldInfo.deduplicate(
-            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList, this.isNull())));
     }
 
-    getAvailableListFields(): FieldInfo[] {
-        if (this.associatedTarget) {
-            return this.databaseConfig.getAvailableFields('Target', 'list', 'Target');
-        }
-        if (this.associatedDisease) {
-            return this.databaseConfig.getAvailableFields('Target', 'list', 'Disease');
-        }
-        if (this.similarity.match.length > 0) {
-            const dataFields = this.databaseConfig.getAvailableFields('Target', 'list', '', 'Similarity');
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "overlap"} as FieldInfo);
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "baseSize"} as FieldInfo);
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "testSize"} as FieldInfo);
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "commonOptions"} as FieldInfo);
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "jaccard"} as FieldInfo);
-            return dataFields;
-        }
-        const dataFields = this.databaseConfig.getAvailableFields('Target', 'list');
-        if(this.term.length > 0){
-            dataFields.push({isFromListQuery: true, table: 'filterQuery', column: 'min_score', alias: 'search_score'} as FieldInfo);
-        }
-        return dataFields;
-    }
+    // getAvailableListFields(): FieldInfo[] {
+    //     if (this.similarity.match.length > 0) {
+    //         const dataFields = this.databaseConfig.getAvailableFields('Target', 'list', '', 'Similarity');
+    //         dataFields.push({isFromListQuery: true, table: "filterQuery", column: "overlap"} as FieldInfo);
+    //         dataFields.push({isFromListQuery: true, table: "filterQuery", column: "baseSize"} as FieldInfo);
+    //         dataFields.push({isFromListQuery: true, table: "filterQuery", column: "testSize"} as FieldInfo);
+    //         dataFields.push({isFromListQuery: true, table: "filterQuery", column: "commonOptions"} as FieldInfo);
+    //         dataFields.push({isFromListQuery: true, table: "filterQuery", column: "jaccard"} as FieldInfo);
+    //         return dataFields;
+    //     }
+    //     return [];
+    // }
 
     addModelSpecificFiltering(query: any, list: boolean = false, tables: string[]): void {
         let filterQuery;
@@ -172,19 +145,7 @@ ON diseaseList.name = d.ncats_name`));
             .orWhereIn('protein.stringid', batch);
     }
 
-    get DefaultPPIFacets() {
-        return this.databaseConfig.getDefaultFields('Target', 'facet', 'Target')
-            .sort((a, b) => a.order - b.order)
-            .map(a => a.name) || [];
-    };
-
-    get DefaultDiseaseFacets() {
-        return this.databaseConfig.getDefaultFields('Target', 'facet', 'Disease')
-            .sort((a, b) => a.order - b.order)
-            .map(a => a.name) || [];
-    };
-
-    tableNeedsInnerJoin(sqlTable: SqlTable) {
+    tableJoinShouldFilterList(sqlTable: SqlTable) {
         if (this.associatedDisease && sqlTable.tableName === 'disease'){
             return true;
         }

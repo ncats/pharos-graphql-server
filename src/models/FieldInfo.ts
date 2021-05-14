@@ -119,7 +119,7 @@ export class FieldInfo {
                 rootTable: new SqlTable(this.table, {schema: this.schema}),
                 ppiConfidence: this.parent.ppiConfidence,
                 getSpecialModelWhereClause: this.parent.getSpecialModelWhereClause.bind(this.parent),
-                tableNeedsInnerJoin: this.parent.tableNeedsInnerJoin.bind(this.parent)
+                tableJoinShouldFilterList: this.parent.tableJoinShouldFilterList.bind(this.parent)
             }, [
                 new FieldInfo({
                     table: this.parent.rootTable,
