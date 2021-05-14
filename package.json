@@ -4,11 +4,11 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "test" : "node src/index.js & (sleep 10 && jest)",
+    "test": "node src/index.js & (sleep 10 && jest)",
     "justTests": "jest",
-    "start" : "nodemon src/index.js",
-    "start:ci" : "tsc && node src/index.js",
-    "gcp-build" : "tsc -p ."
+    "start": "nodemon src/index.js",
+    "start:ci": "tsc && node src/index.js",
+    "gcp-build": "tsc -p ."
   },
   "author": "",
   "license": "ISC",
@@ -21,8 +21,7 @@
     "apollo-server-plugin-response-cache": "^0.5.3",
     "apollo-server-testing": "^2.15.0",
     "axios": "^0.21.1",
-    "crypto": "^1.0.1",
-    "datasource-sql": "^1.4.1",
+    "datasource-sql": "^1.0.2",
     "express": "^4.17.1",
     "graphql": "^14.5.8",
     "graphql-tester": "0.0.5",
