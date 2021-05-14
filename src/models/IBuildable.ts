@@ -1,10 +1,9 @@
 import {DatabaseConfig} from "./databaseConfig";
-import * as Knex from "knex";
 import {FieldInfo} from "./FieldInfo";
 import {SqlTable} from "./sqlTable";
 
 export interface IBuildable {
-    database: Knex;
+    database: any;
     databaseConfig: DatabaseConfig;
 
     associatedTarget: string;
