@@ -139,7 +139,7 @@ export abstract class DataModelList implements IBuildable {
             this.filteringFacets = facets;
             facets.forEach(filteringFacet => {
                 const index = this.facetsToFetch.findIndex(f => f.name === filteringFacet.name);
-                if (index > 0) {
+                if (index >= 0) {
                     this.facetsToFetch.splice(index, 1);
                 }
                 this.facetsToFetch.unshift(filteringFacet);

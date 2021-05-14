@@ -725,7 +725,7 @@ type DataSourceCount @cacheControl(maxAge: 604800){
 }
 
 type PharosConfiguration{
-     downloadLists (modelName: String, associatedModelName: String): [FieldList]
+     downloadLists (modelName: String, associatedModelName: String, similarityQuery: Boolean = false): [FieldList]
 }
 
 type FieldList{

@@ -23,7 +23,7 @@ export class ListManager {
         list.push(new FieldInfo(field));
     }
 
-    getDownloadLists(model: string, associatedModel: string) {
+    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false) {
         const lists: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
         this.listMap.forEach((fields, key) => {
             const listObj: ListContext = JSON.parse(key);
@@ -32,13 +32,16 @@ export class ListManager {
                 (listObj.associatedModel === associatedModel || listObj.associatedModel === '') &&
                 listObj.type === ContextType.download &&
                 listObj.listName !== 'bucket') {
-                    let list: FieldInfo[] = [];
-                    if (lists.has(listObj.listName)) {
-                        list = lists.get(listObj.listName) || [];
-                    } else {
-                        lists.set(listObj.listName, list);
-                    }
-                    list.push(...fields);
+                let list: FieldInfo[] = [];
+                if (lists.has(listObj.listName)) {
+                    list = lists.get(listObj.listName) || [];
+                } else {
+                    lists.set(listObj.listName, list);
+                }
+                list.push(...fields);
+                if(listObj.listName === 'Single Value Fields' && similarityQuery){
+                    list.push(...ListManager.similarityFields());
+                }
             }
         });
         return lists;
@@ -47,7 +50,7 @@ export class ListManager {
 
     getTheseFields(listObj: DataModelList, type: string, fields: string[], name: string = '') {
         const fieldList: FieldInfo[] = [];
-        if(type === 'download'){
+        if (type === 'download') {
             fieldList.push(new FieldInfo({
                 table: listObj.modelInfo.table,
                 column: listObj.modelInfo.column,
@@ -85,12 +88,17 @@ export class ListManager {
     getDefaultFields(listObj: DataModelList, type: string, name: string = '') {
         let context = this.getContext(listObj, type, name);
         let list = this.listMap.get(context.toString()) || [];
-        if(list.length === 0){
+        if (list.length === 0) {
             context = new ListContext(listObj.modelInfo.name, '', type, name);
             list = this.listMap.get(context.toString()) || [];
         }
         const fields = list.filter(field => field.order > 0).sort((a, b) => a.order - b.order);
         fields.forEach(f => f.parent = listObj);
+
+        if (type === 'list' && listObj.similarity.match.length > 0) {
+            fields.push(...ListManager.similarityFields(listObj));
+        }
+
         return fields;
     }
 
@@ -143,15 +151,47 @@ export class ListManager {
         }
         context = new ListContext(listObj.modelInfo.name, '', 'download', 'Single Value Fields');
         list = this.listMap.get(context.toString()) || [];
-        return this.findInList(list, fieldName, listObj);
+        f = this.findInList(list, fieldName, listObj);
+        if (f) {
+            return f;
+        }
+        if (listObj.similarity.match.length > 0) {
+            f = this.findInList(ListManager.similarityFields(listObj), fieldName, listObj);
+            if (f) {
+                return f;
+            }
+        }
+        return null;
     }
 
-    private findInList(list: FieldInfo[], fieldName: string, listObj: DataModelList){
+    private findInList(list: FieldInfo[], fieldName: string, listObj: DataModelList) {
         const f = list.find(field => field.name === fieldName);
         if (f) {
             f.parent = listObj;
         }
         return f;
+    }
+
+    static similarityFields(listObj?: DataModelList) : FieldInfo[]{
+        const fields: FieldInfo[] = [];
+
+        [   {description: 'Count of shared values between the base protein, and the test protein', name: 'Similarity: Common Count', column: 'overlap'},
+            {description: 'Count of values for the base protein', name: 'Similarity: Base Count', column: 'baseSize'},
+            {description: 'Count of values for the test protein', name: 'Similarity: Test Count', column: 'testSize'},
+            {description: 'A pipe delimited list of common values between the two proteins', name: 'Similarity: Common Elements', column: 'commonOptions'},
+            {description: 'Jaccard distance between the sets of values for the two proteins', name: 'Similarity: Jaccard Distance', column: 'jaccard'}].forEach(obj => {
+            const f = new FieldInfo(
+                {
+                    isFromListQuery: true,
+                    table: "filterQuery",
+                    ...obj
+                });
+            if(listObj){
+                f.parent = listObj;
+            }
+            fields.push(f);
+        });
+        return fields;
     }
 
 }
