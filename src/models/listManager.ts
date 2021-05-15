@@ -75,11 +75,11 @@ export class ListManager {
         const list = this.listMap.get(context.toString()) || [];
         const filteringFacets: FieldInfo[] = [];
         fields.forEach(ff => {
-            const facet = list.find(field => field.name === ff.facet);
+            const facet = list.find(field => field.name === ff.facet)?.copy();
             if (facet) {
                 facet.allowedValues = ff.values;
-                filteringFacets.push(facet);
                 facet.parent = listObj;
+                filteringFacets.push(facet);
             }
         });
         return filteringFacets;
@@ -92,8 +92,13 @@ export class ListManager {
             context = new ListContext(listObj.modelInfo.name, '', type, name);
             list = this.listMap.get(context.toString()) || [];
         }
-        const fields = list.filter(field => field.order > 0).sort((a, b) => a.order - b.order);
-        fields.forEach(f => f.parent = listObj);
+        const fields = list.filter(field => field.order > 0).sort((a, b) => a.order - b.order)
+            .map(f =>
+        {
+            const f2 = f.copy();
+            f2.parent = listObj;
+            return f2;
+        });
 
         if (type === 'list' && listObj.similarity.match.length > 0) {
             fields.push(...ListManager.similarityFields(listObj));
@@ -104,9 +109,13 @@ export class ListManager {
 
     getAllFields(listObj: DataModelList, type: string, name: string = '') {
         const context = this.getContext(listObj, type, name);
-        const fields = this.listMap.get(context.toString()) || [];
-        fields.forEach(f => f.parent = listObj);
-        return fields;
+        const fields = this.listMap.get(context.toString())?.map(f =>
+        {
+            const f2 = f.copy();
+            f2.parent = listObj;
+            return f2;
+        });
+        return fields || [];
     }
 
     getOneField(listObj: DataModelList, type: string, fieldName: string, listName: string = '', includeSVF: boolean = true) {
@@ -165,7 +174,7 @@ export class ListManager {
     }
 
     private findInList(list: FieldInfo[], fieldName: string, listObj: DataModelList) {
-        const f = list.find(field => field.name === fieldName);
+        const f = list.find(field => field.name === fieldName)?.copy();
         if (f) {
             f.parent = listObj;
         }
