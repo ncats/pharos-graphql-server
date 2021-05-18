@@ -535,6 +535,12 @@ const resolvers = {
                 return rows;
             });
         },
+        ligandAssociationDetails: async function (target, args, {dataSources}) {
+            if (target.actVals || target.maxActVal || target.modeOfAction){
+                return {actVals: target.actVals, maxActVal:target.maxActVal, modeOfAction:target.modeOfAction};
+            }
+            return null;
+        },
         diseaseCounts: async function (target, args, {dataSources}) {
             let diseaseArgs = args;
             diseaseArgs.filter = diseaseArgs.filter || {};

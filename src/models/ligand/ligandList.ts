@@ -23,7 +23,7 @@ export class LigandList extends DataModelList {
     }
 
     getSimilarLigands() {
-        const sSearch = new StructureSearch(this.database, this.associatedLigand, this.associatedLigandMethod);
+        const sSearch = new StructureSearch(this.database, this.associatedSmiles, this.associatedStructureMethod);
         this.structureQueryHash = sSearch.queryHash;
         return sSearch.getSimilarStructures();
     }
@@ -32,15 +32,15 @@ export class LigandList extends DataModelList {
         if (this.fields.length > 0) {
             return [{column: 'id', order: 'asc'}];
         }
-        if (this.associatedLigand) {
+        if (this.associatedSmiles) {
             return [{column: 'similarity', order: 'desc'}];
         }
         return [{column: 'actcnt', order: 'desc'}];
     };
 
-    addModelSpecificFiltering(query: any, list: boolean, tables: string[]): void {
+    addModelSpecificFiltering(query: any, list: boolean): void {
         if (this.associatedTarget) {
-            if (!tables.includes('ncats_ligand_activity')) {
+            if (!this.filterAppliedOnJoin(query, 'ncats_ligand_activity')) {
                 let associatedTargetQuery = this.database({
                     ncats_ligands: "ncats_ligands",
                     ncats_ligand_activity: "ncats_ligand_activity",
@@ -56,8 +56,8 @@ export class LigandList extends DataModelList {
             }
         } else if (this.term.length > 0) {
             query.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against("${this.term}*")`);
-        } else if (this.associatedLigand) {
-            if (!tables.includes('structure_search_results')) {
+        } else if (this.associatedSmiles) {
+            if (!this.filterAppliedOnJoin(query, 'structure_search_results')) {
                 const that = this;
                 query.join('result_cache.structure_search_results', function (this: any) {
                     this.on('structure_search_results.ncats_ligand_id', that.keyString());
@@ -80,7 +80,7 @@ export class LigandList extends DataModelList {
         if (this.associatedTarget && (sqlTable.tableName === 'protein' || sqlTable.tableName === 'target' || sqlTable.tableName === 'ncats_ligand_activity')) {
             return true;
         }
-        if (this.associatedLigand && (sqlTable.tableName === 'structure_search_results')){
+        if (this.associatedSmiles && (sqlTable.tableName === 'structure_search_results')){
             return true;
         }
         return false;
@@ -99,7 +99,7 @@ export class LigandList extends DataModelList {
                 AGAINST ('${this.associatedTarget}' IN BOOLEAN MODE) 
                 AND t2tc.protein_id = protein.id)`;
         }
-        if (this.associatedLigand && (fieldInfo.table === 'structure_search_results' || rootTableOverride === 'structure_search_results')) {
+        if (this.associatedSmiles && (fieldInfo.table === 'structure_search_results' || rootTableOverride === 'structure_search_results')) {
             return `structure_search_results.query_hash = "${this.structureQueryHash}"`;
         }
         return "";

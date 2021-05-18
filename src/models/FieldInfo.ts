@@ -193,7 +193,7 @@ export class FieldInfo {
         let query = queryDefinition.generateBaseQuery(true);
 
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
-        this.parent.addModelSpecificFiltering(query, false, [this.table]);
+        this.parent.addModelSpecificFiltering(query, false);
         query.groupBy(1).orderBy('value', 'desc');
         return query;
     }
@@ -210,7 +210,7 @@ export class FieldInfo {
             ]);
         let query = queryDefinition.generateBaseQuery(true);
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
-        this.parent.addModelSpecificFiltering(query, false, [this.table]);
+        this.parent.addModelSpecificFiltering(query, false);
         if (this.log) {
             query.where(this.dataString(), ">", 0);
         } else {

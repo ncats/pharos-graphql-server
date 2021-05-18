@@ -105,6 +105,7 @@ input IFilter {
      associatedTarget: String
      associatedDisease: String
      associatedLigand: String
+     associatedStructure: String
      similarity: String
      ppiConfidence: Int = 400
 }
@@ -545,6 +546,7 @@ type Target @cacheControl(maxAge: 604800){
 
      ppiTargetInteractionDetails: InteractionDetails
      diseaseAssociationDetails: [AssociationDetails]
+     ligandAssociationDetails: LigandAssocDetails
 
      interactingViruses: [VirusDetails]
 
@@ -648,6 +650,12 @@ type AssociationDetails @cacheControl(maxAge: 604800){
      source: String
      O2S: Float
      S2O: Float
+}
+
+type LigandAssocDetails @cacheControl(maxAge: 604800){
+     actVals: String
+     maxActVal: Float
+     modeOfAction: String
 }
 
 type InteractionDetails @cacheControl(maxAge: 604800){

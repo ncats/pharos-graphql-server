@@ -8,7 +8,7 @@ import {IBuildable} from "./IBuildable";
 import {SqlTable} from "./sqlTable";
 
 export abstract class DataModelList implements IBuildable {
-    abstract addModelSpecificFiltering(query: any, list: boolean, tables: string[]): void;
+    abstract addModelSpecificFiltering(query: any, list: boolean): void;
     abstract defaultSortParameters(): { column: string, order: string } [];
 
     abstract getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string;
@@ -26,8 +26,10 @@ export abstract class DataModelList implements IBuildable {
 
     associatedTarget: string = "";
     associatedDisease: string = "";
+    associatedSmiles: string = "";
+    associatedStructureMethod: string = 'sim';
+    associatedStructure: string = "";
     associatedLigand: string = "";
-    associatedLigandMethod: string = 'sim';
     similarity: { match: string, facet: string } = {match: '', facet: ''};
     ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
     skip: number | undefined;
@@ -48,7 +50,7 @@ export abstract class DataModelList implements IBuildable {
         if (this.associatedDisease) {
             return 'Disease';
         }
-        if (this.associatedLigand) {
+        if (this.associatedSmiles || this.associatedLigand) {
             return 'Ligand';
         }
         return '';
@@ -91,14 +93,18 @@ export abstract class DataModelList implements IBuildable {
             if (json.filter.associatedDisease) {
                 this.associatedDisease = json.filter.associatedDisease;
             }
-            if (json.filter.associatedLigand){
-                const pieces = json.filter.associatedLigand.split('!');
+            if (json.filter.associatedLigand) {
+                this.associatedLigand = json.filter.associatedLigand
+            }
+            if (json.filter.associatedStructure){
+                const pieces = json.filter.associatedStructure.split('!');
                 pieces.forEach((p: string) => {
                     const method = p.toLowerCase().substr(0,3);
                     if(method === 'sim' || method === 'sub'){
-                        this.associatedLigandMethod = method;
-                    } else {
-                        this.associatedLigand = p;
+                        this.associatedStructureMethod = method;
+                    }
+                    else {
+                        this.associatedSmiles = p;
                     }
                 });
             }
@@ -164,7 +170,7 @@ export abstract class DataModelList implements IBuildable {
             [{table: this.rootTable, column: this.keyColumn, group_method: 'count', alias: 'count'} as FieldInfo]);
         const query = queryDefinition.generateBaseQuery(false);
         this.addFacetConstraints(query, this.filteringFacets);
-        this.addModelSpecificFiltering(query, false, []);
+        this.addModelSpecificFiltering(query, false);
         this.captureQueryPerformance(query, "list count");
         // console.log(query.toString());
         return query;
@@ -192,7 +198,7 @@ export abstract class DataModelList implements IBuildable {
         const query = queryDefinition.generateBaseQuery(innerJoinAll);
 
         this.addFacetConstraints(query, this.filteringFacets);
-        this.addModelSpecificFiltering(query, true, this.dataFields.map(f => f.table));
+        this.addModelSpecificFiltering(query, true);
 
         if (queryDefinition.hasGroupedColumns()) {
             query.groupBy(this.keyString());
@@ -254,13 +260,21 @@ export abstract class DataModelList implements IBuildable {
         if (this.associatedDisease.length > 0) {
             return false;
         }
-        if (this.associatedLigand.length > 0) {
+        if (this.associatedSmiles.length > 0) {
             return false;
         }
         if (this.filteringFacets.length > 0) {
             return false;
         }
         return true;
+    }
+
+    filterAppliedOnJoin(query: any, table: string){
+        const found = query._statements.find((joins: any) => {
+            return joins.joinType === 'inner' &&
+                Object.keys(joins.table)[0] === table;
+        });
+        return !!found;
     }
 
     doSafetyCheck(query: any){

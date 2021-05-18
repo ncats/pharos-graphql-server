@@ -60,12 +60,14 @@ export class DiseaseList extends DataModelList {
         return [{column: 'count', order: 'desc'}]
     };
 
-    addModelSpecificFiltering(query: any, list: boolean, tables: string[]): void {
+    addModelSpecificFiltering(query: any, list: boolean): void {
         if (this.term.length > 0) {
             query.join(this.getTermQuery().as('termSearch'), 'termSearch.id', this.keyString());
         }
         if (this.associatedTarget) {
-            if (!tables.includes('protein') && !tables.includes('target') && !tables.includes('disease')) {
+            if (!this.filterAppliedOnJoin(query, 'protein') &&
+                !this.filterAppliedOnJoin(query, 'target') &&
+                !this.filterAppliedOnJoin(query, 'disease')) {
                 query.join(this.getAssociatedTargetQuery().as('assocTarget'), 'assocTarget.name', this.keyString());
             }
         }
