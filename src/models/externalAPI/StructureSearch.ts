@@ -42,24 +42,27 @@ export class StructureSearch {
                     ])
                 })
                 .catch((error: any) => {
-                    return this.updateQueryStatus('fail', error);
+                    return this.updateQueryStatus('fail', JSON.stringify(error));
                 });
         }
     }
 
     private addResults(dataArray: any[]) {
-        return this.knex('result_cache.structure_search_results').insert(
-            dataArray.map(row => {
-                return {
-                    id: null,
-                    query_hash: this.queryHash,
-                    structure: row.structure,
-                    ncats_ligand_id: row.id,
-                    similarity: row.similarity
-                }
-            })
-    )
-        ;
+        const inserts = dataArray.map(row => {
+            return {
+                id: null,
+                query_hash: this.queryHash,
+                structure: row.structure,
+                ncats_ligand_id: row.id,
+                similarity: row.similarity
+            }
+        });
+
+        const queries = [];
+        while (inserts.length > 0) {
+            queries.push(this.knex('result_cache.structure_search_results').insert(inserts.splice(0, 25000)));
+        }
+        return Promise.all(queries);
     }
 
     private updateQueryStatus(status: string, error: string) {
