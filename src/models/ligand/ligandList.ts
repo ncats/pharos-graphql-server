@@ -35,7 +35,7 @@ export class LigandList extends DataModelList {
         if (this.associatedSmiles) {
             return [{column: 'similarity', order: 'desc'}];
         }
-        return [{column: 'actcnt', order: 'desc'}];
+        return [{column: 'targetCount', order: 'desc'}];
     };
 
     addModelSpecificFiltering(query: any, list: boolean): void {

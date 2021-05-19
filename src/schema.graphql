@@ -342,6 +342,7 @@ type Ligand @cacheControl(maxAge: 604800) {
      smiles: String
      """Activity count"""
      actcnt: Int
+     targetCount: Int
      activities (all: Boolean = true): [LigandActivity]
      similarity: Float
 }

@@ -263,6 +263,9 @@ export abstract class DataModelList implements IBuildable {
         if (this.associatedSmiles.length > 0) {
             return false;
         }
+        if (this.associatedLigand.length > 0) {
+            return false;
+        }
         if (this.filteringFacets.length > 0) {
             return false;
         }
