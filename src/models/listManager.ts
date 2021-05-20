@@ -1,5 +1,6 @@
 import {FieldInfo} from "./FieldInfo";
 import {DataModelList} from "./DataModelList";
+import {TargetList} from "./target/targetList";
 
 export class ListManager {
     listMap: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
@@ -103,6 +104,9 @@ export class ListManager {
         if (type === 'list' && listObj.similarity.match.length > 0) {
             fields.push(...ListManager.similarityFields(listObj));
         }
+        if (type === 'list' && listObj.term.length > 0 && listObj instanceof TargetList) {
+            fields.push(...ListManager.searchFields(listObj));
+        }
 
         return fields;
     }
@@ -181,6 +185,18 @@ export class ListManager {
         return f;
     }
 
+    static searchFields(listObj?: DataModelList) : FieldInfo[] {
+        const fields: FieldInfo[] = [];
+        [
+            {description: 'Score assigned to targets based on the data that matched the search term', name: 'Search Score',
+                column: 'min_score', alias: 'search_score'}
+        ].forEach(obj => {
+            const f = this.mapToDynamicField(obj, listObj);
+            fields.push(f);
+        });
+        return fields;
+    }
+
     static similarityFields(listObj?: DataModelList) : FieldInfo[]{
         const fields: FieldInfo[] = [];
 
@@ -189,20 +205,24 @@ export class ListManager {
             {description: 'Count of values for the test protein', name: 'Similarity: Test Count', column: 'testSize'},
             {description: 'A pipe delimited list of common values between the two proteins', name: 'Similarity: Common Elements', column: 'commonOptions'},
             {description: 'Jaccard distance between the sets of values for the two proteins', name: 'Similarity: Jaccard Distance', column: 'jaccard'}].forEach(obj => {
-            const f = new FieldInfo(
-                {
-                    isFromListQuery: true,
-                    table: "filterQuery",
-                    ...obj
-                });
-            if(listObj){
-                f.parent = listObj;
-            }
+            const f = this.mapToDynamicField(obj, listObj);
             fields.push(f);
         });
         return fields;
     }
 
+    private static mapToDynamicField(obj: { name: string; column: string; description: string } | { name: string; column: string; description: string } | { name: string; column: string; description: string } | { name: string; column: string; description: string } | { name: string; column: string; description: string }, listObj: DataModelList | undefined) {
+        const f = new FieldInfo(
+            {
+                isFromListQuery: true,
+                table: "filterQuery",
+                ...obj
+            });
+        if (listObj) {
+            f.parent = listObj;
+        }
+        return f;
+    }
 }
 
 export enum ContextType {

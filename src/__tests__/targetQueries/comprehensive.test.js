@@ -16,14 +16,14 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new TargetList(tcrd, {filter: {facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullFamFacet = fullList.facetsToFetch.find(facet => facet.name === 'Family');
         const fullFamFacetQuery = fullFamFacet.getFacetQuery();
         const fullTDLFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const fullTDLFacetQuery = fullTDLFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredFamFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Family');
         const filteredFamFacetQuery = filteredFamFacet.getFacetQuery();
         const filteredTDLFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
@@ -69,14 +69,14 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new TargetList(tcrd, {filter: {term:'cdk', facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullFamFacet = fullList.facetsToFetch.find(facet => facet.name === 'Family');
         const fullFamFacetQuery = fullFamFacet.getFacetQuery();
         const fullTDLFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const fullTDLFacetQuery = fullTDLFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredFamFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Family');
         const filteredFamFacetQuery = filteredFamFacet.getFacetQuery();
         const filteredTDLFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
@@ -123,14 +123,14 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new TargetList(tcrd, {filter: {associatedTarget: "ACE2", facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullFamFacet = fullList.facetsToFetch.find(facet => facet.name === 'Family');
         const fullFamFacetQuery = fullFamFacet.getFacetQuery();
         const fullTDLFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const fullTDLFacetQuery = fullTDLFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredFamFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Family');
         const filteredFamFacetQuery = filteredFamFacet.getFacetQuery();
         const filteredTDLFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
@@ -176,14 +176,14 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new TargetList(tcrd, {filter: {associatedDisease:"carcinoma", facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullFamFacet = fullList.facetsToFetch.find(facet => facet.name === 'Family');
         const fullFamFacetQuery = fullFamFacet.getFacetQuery();
         const fullTDLFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const fullTDLFacetQuery = fullTDLFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredFamFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Family');
         const filteredFamFacetQuery = filteredFamFacet.getFacetQuery();
         const filteredTDLFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
@@ -229,14 +229,14 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new TargetList(tcrd, {filter: {similarity: "(DRD2, GWAS)", facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullFamFacet = fullList.facetsToFetch.find(facet => facet.name === 'Family');
         const fullFamFacetQuery = fullFamFacet.getFacetQuery();
         const fullTDLFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const fullTDLFacetQuery = fullTDLFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredFamFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Family');
         const filteredFamFacetQuery = filteredFamFacet.getFacetQuery();
         const filteredTDLFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');

@@ -79,6 +79,15 @@ export class FieldInfo {
         this.isFromListQuery = obj?.isFromListQuery || false;
 
         this.select = obj?.log ? (`log(${this.dataString()})`) : obj?.select || this.dataString();
+
+        this.handleWeirdCases();
+    }
+
+    // TODO, make this not necessary :(
+    handleWeirdCases(){
+        if(this.table==='ncats_ppi' && this.column === 'ppitypes'){
+            this.valuesDelimited = true;
+        }
     }
 
     dataString() {
