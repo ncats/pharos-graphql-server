@@ -1,5 +1,6 @@
 import {DatabaseConfig} from "../databaseConfig";
 import {FieldInfo} from "../FieldInfo";
+import {ListContext} from "../listManager";
 
 
 export class Jaccard{
@@ -20,8 +21,9 @@ export class Jaccard{
         const rootTableObj = this.dbConfig.tables.find(table => table.tableName === this.rootTable);
         this.keyString = `${rootTableObj?.tableName}.${rootTableObj?.primaryKey}`;
 
-        // @ts-ignore
-        this.facet = this.dbConfig.getOneField('Target', 'overlap', '', '', similarity.facet);
+        const context = new ListContext('Target', '', 'overlap', '');
+        const list = this.dbConfig.listManager.listMap.get(context.toString()) || [];
+        this.facet = list.find(f => f.name === similarity.facet) || new FieldInfo({});
     }
 
     getListQuery(forList: boolean) {

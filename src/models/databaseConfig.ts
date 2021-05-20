@@ -1,5 +1,6 @@
 import {DatabaseTable, TableLink, TableLinkInfo} from "./databaseTable";
 import {FieldInfo} from "./FieldInfo";
+import {ListManager} from "./listManager";
 
 export class ModelInfo {
     name: string;
@@ -47,55 +48,7 @@ export class FieldList {
  */
 export class DatabaseConfig {
     tables: DatabaseTable[] = [];
-    availableFieldMap: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
-
-    getAvailableFields(model: string, context: string = '', associatedModel: string = '', listName: string = ''): FieldInfo[] {
-        if(context === 'facet'){ // for facets, only the the exact match
-            const key = new FieldList(model, context, associatedModel, '').listKey;
-            const list = this.availableFieldMap.get(key)?.map(each => each.copy());
-            if (list && list.length > 0) {
-                return list;
-            }
-        }
-        else if(context === 'list'){ // for lists, fall back on the model free lists
-            const key = new FieldList(model, context, associatedModel, '').listKey;
-            const list = this.availableFieldMap.get(key)?.map(each => each.copy());
-            if (list && list.length > 0) {
-                return list;
-            }
-            if(associatedModel){
-                const key = new FieldList(model, context, '', '').listKey;
-                const list = this.availableFieldMap.get(key)?.map(each => each.copy());
-                if (list && list.length > 0) {
-                    return list;
-                }
-            }
-        }
-        else if(context === 'download') { // for downloads, get the full lists, across all the download groups
-            const key = new FieldList(model, '', associatedModel, '').listKey;
-            const list = this.availableFieldMap.get(key)?.map(each => each.copy());
-            if (list && list.length > 0) {
-                return list;
-            }
-        }
-        return [];
-    }
-
-    getDefaultFields(model: string, context: string = '', associatedModel: string = '', listName: string = ''): FieldInfo[] {
-        return this.getAvailableFields(model, context, associatedModel, listName)
-            .filter(fInfo => fInfo.default).sort(((a, b) => a.order - b.order));
-    }
-
-    getOneField(model: string, context: string = '', associatedModel: string, listName: string, name: string): FieldInfo | undefined {
-        let list = this.getAvailableFields(model, context, associatedModel, listName);
-        let match = list.find((fieldInfo: FieldInfo) => fieldInfo.name === name);
-        if (match) {
-            return match.copy();
-        }
-        list = this.getAvailableFields(model, 'download', '', 'Single Value Fields');
-        match = list.find((fieldInfo: FieldInfo) => fieldInfo.name === name);
-        return match?.copy();
-    }
+    listManager: ListManager = new ListManager();
 
     populateFieldLists() {
         const query = this.database({...this.modelTable, ...this.fieldListTable, ...this.fieldTable, ...this.contextTable}
@@ -116,6 +69,7 @@ export class DatabaseConfig {
                     description: this.database.raw('COALESCE(field_list.description, field.description)'),
 
                     // where is the data
+                    schema: 'field.schema',
                     table: 'field.table',
                     column: 'field.column',
                     select: 'field.select',
@@ -147,22 +101,9 @@ export class DatabaseConfig {
                 ]);
         return query.then((rows: any[]) => {
             rows.forEach(row => {
-                ['parseJson', 'parseJsonContextFree'].forEach((method: string) => {
-                    // @ts-ignore
-                    const key = FieldList[method](row).listKey;
-                    const fieldInfo = new FieldInfo(row);
-                    if (this.availableFieldMap.has(key)) {
-                        const existingList = this.availableFieldMap.get(key) || [];
-                        if (!existingList.map(f => f.name).includes(row.name)) {
-                            existingList.push(fieldInfo);
-                        }
-                    } else {
-                        this.availableFieldMap.set(key, [fieldInfo]);
-                    }
-                });
+                this.listManager.addField(row.model, row.associatedModel, row.context, row.listName, row);
             });
         });
-
     }
 
     modelList: Map<string, ModelInfo> = new Map<string, { name: string, table: string, column: string }>();
@@ -235,7 +176,16 @@ export class DatabaseConfig {
         return linkInfo;
     }
 
+
+
     private _getLinkInformation(fromTable: string, toTable: string, reverse: boolean = false): TableLinkInfo | null {
+        if (DatabaseTable.nonStandardLinks.has(`${fromTable}-${toTable}`)){
+            const nonStandardLink = DatabaseTable.nonStandardLinks.get(`${fromTable}-${toTable}`);
+            if(nonStandardLink){
+                const pieces = nonStandardLink.split(('-'));
+                return new TableLinkInfo(pieces[0], pieces[1]);
+            }
+        }
         if (fromTable === toTable) {
             const selfTable = this.tables.find(table => table.tableName === fromTable);
             if (!selfTable || !selfTable.primaryKey) {

@@ -104,6 +104,8 @@ input IFilter {
      order: String
      associatedTarget: String
      associatedDisease: String
+     associatedLigand: String
+     associatedStructure: String
      similarity: String
      ppiConfidence: Int = 400
 }
@@ -340,7 +342,9 @@ type Ligand @cacheControl(maxAge: 604800) {
      smiles: String
      """Activity count"""
      actcnt: Int
+     targetCount: Int
      activities (all: Boolean = true): [LigandActivity]
+     similarity: Float
 }
 
 type LigandActivity @cacheControl(maxAge: 604800) {
@@ -427,12 +431,20 @@ type DRGCResource @cacheControl(maxAge: 604800){
      detailBlob: JSON
 }
 
+type LinkInfo @cacheControl(maxAge: 604800) {
+     sourceName: String
+     description: String
+     url: String
+     image: String
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
      similarity: SimilarityDetails
      sequence_variants: SeqVariantInfo
      sequence_annotations: [SeqAnnotationInfo]
      drgc_resources: [DRGCResource]
+     affiliate_links: [LinkInfo]
 
      """Internal TCRD ID; should not be used externally!"""
      tcrdid: Int!
@@ -535,6 +547,7 @@ type Target @cacheControl(maxAge: 604800){
 
      ppiTargetInteractionDetails: InteractionDetails
      diseaseAssociationDetails: [AssociationDetails]
+     ligandAssociationDetails: LigandAssocDetails
 
      interactingViruses: [VirusDetails]
 
@@ -640,6 +653,12 @@ type AssociationDetails @cacheControl(maxAge: 604800){
      S2O: Float
 }
 
+type LigandAssocDetails @cacheControl(maxAge: 604800){
+     actVals: String
+     maxActVal: Float
+     modeOfAction: String
+}
+
 type InteractionDetails @cacheControl(maxAge: 604800){
      ppitypes: String
      score: Float
@@ -715,8 +734,7 @@ type DataSourceCount @cacheControl(maxAge: 604800){
 }
 
 type PharosConfiguration{
-     lists (listNames: [String]): [FieldList]
-     downloadLists (modelName: String, associatedModelName: String): [FieldList]
+     downloadLists (modelName: String, associatedModelName: String, similarityQuery: Boolean = false): [FieldList]
 }
 
 type FieldList{
@@ -728,6 +746,7 @@ type FieldDetails{
      order: Int
      name: String
      description: String
+     schema: String
      table: String
      column: String
      alias: String

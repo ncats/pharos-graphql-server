@@ -23,54 +23,17 @@ export class TargetList extends DataModelList {
         if (this.similarity.match.length > 0) {
             return [{column: 'jaccard', order: 'desc'}];
         }
+        if (this.associatedLigand.length > 0) {
+            return [{column: 'maxActVal', order: 'desc'}];
+        }
         return [{column: 'novelty', order: 'desc'}];
     }
 
     constructor(tcrd: any, json: any) {
         super(tcrd, 'Target', json);
-
-        let facetList: string[];
-        if (!json || !json.facets || json.facets.length == 0) {
-            if (this.associatedTarget) {
-                facetList = this.DefaultPPIFacets;
-            } else if (this.associatedDisease) {
-                facetList = this.DefaultDiseaseFacets;
-            } else {
-                facetList = this.DefaultFacets;
-            }
-        } else if (json.facets == "all") {
-            facetList = this.AllFacets;
-        } else {
-            facetList = json.facets;
-        }
-        this.facetsToFetch = FieldInfo.deduplicate(
-            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList, this.isNull())));
     }
 
-    getAvailableListFields(): FieldInfo[] {
-        if (this.associatedTarget) {
-            return this.databaseConfig.getAvailableFields('Target', 'list', 'Target');
-        }
-        if (this.associatedDisease) {
-            return this.databaseConfig.getAvailableFields('Target', 'list', 'Disease');
-        }
-        if (this.similarity.match.length > 0) {
-            const dataFields = this.databaseConfig.getAvailableFields('Target', 'list', '', 'Similarity');
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "overlap"} as FieldInfo);
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "baseSize"} as FieldInfo);
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "testSize"} as FieldInfo);
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "commonOptions"} as FieldInfo);
-            dataFields.push({isFromListQuery: true, table: "filterQuery", column: "jaccard"} as FieldInfo);
-            return dataFields;
-        }
-        const dataFields = this.databaseConfig.getAvailableFields('Target', 'list');
-        if(this.term.length > 0){
-            dataFields.push({isFromListQuery: true, table: 'filterQuery', column: 'min_score', alias: 'search_score'} as FieldInfo);
-        }
-        return dataFields;
-    }
-
-    addModelSpecificFiltering(query: any, list: boolean = false, tables: string[]): void {
+    addModelSpecificFiltering(query: any, list: boolean = false): void {
         let filterQuery;
         if (list) {
             if(this.term.length > 0){
@@ -80,12 +43,17 @@ export class TargetList extends DataModelList {
                 filterQuery = this.getSimilarityQuery();
             }
             else if(this.associatedDisease.length > 0) {
-                if(!tables.includes('disease')) {
+                if (!this.filterAppliedOnJoin(query, 'disease')) {
                     filterQuery = this.fetchProteinList();
                 }
             }
             else if(this.associatedTarget.length > 0) {
-                if (!tables.includes('ncats_ppi')) {
+                if (!this.filterAppliedOnJoin(query, 'ncats_ppi')) {
+                    filterQuery = this.fetchProteinList();
+                }
+            }
+            else if(this.associatedLigand.length > 0) {
+                if (!this.filterAppliedOnJoin(query, 'ncats_ligand_activity')) {
                     filterQuery = this.fetchProteinList();
                 }
             }
@@ -114,7 +82,12 @@ export class TargetList extends DataModelList {
     }
 
     fetchProteinList(): any {
-        if (this.term.length == 0 && this.associatedTarget.length == 0 && this.associatedDisease.length == 0 && this.similarity.match.length == 0) {
+        if (this.term.length == 0 &&
+            this.associatedTarget.length == 0 &&
+            this.associatedDisease.length == 0 &&
+            this.similarity.match.length == 0 &&
+            this.associatedLigand.length == 0
+        ) {
             return null;
         }
         if (this.proteinListCached) {
@@ -132,7 +105,14 @@ export class TargetList extends DataModelList {
                     matchQuery: `match(protein.uniprot,protein.sym,protein.stringid) against('${this.similarity.match}' in boolean mode)`
                 },
                 this.rootTable, this.database, this.databaseConfig).getListQuery(false);
-        } else {
+        } else if (this.associatedLigand.length > 0) {
+            proteinListQuery = this.database({ncats_ligands: 'ncats_ligands', ncats_ligand_activity: 'ncats_ligand_activity', t2tc: 't2tc'})
+                .distinct('t2tc.protein_id')
+                .where('t2tc.target_id', this.database.raw('ncats_ligand_activity.target_id'))
+                .where('ncats_ligand_activity.ncats_ligand_id', this.database.raw('ncats_ligands.id'))
+                .where('ncats_ligands.identifier', this.associatedLigand);
+        }
+         else {
             proteinListQuery = this.getDiseaseQuery();
         }
         this.captureQueryPerformance(proteinListQuery, "protein list");
@@ -172,23 +152,14 @@ ON diseaseList.name = d.ncats_name`));
             .orWhereIn('protein.stringid', batch);
     }
 
-    get DefaultPPIFacets() {
-        return this.databaseConfig.getDefaultFields('Target', 'facet', 'Target')
-            .sort((a, b) => a.order - b.order)
-            .map(a => a.name) || [];
-    };
-
-    get DefaultDiseaseFacets() {
-        return this.databaseConfig.getDefaultFields('Target', 'facet', 'Disease')
-            .sort((a, b) => a.order - b.order)
-            .map(a => a.name) || [];
-    };
-
-    tableNeedsInnerJoin(sqlTable: SqlTable) {
+    tableJoinShouldFilterList(sqlTable: SqlTable) {
         if (this.associatedDisease && sqlTable.tableName === 'disease'){
             return true;
         }
         if (this.associatedTarget && sqlTable.tableName === 'ncats_ppi'){
+            return true;
+        }
+        if (this.associatedLigand && sqlTable.tableName === 'ncats_ligand_activity') {
             return true;
         }
         return false;
@@ -221,6 +192,9 @@ ON diseaseList.name = d.ncats_name`));
             WHERE
                 finder.lft <= lst.lft
                     AND finder.rght + 0 >= lst.rght)`;
+        }
+        if (this.associatedLigand && (fieldInfo.table === 'ncats_ligand_activity' || rootTableOverride === 'ncats_ligand_activity')) {
+            return `ncats_ligand_activity.ncats_ligand_id = (select id from ncats_ligands where identifier = '${this.associatedLigand}')`;
         }
         return "";
     }

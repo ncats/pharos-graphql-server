@@ -50,21 +50,8 @@ export class DiseaseList extends DataModelList {
 
     constructor(tcrd: any, json: any) {
         super(tcrd, 'Disease', json);
-
-        let facetList: string[];
-        if (this.associatedTarget) {
-            facetList = this.DefaultFacetsWithTarget;
-        } else {
-            facetList = this.DefaultFacets;
-        }
-        this.facetsToFetch = FieldInfo.deduplicate(
-            this.facetsToFetch.concat(this.facetFactory.getFacetsFromList(this, facetList)));
     }
 
-    get DefaultFacetsWithTarget() {
-        return this.databaseConfig.getDefaultFields('Disease', 'facet', 'Target')
-            .map(a => a.name) || [];
-    };
     defaultSortParameters(): {column: string; order: string}[]
     {
         if (this.fields.length > 0) {
@@ -73,19 +60,14 @@ export class DiseaseList extends DataModelList {
         return [{column: 'count', order: 'desc'}]
     };
 
-    getAvailableListFields() : FieldInfo[] {
-        if (this.associatedTarget) {
-            return this.databaseConfig.getAvailableFields('Disease', 'list', 'Target');
-        }
-        return this.databaseConfig.getAvailableFields('Disease', 'list');
-    };
-
-    addModelSpecificFiltering(query: any, list: boolean, tables: string[]): void {
+    addModelSpecificFiltering(query: any, list: boolean): void {
         if (this.term.length > 0) {
             query.join(this.getTermQuery().as('termSearch'), 'termSearch.id', this.keyString());
         }
         if (this.associatedTarget) {
-            if (!tables.includes('protein') && !tables.includes('target') && !tables.includes('disease')) {
+            if (!this.filterAppliedOnJoin(query, 'protein') &&
+                !this.filterAppliedOnJoin(query, 'target') &&
+                !this.filterAppliedOnJoin(query, 'disease')) {
                 query.join(this.getAssociatedTargetQuery().as('assocTarget'), 'assocTarget.name', this.keyString());
             }
         }
@@ -118,7 +100,7 @@ export class DiseaseList extends DataModelList {
             .orderBy("associationCount", "desc");
     }
 
-    tableNeedsInnerJoin(sqlTable: SqlTable) {
+    tableJoinShouldFilterList(sqlTable: SqlTable) {
         if (this.associatedTarget && (sqlTable.tableName === 'protein' || sqlTable.tableName === 'target' || sqlTable.tableName === 'disease')) {
             return true;
         }

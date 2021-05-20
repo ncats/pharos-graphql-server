@@ -2,7 +2,7 @@
 // Edit as appropriate
 //
 const cred = {
-    DBHOST: 'tcrd.ncats.io',
+    DBHOST: 'tcrd-cluster.cluster-ceyknq0yekb3.us-east-1.rds.amazonaws.com',
     DBNAME: 'tcrd6110',
     USER: 'tcrd',
     PWORD: '',

@@ -1,5 +1,6 @@
 import {DataModelList} from "./DataModelList";
 import {QueryDefinition} from "./queryDefinition";
+import {SqlTable} from "./sqlTable";
 
 export enum FacetDataType {
     category = 'category',
@@ -10,6 +11,7 @@ export class FieldInfo {
     name: string;
     description: string;
 
+    schema: string;
     table: string;
     column: string;
     alias: string;
@@ -39,6 +41,7 @@ export class FieldInfo {
 
     constructor(obj: any) {
         this.name = obj?.name || '';
+        this.schema = obj?.schema || '';
         this.description = obj?.description || '';
 
         this.table = obj?.table || '';
@@ -76,6 +79,15 @@ export class FieldInfo {
         this.isFromListQuery = obj?.isFromListQuery || false;
 
         this.select = obj?.log ? (`log(${this.dataString()})`) : obj?.select || this.dataString();
+
+        this.handleWeirdCases();
+    }
+
+    // TODO, make this not necessary :(
+    handleWeirdCases(){
+        if(this.table==='ncats_ppi' && this.column === 'ppitypes'){
+            this.valuesDelimited = true;
+        }
     }
 
     dataString() {
@@ -113,10 +125,10 @@ export class FieldInfo {
                 databaseConfig: this.parent.databaseConfig,
                 associatedTarget: this.parent.associatedTarget,
                 associatedDisease: this.parent.associatedDisease,
-                rootTable: this.table,
+                rootTable: new SqlTable(this.table, {schema: this.schema}),
                 ppiConfidence: this.parent.ppiConfidence,
                 getSpecialModelWhereClause: this.parent.getSpecialModelWhereClause.bind(this.parent),
-                tableNeedsInnerJoin: this.parent.tableNeedsInnerJoin.bind(this.parent)
+                tableJoinShouldFilterList: this.parent.tableJoinShouldFilterList.bind(this.parent)
             }, [
                 new FieldInfo({
                     table: this.parent.rootTable,
@@ -147,6 +159,7 @@ export class FieldInfo {
             query.whereRaw(this.where_clause);
         }
         query.whereNotNull(`${this.parent.rootTable}.${this.parent.keyColumn}`);
+        // console.log(query.toString());
         return query;
     }
 
@@ -189,7 +202,7 @@ export class FieldInfo {
         let query = queryDefinition.generateBaseQuery(true);
 
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
-        this.parent.addModelSpecificFiltering(query, false, [this.table]);
+        this.parent.addModelSpecificFiltering(query, false);
         query.groupBy(1).orderBy('value', 'desc');
         return query;
     }
@@ -206,7 +219,7 @@ export class FieldInfo {
             ]);
         let query = queryDefinition.generateBaseQuery(true);
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
-        this.parent.addModelSpecificFiltering(query, false, [this.table]);
+        this.parent.addModelSpecificFiltering(query, false);
         if (this.log) {
             query.where(this.dataString(), ">", 0);
         } else {

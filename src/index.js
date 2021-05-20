@@ -62,7 +62,9 @@ app.get("/render", (req, res) => {
         const chunks = piece.split('=');
         paramMap[chunks[0]] = chunks[1];
     });
-    res.redirect(`https://tripod.nih.gov/idg/api/v1/render/${paramMap.structure}?size=${paramMap.size}`);
+    // res.redirect(`https://tripod.nih.gov/servlet/renderServletv13?standardize=true&size=${paramMap.size}&structure=${paramMap.structure}`);
+    // res.redirect(`https://tripod.nih.gov/idg/api/v1/render/${paramMap.structure}?size=${paramMap.size}`);
+    res.redirect(`http://ec2-54-160-174-162.compute-1.amazonaws.com:8080/render?structure=${paramMap.structure}&size=${paramMap.size}`);
 });
 
 server.applyMiddleware({

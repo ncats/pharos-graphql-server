@@ -18,7 +18,7 @@ describe('all the queries should be consistent with each other', function () {
             batch: diseaseList
         });
 
-        const batchListQuery = batchList.getListQuery();
+        const batchListQuery = batchList.getListQuery('list');
         const batchCountQuery = batchList.getCountQuery();
         const fullTdlFacet = fullList.facetsToFetch.find(f => f.name == 'Target Development Level').getFacetQuery();
         const batchTdlFacet = batchList.facetsToFetch.find(f => f.name == 'Target Development Level').getFacetQuery();
@@ -42,12 +42,12 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new DiseaseList(tcrd, {filter: {facets: [{facet: "Data Source", values: ["CTD"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const fullTypeFacetQuery = fullTypeFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const filteredTypeFacetQuery = filteredTypeFacet.getFacetQuery();
         const filteredTypeConstraintQuery = filteredList.filteringFacets[0].getFacetConstraintQuery();
@@ -92,12 +92,12 @@ describe('all the queries should be consistent with each other', function () {
         });
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const fullTypeFacetQuery = fullTypeFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
         const filteredTypeFacetQuery = filteredTypeFacet.getFacetQuery();
         const filteredTypeConstraintQuery = filteredList.filteringFacets[0].getFacetConstraintQuery();
@@ -141,12 +141,12 @@ describe('all the queries should be consistent with each other', function () {
         });
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Drug');
         const fullTypeFacetQuery = fullTypeFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Drug');
         const filteredTypeFacetQuery = filteredTypeFacet.getFacetQuery();
         const filteredTypeConstraintQuery = filteredList.filteringFacets[0].getFacetConstraintQuery();

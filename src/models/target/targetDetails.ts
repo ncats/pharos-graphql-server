@@ -1,5 +1,6 @@
 import {DatabaseConfig} from "../databaseConfig";
 import {FieldInfo} from "../FieldInfo";
+import {ListContext} from "../listManager";
 
 
 export class TargetDetails{
@@ -18,8 +19,9 @@ export class TargetDetails{
         this.top = args.top || 10;
         this.skip = args.skip || 0;
 
-        // @ts-ignore
-        this.facet = this.databaseConfig.getOneField('Target', 'facet', '', '', this.facetName);
+        const context = new ListContext('Target', '', 'facet', '');
+        const list = this.databaseConfig.listManager.listMap.get(context.toString()) || [];
+        this.facet = list.find(f => f.name === this.facetName) || new FieldInfo({});
     }
 
     getFacetValueCount(){

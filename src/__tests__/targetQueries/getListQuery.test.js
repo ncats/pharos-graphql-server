@@ -17,8 +17,8 @@ describe('list queries should work', function () {
             top: 10,
             fields: ["UniProt Keyword", "PDB IDs"]
         });
-        // console.log(listObj.getListQuery().toString());
-        return listObj.getListQuery().then(res => {
+        // console.log(listObj.getListQuery('download').toString());
+        return listObj.getListQuery('download').then(res => {
             expect(res.length).toBe(10);
             expect(res[0]["UniProt Keyword"]).toBeTruthy();
             expect(res[0]["PDB IDs"]).toBeTruthy();
@@ -30,8 +30,8 @@ describe('list queries should work', function () {
             top: 10,
             fields: ["Family", "UniProt", "PDB IDs"]
         });
-        // console.log(listObj.getListQuery().toString());
-        return listObj.getListQuery().then(res => {
+        // console.log(listObj.getListQuery('download').toString());
+        return listObj.getListQuery('download').then(res => {
             expect(res.length).toBe(10);
             res.forEach(val => {
                 expect(val["UniProt"]).toBeTruthy();
@@ -56,8 +56,8 @@ describe('list queries should work', function () {
                 "BioPlex p_ni",
                 "BioPlex p_wrong"]
         });
-        console.log(listObj.getListQuery().toString());
-        return listObj.getListQuery().then(res => {
+        console.log(listObj.getListQuery('download').toString());
+        return listObj.getListQuery('download').then(res => {
             expect(res.length).toBeGreaterThan(0);
             expect(res[0]["UniProt"]).toBeTruthy();
             expect(res[0]["Symbol"]).toBeTruthy();
@@ -85,8 +85,8 @@ describe('list queries should work', function () {
                 order: "^Antibody Count"
             }
         });
-        const descQuery = descendingList.getListQuery();
-        const ascQuery = ascendingList.getListQuery();
+        const descQuery = descendingList.getListQuery('list');
+        const ascQuery = ascendingList.getListQuery('list');
         return Promise.all([descQuery, ascQuery]).then(res => {
             const descRes = res[0].map(r => r['Antibody Count']);
             const ascRes = res[1].map(r => r['Antibody Count']);
@@ -110,7 +110,7 @@ describe('list queries should work', function () {
         const batchList = new TargetList(tcrd, {
             batch: proteinList
         });
-        const listQuery = batchList.getListQuery();
+        const listQuery = batchList.getListQuery('list');
         const tdlFacet = batchList.facetsToFetch.find(f => f.name == 'Target Development Level').getFacetQuery();
         const famFacet = batchList.facetsToFetch.find(f => f.name == 'Family').getFacetQuery();
         const countQuery = batchList.getCountQuery();

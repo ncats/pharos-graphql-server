@@ -1,6 +1,7 @@
 import {FieldInfo} from "./FieldInfo";
 
 export class SqlTable {
+    schema: string;
     tableName: string;
     private _alias?: string;
     get alias(): string {
@@ -13,12 +14,14 @@ export class SqlTable {
     columns: FieldInfo[] = [];
     linkingTables: string[] = [];
 
-    constructor(tableName: string, {alias = "", joinConstraint = "", rawJoinConstraint = ""} = {},
+    constructor(tableName: string,
+                {alias = "", joinConstraint = "", rawJoinConstraint = "", schema = ""} = {},
                 linkingTables: string[] = []) {
 
         if (alias) {
             this._alias = alias;
         }
+        this.schema = schema;
         this.tableName = tableName;
         this.joinConstraint = joinConstraint;
         this.rawJoinConstraint = rawJoinConstraint;

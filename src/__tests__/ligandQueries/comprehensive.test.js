@@ -16,12 +16,12 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new LigandList(tcrd, {top:2669440, filter: {facets: [{facet: "Activity", values: ["IC50"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Type');
         const fullTypeFacetQuery = fullTypeFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Type');
         const filteredTypeFacetQuery = filteredTypeFacet.getFacetQuery();
         const filteredTypeConstraintQuery = filteredList.filteringFacets[0].getFacetConstraintQuery();
@@ -61,12 +61,12 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new LigandList(tcrd, {top:2669440, filter: {term:'iso', facets: [{facet: "Activity", values: ["IC50"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Type');
         const fullTypeFacetQuery = fullTypeFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Type');
         const filteredTypeFacetQuery = filteredTypeFacet.getFacetQuery();
         const filteredTypeConstraintQuery = filteredList.filteringFacets[0].getFacetConstraintQuery();
@@ -107,12 +107,12 @@ describe('all the queries should be consistent with each other', function () {
         const filteredList = new LigandList(tcrd, {top:2669440, filter: {associatedTarget:'ACE2', facets: [{facet: "Activity", values: ["IC50"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
-        const fullListQuery = fullList.getListQuery();
+        const fullListQuery = fullList.getListQuery('list');
         const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Type');
         const fullTypeFacetQuery = fullTypeFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
-        const filteredListQuery = filteredList.getListQuery();
+        const filteredListQuery = filteredList.getListQuery('list');
         const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Type');
         const filteredTypeFacetQuery = filteredTypeFacet.getFacetQuery();
         const filteredTypeConstraintQuery = filteredList.filteringFacets[0].getFacetConstraintQuery();
