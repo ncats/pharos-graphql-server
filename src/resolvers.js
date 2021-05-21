@@ -35,7 +35,7 @@ const resolvers = {
                     args.top = 250000;
                 }
                 listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
-                if(listObj instanceof LigandList){
+                if (listObj instanceof LigandList) {
                     await listObj.getSimilarLigands();
                 }
                 listQuery = listObj.getListQuery('download');
@@ -536,8 +536,8 @@ const resolvers = {
             });
         },
         ligandAssociationDetails: async function (target, args, {dataSources}) {
-            if (target.actVals || target.maxActVal || target.modeOfAction){
-                return {actVals: target.actVals, maxActVal:target.maxActVal, modeOfAction:target.modeOfAction};
+            if (target.actVals || target.maxActVal || target.modeOfAction) {
+                return {actVals: target.actVals, maxActVal: target.maxActVal, modeOfAction: target.modeOfAction};
             }
             return null;
         },
@@ -836,7 +836,7 @@ const resolvers = {
                     fields: [...Array.from(geneFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
                     filter: {order: '!Mean Rank Score'}
                 });
-            return targetList.getListQuery('download',true).then(rows => {
+            return targetList.getListQuery('download', true).then(rows => {
                 if (!rows || rows.length === 0) {
                     return null;
                 }
@@ -1330,7 +1330,7 @@ const resolvers = {
                     fields: [...Array.from(traitFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
                     filter: {order: '!Mean Rank Score'}
                 });
-            return diseaseList.getListQuery('download',true).then(rows => {
+            return diseaseList.getListQuery('download', true).then(rows => {
                 if (!rows || rows.length === 0) {
                     return null;
                 }

@@ -168,6 +168,7 @@ type Ortholog @cacheControl(maxAge: 604800) {
      orid: Int!
      species: String!
      sym: String
+     mod_url: String
      name: String!
      dbid: String
      geneid: Int
@@ -517,7 +518,7 @@ type Target @cacheControl(maxAge: 604800){
 
      """Ortholog protein"""
      orthologCounts: [IntProp]
-     orthologs(skip: Int=0, top: Int=10, filter: IFilter): [Ortholog]
+     orthologs(skip: Int=0, top: Int=5, filter: IFilter): [Ortholog]
 
      """GWAS catalog"""
      gwasCounts: [IntProp]
