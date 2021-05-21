@@ -329,8 +329,7 @@ const resolvers = {
                     {
                         url: 'url',
                         sourceName: 'display_name',
-                        description: 'description',
-                        image: 'image'
+                        description: 'description'
                     })
                 .where(dataSources.tcrd.db.raw('extlink.protein_id = t2tc.protein_id'))
                 .andWhere('t2tc.target_id', target.tcrdid)

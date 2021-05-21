@@ -436,7 +436,6 @@ type LinkInfo @cacheControl(maxAge: 604800) {
      sourceName: String
      description: String
      url: String
-     image: String
 }
 
 """Target entity"""
