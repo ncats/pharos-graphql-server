@@ -535,8 +535,8 @@ const resolvers = {
             });
         },
         ligandAssociationDetails: async function (target, args, {dataSources}) {
-            if (target.actVals || target.maxActVal || target.modeOfAction) {
-                return {actVals: target.actVals, maxActVal: target.maxActVal, modeOfAction: target.modeOfAction};
+            if (target.actVals || target.avgActVal || target.modeOfAction) {
+                return {actVals: target.actVals, avgActVal: target.avgActVal, modeOfAction: target.modeOfAction};
             }
             return null;
         },

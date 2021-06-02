@@ -24,7 +24,7 @@ export class TargetList extends DataModelList {
             return [{column: 'jaccard', order: 'desc'}];
         }
         if (this.associatedLigand.length > 0) {
-            return [{column: 'maxActVal', order: 'desc'}];
+            return [{column: 'avgActVal', order: 'desc'}];
         }
         return [{column: 'novelty', order: 'desc'}];
     }

@@ -655,7 +655,7 @@ type AssociationDetails @cacheControl(maxAge: 604800){
 
 type LigandAssocDetails @cacheControl(maxAge: 604800){
      actVals: String
-     maxActVal: Float
+     avgActVal: Float
      modeOfAction: String
 }
 
