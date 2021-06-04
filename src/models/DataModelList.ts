@@ -24,6 +24,7 @@ export abstract class DataModelList implements IBuildable {
     facetsToFetch: FieldInfo[] = [];
     dataFields: FieldInfo[] = [];
 
+    structureQueryHash: string = '';
     associatedTarget: string = "";
     associatedDisease: string = "";
     associatedSmiles: string = "";
@@ -172,7 +173,6 @@ export abstract class DataModelList implements IBuildable {
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query, false);
         this.captureQueryPerformance(query, "list count");
-        // console.log(query.toString());
         return query;
     };
 
@@ -223,7 +223,11 @@ export abstract class DataModelList implements IBuildable {
         const sortTable = queryDefinition.getSqlTable(sortFieldInfo);
         let col = "";
         if (sortFieldInfo.group_method) {
-            col = sortFieldInfo.group_method + "(`" + sortFieldInfo.alias + "`)";
+            if (sortFieldInfo.alias !== sortFieldInfo.name) {
+                col = "`" + sortFieldInfo.alias + "`";
+            } else {
+                col = sortFieldInfo.group_method + "(`" + sortFieldInfo.alias + "`)";
+            }
         } else {
             col = "`" + sortFieldInfo.alias + "`";
         }

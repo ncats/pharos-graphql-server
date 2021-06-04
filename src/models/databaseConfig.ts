@@ -70,6 +70,7 @@ export class DatabaseConfig {
 
                     // where is the data
                     schema: 'field.schema',
+                    requirement: 'field.requirement',
                     table: 'field.table',
                     column: 'field.column',
                     select: 'field.select',

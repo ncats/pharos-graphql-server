@@ -1,6 +1,5 @@
 const axios = require('axios');
 const crypto = require('crypto');
-const prefix = require('../../constants').REDIS_PREFIX;
 
 export class StructureSearch {
     smiles: string;

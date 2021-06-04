@@ -12,6 +12,7 @@ export class FieldInfo {
     description: string;
 
     schema: string;
+    requirement: string;
     table: string;
     column: string;
     alias: string;
@@ -42,6 +43,7 @@ export class FieldInfo {
     constructor(obj: any) {
         this.name = obj?.name || '';
         this.schema = obj?.schema || '';
+        this.requirement = obj?.requirement || '';
         this.description = obj?.description || '';
 
         this.table = obj?.table || '';

@@ -57,7 +57,9 @@ export class DatabaseTable {
     static nonStandardLinks: Map<string, string> = new Map(
         [
             ["structure_search_results-ncats_ligands", "ncats_ligand_id-id"],
-            ["ncats_ligands-structure_search_results", "id-ncats_ligand_id"]
+            ["ncats_ligands-structure_search_results", "id-ncats_ligand_id"],
+            ["predictor_results-protein", "protein_id-id"],
+            ["protein-predictor_results", "id-protein_id"]
         ]
     );
 

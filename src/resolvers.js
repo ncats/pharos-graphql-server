@@ -13,7 +13,7 @@ const resolvers = {
 
     PharosConfiguration: {
         downloadLists: async function (config, args, {dataSources}) {
-            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery);
+            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery, args.associatedLigand, args.associatedSmiles);
             const retArray = [];
             lists.forEach((fields, listName) => {
                 retArray.push({
@@ -37,6 +37,9 @@ const resolvers = {
                 listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
                 if (listObj instanceof LigandList) {
                     await listObj.getSimilarLigands();
+                }
+                if (listObj instanceof  TargetList) {
+                    await listObj.getDrugTargetPredictions();
                 }
                 listQuery = listObj.getListQuery('download');
             } catch (e) {
@@ -535,8 +538,20 @@ const resolvers = {
             });
         },
         ligandAssociationDetails: async function (target, args, {dataSources}) {
-            if (target.actVals || target.avgActVal || target.modeOfAction) {
+            if ((target.actVals || target.avgActVal || target.modeOfAction) && dataSources.associatedLigand && dataSources.associatedLigand.length > 0) {
                 return {actVals: target.actVals, avgActVal: target.avgActVal, modeOfAction: target.modeOfAction};
+            }
+            return null;
+        },
+        targetPredictionDetails: async function (target, args, {dataSources}) {
+            if ((target.similarity || target.result) && dataSources.associatedSmiles && dataSources.associatedSmiles.length > 0) {
+                return {
+                    similarity: target.similarity,
+                    result: target.result,
+                    training_smiles: target.training_smiles,
+                    training_activity: target.training_activity,
+                    model_name: target.model_name
+                };
             }
             return null;
         },
@@ -1482,7 +1497,14 @@ const resolvers = {
         targets: async function (result, args, {dataSources}) {
             args.filter = result.filter;
             args.batch = result.batch;
-            let q = new TargetList(dataSources.tcrd, args).getListQuery('list');
+            const listObj = new TargetList(dataSources.tcrd, args);
+            await listObj.getDrugTargetPredictions();
+            dataSources.associatedTarget = listObj.associatedTarget;
+            dataSources.associatedDisease = listObj.associatedDisease;
+            dataSources.similarity = listObj.similarity;
+            dataSources.associatedSmiles = listObj.associatedSmiles;
+            dataSources.associatedLigand = listObj.associatedLigand;
+            const q = listObj.getListQuery('list');
             //console.log(q.toString());
             return q.then(targets => {
                 dataSources.listResults = targets;
@@ -1731,13 +1753,16 @@ const resolvers = {
     }
 };
 
-function getTargetResult(args, dataSources) {
+async function getTargetResult(args, dataSources) {
     //console.log(JSON.stringify(args));
     args.batch = args.targets;
     const targetList = new TargetList(dataSources.tcrd, args);
+    await targetList.getDrugTargetPredictions();
     dataSources.associatedTarget = targetList.associatedTarget;
     dataSources.associatedDisease = targetList.associatedDisease;
     dataSources.similarity = targetList.similarity;
+    dataSources.associatedSmiles = targetList.associatedSmiles;
+    dataSources.associatedLigand = targetList.associatedLigand;
     const proteinListQuery = targetList.fetchProteinList();
     if (!!proteinListQuery) {
         return proteinListQuery.then(rows => {

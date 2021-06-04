@@ -548,6 +548,7 @@ type Target @cacheControl(maxAge: 604800){
      ppiTargetInteractionDetails: InteractionDetails
      diseaseAssociationDetails: [AssociationDetails]
      ligandAssociationDetails: LigandAssocDetails
+     targetPredictionDetails: TargetPredictionDetails
 
      interactingViruses: [VirusDetails]
 
@@ -659,6 +660,14 @@ type LigandAssocDetails @cacheControl(maxAge: 604800){
      modeOfAction: String
 }
 
+type TargetPredictionDetails @cacheControl(maxAge: 604800) {
+     similarity: Float
+     result: Float
+     training_smiles: String
+     training_activity: String
+     model_name: String
+}
+
 type InteractionDetails @cacheControl(maxAge: 604800){
      ppitypes: String
      score: Float
@@ -734,7 +743,11 @@ type DataSourceCount @cacheControl(maxAge: 604800){
 }
 
 type PharosConfiguration{
-     downloadLists (modelName: String, associatedModelName: String, similarityQuery: Boolean = false): [FieldList]
+     downloadLists (modelName: String,
+          associatedModelName: String,
+          similarityQuery: Boolean = false,
+          associatedLigand: String = "",
+          associatedSmiles: String = ""): [FieldList]
 }
 
 type FieldList{

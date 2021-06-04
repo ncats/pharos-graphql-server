@@ -4,8 +4,6 @@ import {SqlTable} from "../sqlTable";
 import {StructureSearch} from "../externalAPI/StructureSearch";
 
 export class LigandList extends DataModelList {
-    structureQueryHash: string = '';
-
     static getAutocomplete(knex: any, term: string) {
         let query = knex("ncats_ligands")
             .select({value: knex.raw('distinct name'), source: knex.raw("'Ligand'")})
