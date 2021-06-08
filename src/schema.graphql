@@ -666,6 +666,7 @@ type TargetPredictionDetails @cacheControl(maxAge: 604800) {
      training_smiles: String
      training_activity: String
      model_name: String
+     target_chembl_id: String
 }
 
 type InteractionDetails @cacheControl(maxAge: 604800){

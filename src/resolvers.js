@@ -550,7 +550,8 @@ const resolvers = {
                     result: target.result,
                     training_smiles: target.training_smiles,
                     training_activity: target.training_activity,
-                    model_name: target.model_name
+                    model_name: target.model_name,
+                    target_chembl_id: target.target_chembl_id
                 };
             }
             return null;

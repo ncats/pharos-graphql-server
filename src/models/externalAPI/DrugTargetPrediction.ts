@@ -70,7 +70,7 @@ export class DrugTargetPrediction {
                         similarity: row.domain,
                         model_name: row.name,
                         model_type: row.type,
-                        cmpd_name: row.id,
+                        target_chembl_id: row.id,
                         group: row.group
                     });
                 }
