@@ -24,6 +24,10 @@ type DownloadResult {
      warnings: [String]
 }
 
+type UpsetResult {
+     values: [String]
+     count: Int
+}
 
 type Xref @cacheControl(maxAge: 604800) {
      source: String!
@@ -781,6 +785,8 @@ type Query{
      configuration: PharosConfiguration
 
      download(model: String!, fields: [String!], sqlOnly: Boolean = true, skip: Int, top: Int, filter: IFilter, batch: [String]): DownloadResult
+
+     upset(model: String!, facetName: String!, values: [String!], filter: IFilter, batch: [String]): [UpsetResult]
 
      autocomplete(name: String): [SuggestionResults]
 

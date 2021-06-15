@@ -39,6 +39,7 @@ export class FieldInfo {
     parent: DataModelList;
 
     isFromListQuery: boolean;
+    isForUpsetPlot: boolean;
 
     constructor(obj: any) {
         this.name = obj?.name || '';
@@ -79,9 +80,9 @@ export class FieldInfo {
         this.parent = obj?.parent || {};
 
         this.isFromListQuery = obj?.isFromListQuery || false;
+        this.isForUpsetPlot = obj?.isForUpsetPlot || false;
 
         this.select = obj?.log ? (`log(${this.dataString()})`) : obj?.select || this.dataString();
-
         this.handleWeirdCases();
     }
 

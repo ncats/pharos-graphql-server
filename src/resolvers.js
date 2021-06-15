@@ -26,6 +26,22 @@ const resolvers = {
     },
 
     Query: {
+        upset: async function (_, args, {dataSources}) {
+            console.log(args);
+
+            const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
+
+            return listObj.getUpsetQuery(args.facetName, args.values).then(res => {
+                // console.log(res);
+                return res.map(r => {
+                    return {
+                        count: r.count,
+                        values: r.values.split('|')
+                    }
+                });
+            });
+        },
+
         download: async function (_, args, {dataSources}) {
             let listQuery, listObj;
             try {
@@ -38,7 +54,7 @@ const resolvers = {
                 if (listObj instanceof LigandList) {
                     await listObj.getSimilarLigands();
                 }
-                if (listObj instanceof  TargetList) {
+                if (listObj instanceof TargetList) {
                     await listObj.getDrugTargetPredictions();
                 }
                 listQuery = listObj.getListQuery('download');
@@ -126,7 +142,7 @@ const resolvers = {
 
         targetFacets: async function (_, args, {dataSources}) {
             const context = new ListContext('Target', '', 'facet');
-            const fields = this.listMap.get(context.toString()) || [];
+            const fields = dataSources.tcrd.tableInfo.listManager.listMap.get(context.toString()) || [];
             return fields.map(f => f.name);
         },
 
