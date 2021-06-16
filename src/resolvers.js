@@ -715,7 +715,7 @@ const resolvers = {
                 });
                 outRows.forEach(row => {
                     if (row.type == "Reactome") {
-                        row.url = `https://reactome.org/PathwayBrowser/#/${row.sourceID}&FLG=${target.sym}`;
+                        row.url = `https://idg.reactome.org/PathwayBrowser/#/${row.sourceID}&FLG=${target.sym}`;
                     }
                 });
                 return outRows;
