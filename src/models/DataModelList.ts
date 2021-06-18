@@ -223,7 +223,7 @@ export abstract class DataModelList implements IBuildable {
                 values: 'values'
             }).groupBy('values')
             .orderBy('count', 'desc');
-        console.log(query.toString());
+        // console.log(query.toString());
         return query;
     }
 
@@ -249,7 +249,7 @@ export abstract class DataModelList implements IBuildable {
             ]);
 
         let query = queryDefinition.generateBaseQuery(true);
-        this.addFacetConstraints(query, this.filteringFacets);
+        this.addFacetConstraints(query, this.filteringFacets, facetInfo.name);
         this.addModelSpecificFiltering(query, false);
         query.whereIn(this.database.raw(facetInfo.select), values);
         query.groupBy(1);
@@ -285,9 +285,21 @@ export abstract class DataModelList implements IBuildable {
     addFacetConstraints(query: any, filteringFacets: FieldInfo[], facetToIgnore?: string) {
         for (let i = 0; i < filteringFacets.length; i++) {
             if (facetToIgnore == null || (facetToIgnore !== filteringFacets[i].name)) {
-                const sqAlias = filteringFacets[i].name;
-                let subQuery = filteringFacets[i].getFacetConstraintQuery().as(sqAlias);
-                query.join(subQuery, sqAlias + '.' + this.keyColumn, this.keyString());
+                const queries: any[] = [];
+                if (filteringFacets[i].allowedValues.length > 0) {
+                    queries.push(filteringFacets[i].getFacetConstraintQuery());
+                }
+                if (filteringFacets[i].upsetValues.length > 0) {
+                    queries.push(...filteringFacets[i].getUpsetConstraintQuery());
+                }
+                if (queries.length === 1){
+                    query.join(queries[0].as(`facet${i}`), `facet${i}.id`, this.keyString());
+                }
+                else {
+                    const theRest = queries.splice(1);
+                    const unionQuery = queries[0].union(theRest);
+                    query.join(unionQuery.as(`facet${i}`), `facet${i}.id`, this.keyString());
+                }
             }
         }
     }

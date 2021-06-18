@@ -81,7 +81,7 @@ export class ListManager {
         return fieldList;
     }
 
-    getTheseFilteringFields(listObj: DataModelList, type: string, fields: { facet: string, values: string[] }[]) {
+    getTheseFilteringFields(listObj: DataModelList, type: string, fields: { facet: string, values: string[], upSets: {inGroup: string[], outGroup: string[]}[] }[]) {
         const context = this.getContext(listObj, type);
         const list = this.listMap.get(context.toString()) || [];
         const filteringFacets: FieldInfo[] = [];
@@ -89,6 +89,7 @@ export class ListManager {
             const facet = list.find(field => field.name === ff.facet)?.copy();
             if (facet) {
                 facet.allowedValues = ff.values;
+                facet.upsetValues = ff.upSets;
                 facet.parent = listObj;
                 filteringFacets.push(facet);
             }

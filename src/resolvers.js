@@ -27,8 +27,6 @@ const resolvers = {
 
     Query: {
         upset: async function (_, args, {dataSources}) {
-            console.log(args);
-
             const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
 
             return listObj.getUpsetQuery(args.facetName, args.values).then(res => {

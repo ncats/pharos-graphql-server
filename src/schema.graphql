@@ -74,14 +74,26 @@ type Facet @cacheControl(maxAge: 604800) {
      sourceExplanation: String
 }
 
+input IUpsetOptions {
+     inGroup: [String]
+     outGroup: [String]
+}
+
 input IFilterFacet {
      facet: String!
      values: [String]
+     upSets: [IUpsetOptions]
+}
+
+type UpsetOptions @cacheControl(maxAge: 604800) {
+     inGroup: [String]
+     outGroup: [String]
 }
 
 type FilterFacet @cacheControl(maxAge: 604800) {
      facet: String!
      values: [String]
+     upSets: [UpsetOptions]
 }
 
 """Input IRangeFloat: [start, end)"""
