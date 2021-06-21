@@ -88,8 +88,8 @@ export class ListManager {
         fields.forEach(ff => {
             const facet = list.find(field => field.name === ff.facet)?.copy();
             if (facet) {
-                facet.allowedValues = ff.values;
-                facet.upsetValues = ff.upSets;
+                facet.allowedValues = ff.values || [];
+                facet.upsetValues = ff.upSets || [];
                 facet.parent = listObj;
                 filteringFacets.push(facet);
             }
