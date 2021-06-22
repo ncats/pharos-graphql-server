@@ -28,7 +28,12 @@ const resolvers = {
     Query: {
         upset: async function (_, args, {dataSources}) {
             const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
-
+            if (listObj instanceof LigandList) {
+                await listObj.getSimilarLigands();
+            }
+            if (listObj instanceof TargetList) {
+                await listObj.getDrugTargetPredictions();
+            }
             return listObj.getUpsetQuery(args.facetName, args.values).then(res => {
                 // console.log(res);
                 return res.map(r => {
