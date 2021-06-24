@@ -106,7 +106,7 @@ export class StructureSearch {
     }
 
     private url(): string {
-        return `http://ec2-54-160-174-162.compute-1.amazonaws.com:8080/search?${this.queryString()}`;
+        return `https://pharos-ligand.ncats.io/indexer/search?${this.queryString()}`;
     }
 
     private queryString() {
