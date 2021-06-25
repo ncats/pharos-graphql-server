@@ -809,7 +809,7 @@ type Query{
      target(q: ITarget): Target
 
      disease(name: String): Disease
-     diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
+     diseases(skip: Int = 0, top: Int = 10, facets: [String!], filter: IFilter): DiseaseResult
      diseaseOntology(doid: String, name: String): [DiseaseOntology]
      doTree: [DiseaseOntology]
 
@@ -817,7 +817,7 @@ type Query{
      dtoNode(dtoid: String, name: String): [DTO]
 
      ligand(ligid: String): Ligand
-     ligands(skip: Int=0, top: Int=10, filter: IFilter): LigandResult
+     ligands(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter): LigandResult
 
      pubCount(term: String = ""): Int
      pubmed(pmid: Int!): PubMed
