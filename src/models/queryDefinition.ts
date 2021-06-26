@@ -126,10 +126,14 @@ export class QueryDefinition {
                 const select = column.select || `${table.alias}.${column.column}`;
                 const columnName = column.alias || column.column;
                 if (column.group_method) {
-                    if(column.dataType === FacetDataType.numeric){
+                    if (column.dataType === FacetDataType.numeric) {
                         columnList[columnName] = db.raw(column.group_method + `(${select})`);
-                    }else {
-                        columnList[columnName] = db.raw(column.group_method + `(distinct ${select})`);
+                    } else {
+                        if (column.isForUpsetPlot) {
+                            columnList[columnName] = db.raw(column.group_method + `(distinct ${select} order by ${select} separator '|')`);
+                        } else {
+                            columnList[columnName] = db.raw(column.group_method + `(distinct ${select})`);
+                        }
                     }
                 } else if (column.needsDistinct) {
                     columnList[columnName] = db.raw(`distinct ${select}`);

@@ -1034,13 +1034,15 @@ where ortholog_id = ?`, [ortho.orid]));
     }
 
     getDiseasesForOrthologDisease(ortho, args) {
-        return this.db.select(this.db.raw(`
+        const query = this.db.select(this.db.raw(`
 a.ncats_name as name,count(*) as associationCount
-from disease a, ortholog_disease b
+from disease a, ortholog_disease b, ortholog c
 where a.did = b.did
-and b.id = ? 
+and c.id = b.ortholog_id
+and c.id = ?
 group by a.ncats_name
-order by associationCount desc, zscore desc`, [ortho.ordid]));
+order by associationCount desc, zscore desc`, [ortho.ortholog_id]));
+        return query;
     }
 
     getTargetsForDiseaseAssociation(disease, args) {
@@ -1594,9 +1596,8 @@ order by value desc`, [target.tcrdid]));
 
     getOrthologsForTarget(target, args) {
         const ORTHOLOG_SQL = `
-a.*,db_id as dbid,a.id as orid, a.symbol as sym, c.score as score
-from t2tc b, ortholog a
-left join ortholog_disease c on c.ortholog_id = a.id`;
+a.*,db_id as dbid,a.id as orid, a.symbol as sym
+from t2tc b, ortholog a`;
         let q = this.db.select(this.db.raw(ORTHOLOG_SQL));
         if (args.filter) {
             for (var i in args.filter.facets) {

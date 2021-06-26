@@ -2,6 +2,7 @@ import {DataModelList} from "../DataModelList";
 import {FieldInfo} from "../FieldInfo";
 import {Jaccard} from "../similarTargets/jaccard";
 import {SqlTable} from "../sqlTable";
+import {DrugTargetPrediction} from "../externalAPI/DrugTargetPrediction";
 
 export class TargetList extends DataModelList {
     proteinList: string[] = [];
@@ -24,13 +25,22 @@ export class TargetList extends DataModelList {
             return [{column: 'jaccard', order: 'desc'}];
         }
         if (this.associatedLigand.length > 0) {
-            return [{column: 'maxActVal', order: 'desc'}];
+            return [{column: 'avgActVal', order: 'desc'}];
+        }
+        if (this.associatedSmiles.length > 0) {
+            return [{column: 'result', order: 'desc'}]
         }
         return [{column: 'novelty', order: 'desc'}];
     }
 
     constructor(tcrd: any, json: any) {
         super(tcrd, 'Target', json);
+    }
+
+    getDrugTargetPredictions() {
+        const sSearch = new DrugTargetPrediction(this.database, this.associatedSmiles);
+        this.structureQueryHash = sSearch.queryHash;
+        return sSearch.getPredictedTargets();
     }
 
     addModelSpecificFiltering(query: any, list: boolean = false): void {
@@ -54,6 +64,11 @@ export class TargetList extends DataModelList {
             }
             else if(this.associatedLigand.length > 0) {
                 if (!this.filterAppliedOnJoin(query, 'ncats_ligand_activity')) {
+                    filterQuery = this.fetchProteinList();
+                }
+            }
+            else if(this.associatedSmiles.length > 0) {
+                if (!this.filterAppliedOnJoin(query, 'predictor_results')) {
                     filterQuery = this.fetchProteinList();
                 }
             }
@@ -86,7 +101,8 @@ export class TargetList extends DataModelList {
             this.associatedTarget.length == 0 &&
             this.associatedDisease.length == 0 &&
             this.similarity.match.length == 0 &&
-            this.associatedLigand.length == 0
+            this.associatedLigand.length == 0 &&
+            this.associatedSmiles.length == 0
         ) {
             return null;
         }
@@ -106,17 +122,36 @@ export class TargetList extends DataModelList {
                 },
                 this.rootTable, this.database, this.databaseConfig).getListQuery(false);
         } else if (this.associatedLigand.length > 0) {
-            proteinListQuery = this.database({ncats_ligands: 'ncats_ligands', ncats_ligand_activity: 'ncats_ligand_activity', t2tc: 't2tc'})
-                .distinct('t2tc.protein_id')
-                .where('t2tc.target_id', this.database.raw('ncats_ligand_activity.target_id'))
-                .where('ncats_ligand_activity.ncats_ligand_id', this.database.raw('ncats_ligands.id'))
-                .where('ncats_ligands.identifier', this.associatedLigand);
+            if (this.associatedSmiles.length > 0) {
+                proteinListQuery = this.getListFromAssocLigand().union(this.getListFromPredictor());
+            } else {
+                proteinListQuery = this.getListFromAssocLigand();
+            }
+        } else if (this.associatedSmiles.length > 0) {
+            proteinListQuery = this.getListFromPredictor();
         }
          else {
             proteinListQuery = this.getDiseaseQuery();
         }
         this.captureQueryPerformance(proteinListQuery, "protein list");
         return proteinListQuery;
+    }
+
+    private getListFromPredictor() {
+        return this.database('result_cache.predictor_results').distinct('protein_id')
+            .where('query_hash', '=', this.database.raw(`"${this.structureQueryHash}"`));
+    }
+
+    private getListFromAssocLigand() {
+        return this.database({
+            ncats_ligands: 'ncats_ligands',
+            ncats_ligand_activity: 'ncats_ligand_activity',
+            t2tc: 't2tc'
+        })
+            .distinct('t2tc.protein_id')
+            .where('t2tc.target_id', this.database.raw('ncats_ligand_activity.target_id'))
+            .where('ncats_ligand_activity.ncats_ligand_id', this.database.raw('ncats_ligands.id'))
+            .where('ncats_ligands.identifier', this.associatedLigand);
     }
 
     getDiseaseQuery() {
@@ -159,7 +194,10 @@ ON diseaseList.name = d.ncats_name`));
         if (this.associatedTarget && sqlTable.tableName === 'ncats_ppi'){
             return true;
         }
-        if (this.associatedLigand && sqlTable.tableName === 'ncats_ligand_activity') {
+        if (this.associatedLigand && (sqlTable.tableName === 'ncats_ligand_activity') && !this.associatedSmiles) {
+            return true;
+        }
+        if (this.associatedSmiles && (sqlTable.tableName === 'predictor_results') && !this.associatedLigand){
             return true;
         }
         return false;
@@ -194,7 +232,18 @@ ON diseaseList.name = d.ncats_name`));
                     AND finder.rght + 0 >= lst.rght)`;
         }
         if (this.associatedLigand && (fieldInfo.table === 'ncats_ligand_activity' || rootTableOverride === 'ncats_ligand_activity')) {
+            const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
+            if(modifiedFacet) {
+                modifiedFacet.typeModifier = this.associatedLigand;
+            }
             return `ncats_ligand_activity.ncats_ligand_id = (select id from ncats_ligands where identifier = '${this.associatedLigand}')`;
+        }
+        if (this.associatedSmiles && (fieldInfo.table === 'predictor_results' || rootTableOverride === 'predictor_results')) {
+            const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
+            if(modifiedFacet) {
+                modifiedFacet.typeModifier = this.associatedSmiles.length > 30 ? this.associatedSmiles.slice(0, 30) + '...' : this.associatedSmiles;
+            }
+            return `predictor_results.query_hash = "${this.structureQueryHash}"`;
         }
         return "";
     }

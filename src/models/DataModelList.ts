@@ -9,9 +9,11 @@ import {SqlTable} from "./sqlTable";
 
 export abstract class DataModelList implements IBuildable {
     abstract addModelSpecificFiltering(query: any, list: boolean): void;
+
     abstract defaultSortParameters(): { column: string, order: string } [];
 
     abstract getSpecialModelWhereClause(fieldInfo: FieldInfo, rootTableOverride: string): string;
+
     abstract tableJoinShouldFilterList(table: SqlTable): boolean;
 
     batch: string[] = [];
@@ -24,6 +26,7 @@ export abstract class DataModelList implements IBuildable {
     facetsToFetch: FieldInfo[] = [];
     dataFields: FieldInfo[] = [];
 
+    structureQueryHash: string = '';
     associatedTarget: string = "";
     associatedDisease: string = "";
     associatedSmiles: string = "";
@@ -62,7 +65,7 @@ export abstract class DataModelList implements IBuildable {
         this.databaseConfig = tcrd.tableInfo;
         // @ts-ignore
         this.modelInfo = this.databaseConfig.modelList.get(modelName);
-        if(!this.modelInfo){
+        if (!this.modelInfo) {
             throw new Error('Unknown model: ' + modelName);
         }
         this.rootTable = this.modelInfo.table;
@@ -96,14 +99,13 @@ export abstract class DataModelList implements IBuildable {
             if (json.filter.associatedLigand) {
                 this.associatedLigand = json.filter.associatedLigand
             }
-            if (json.filter.associatedStructure){
+            if (json.filter.associatedStructure) {
                 const pieces = json.filter.associatedStructure.split('!');
                 pieces.forEach((p: string) => {
-                    const method = p.toLowerCase().substr(0,3);
-                    if(method === 'sim' || method === 'sub'){
+                    const method = p.toLowerCase().substr(0, 3);
+                    if (method === 'sim' || method === 'sub') {
                         this.associatedStructureMethod = method;
-                    }
-                    else {
+                    } else {
                         this.associatedSmiles = p;
                     }
                 });
@@ -132,9 +134,9 @@ export abstract class DataModelList implements IBuildable {
         }
 
         if (json && json.facets) {
-            if(json.facets === 'all' || json.facets[0] === 'all'){
+            if (json.facets === 'all' || json.facets[0] === 'all') {
                 this.facetsToFetch = this.databaseConfig.listManager.getAllFields(this, 'facet');
-            }else {
+            } else {
                 this.facetsToFetch = this.databaseConfig.listManager.getTheseFields(this, 'facet', json.facets);
             }
         } else {
@@ -172,7 +174,6 @@ export abstract class DataModelList implements IBuildable {
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query, false);
         this.captureQueryPerformance(query, "list count");
-        // console.log(query.toString());
         return query;
     };
 
@@ -183,9 +184,9 @@ export abstract class DataModelList implements IBuildable {
         } else {
             dataFields = this.databaseConfig.listManager.getDefaultFields(this, context);
         }
-        if(!dataFields.map(f => f.name).includes(this.sortField)) {
+        if (!dataFields.map(f => f.name).includes(this.sortField)) {
             const sortField = this.databaseConfig.listManager.getOneField(this, context, this.sortField);
-            if(sortField) {
+            if (sortField) {
                 sortField.alias = this.sortField;
                 dataFields.push(sortField);
             }
@@ -215,6 +216,46 @@ export abstract class DataModelList implements IBuildable {
         return query;
     }
 
+    getUpsetQuery(facetName: string, values: string[]) {
+        const query = this.database(this.getUpsetSubQuery(facetName, values).as('subq'))
+            .select({
+                count: this.database.raw('count(distinct name)'),
+                values: 'values'
+            }).groupBy('values')
+            .orderBy('count', 'desc');
+        // console.log(query.toString());
+        return query;
+    }
+
+    getUpsetSubQuery(facetName: string, values: string[]) {
+        const facetInfo = this.databaseConfig.listManager.getOneField(this, 'facet', facetName);
+        if (!facetInfo) {
+            return null;
+        }
+
+        let queryDefinition = QueryDefinition.GenerateQueryDefinition(this,
+            [
+                new FieldInfo({
+                    table: this.rootTable,
+                    column: this.keyColumn,
+                    alias: 'name'
+                } as FieldInfo),
+                new FieldInfo({
+                    ...facetInfo,
+                    group_method: 'group_concat',
+                    isForUpsetPlot: true,
+                    alias: 'values'
+                })
+            ]);
+
+        let query = queryDefinition.generateBaseQuery(true);
+        this.addFacetConstraints(query, this.filteringFacets, facetInfo.name);
+        this.addModelSpecificFiltering(query, false);
+        query.whereIn(this.database.raw(facetInfo.select), values);
+        query.groupBy(1);
+        return query;
+    }
+
     addSort(query: any, queryDefinition: QueryDefinition, sortFieldInfo: FieldInfo | undefined) {
         if (!sortFieldInfo) {
             query.orderBy(this.defaultSortParameters());
@@ -223,7 +264,11 @@ export abstract class DataModelList implements IBuildable {
         const sortTable = queryDefinition.getSqlTable(sortFieldInfo);
         let col = "";
         if (sortFieldInfo.group_method) {
-            col = sortFieldInfo.group_method + "(`" + sortFieldInfo.alias + "`)";
+            if (sortFieldInfo.alias !== sortFieldInfo.name) {
+                col = "`" + sortFieldInfo.alias + "`";
+            } else {
+                col = sortFieldInfo.group_method + "(`" + sortFieldInfo.alias + "`)";
+            }
         } else {
             col = "`" + sortFieldInfo.alias + "`";
         }
@@ -240,9 +285,21 @@ export abstract class DataModelList implements IBuildable {
     addFacetConstraints(query: any, filteringFacets: FieldInfo[], facetToIgnore?: string) {
         for (let i = 0; i < filteringFacets.length; i++) {
             if (facetToIgnore == null || (facetToIgnore !== filteringFacets[i].name)) {
-                const sqAlias = filteringFacets[i].name;
-                let subQuery = filteringFacets[i].getFacetConstraintQuery().as(sqAlias);
-                query.join(subQuery, sqAlias + '.' + this.keyColumn, this.keyString());
+                const queries: any[] = [];
+                if (filteringFacets[i].allowedValues.length > 0) {
+                    queries.push(filteringFacets[i].getFacetConstraintQuery());
+                }
+                if (filteringFacets[i].upsetValues.length > 0) {
+                    queries.push(...filteringFacets[i].getUpsetConstraintQuery());
+                }
+                if (queries.length === 1){
+                    query.join(queries[0].as(`facet${i}`), `facet${i}.id`, this.keyString());
+                }
+                else {
+                    const theRest = queries.splice(1);
+                    const unionQuery = queries[0].union(theRest);
+                    query.join(unionQuery.as(`facet${i}`), `facet${i}.id`, this.keyString());
+                }
             }
         }
     }
@@ -272,7 +329,7 @@ export abstract class DataModelList implements IBuildable {
         return true;
     }
 
-    filterAppliedOnJoin(query: any, table: string){
+    filterAppliedOnJoin(query: any, table: string) {
         const found = query._statements.find((joins: any) => {
             return joins.joinType === 'inner' &&
                 Object.keys(joins.table)[0] === table;
@@ -280,7 +337,7 @@ export abstract class DataModelList implements IBuildable {
         return !!found;
     }
 
-    doSafetyCheck(query: any){
+    doSafetyCheck(query: any) {
         // override to get this to do something
     }
 

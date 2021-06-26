@@ -13,7 +13,7 @@ const resolvers = {
 
     PharosConfiguration: {
         downloadLists: async function (config, args, {dataSources}) {
-            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery);
+            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery, args.associatedLigand, args.associatedSmiles);
             const retArray = [];
             lists.forEach((fields, listName) => {
                 retArray.push({
@@ -26,6 +26,25 @@ const resolvers = {
     },
 
     Query: {
+        upset: async function (_, args, {dataSources}) {
+            const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
+            if (listObj instanceof LigandList) {
+                await listObj.getSimilarLigands();
+            }
+            if (listObj instanceof TargetList) {
+                await listObj.getDrugTargetPredictions();
+            }
+            return listObj.getUpsetQuery(args.facetName, args.values).then(res => {
+                // console.log(res);
+                return res.map(r => {
+                    return {
+                        count: r.count,
+                        values: r.values.split('|')
+                    }
+                });
+            });
+        },
+
         download: async function (_, args, {dataSources}) {
             let listQuery, listObj;
             try {
@@ -35,8 +54,11 @@ const resolvers = {
                     args.top = 250000;
                 }
                 listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
-                if(listObj instanceof LigandList){
+                if (listObj instanceof LigandList) {
                     await listObj.getSimilarLigands();
+                }
+                if (listObj instanceof TargetList) {
+                    await listObj.getDrugTargetPredictions();
                 }
                 listQuery = listObj.getListQuery('download');
             } catch (e) {
@@ -123,7 +145,7 @@ const resolvers = {
 
         targetFacets: async function (_, args, {dataSources}) {
             const context = new ListContext('Target', '', 'facet');
-            const fields = this.listMap.get(context.toString()) || [];
+            const fields = dataSources.tcrd.tableInfo.listManager.listMap.get(context.toString()) || [];
             return fields.map(f => f.name);
         },
 
@@ -329,8 +351,7 @@ const resolvers = {
                     {
                         url: 'url',
                         sourceName: 'display_name',
-                        description: 'description',
-                        image: 'image'
+                        description: 'description'
                     })
                 .where(dataSources.tcrd.db.raw('extlink.protein_id = t2tc.protein_id'))
                 .andWhere('t2tc.target_id', target.tcrdid)
@@ -536,8 +557,21 @@ const resolvers = {
             });
         },
         ligandAssociationDetails: async function (target, args, {dataSources}) {
-            if (target.actVals || target.maxActVal || target.modeOfAction){
-                return {actVals: target.actVals, maxActVal:target.maxActVal, modeOfAction:target.modeOfAction};
+            if ((target.actVals || target.avgActVal || target.modeOfAction) && dataSources.associatedLigand && dataSources.associatedLigand.length > 0) {
+                return {actVals: target.actVals, avgActVal: target.avgActVal, modeOfAction: target.modeOfAction};
+            }
+            return null;
+        },
+        targetPredictionDetails: async function (target, args, {dataSources}) {
+            if ((target.similarity || target.result) && dataSources.associatedSmiles && dataSources.associatedSmiles.length > 0) {
+                return {
+                    similarity: target.similarity,
+                    result: target.result,
+                    training_smiles: target.training_smiles,
+                    training_activity: target.training_activity,
+                    model_name: target.model_name,
+                    target_chembl_id: target.target_chembl_id
+                };
             }
             return null;
         },
@@ -684,7 +718,7 @@ const resolvers = {
                 });
                 outRows.forEach(row => {
                     if (row.type == "Reactome") {
-                        row.url = `https://reactome.org/PathwayBrowser/#/${row.sourceID}&FLG=${target.sym}`;
+                        row.url = `https://idg.reactome.org/PathwayBrowser/#/${row.sourceID}&FLG=${target.sym}`;
                     }
                 });
                 return outRows;
@@ -836,7 +870,7 @@ const resolvers = {
                     fields: [...Array.from(geneFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
                     filter: {order: '!Mean Rank Score'}
                 });
-            return targetList.getListQuery('download',true).then(rows => {
+            return targetList.getListQuery('download', true).then(rows => {
                 if (!rows || rows.length === 0) {
                     return null;
                 }
@@ -1330,7 +1364,7 @@ const resolvers = {
                     fields: [...Array.from(traitFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
                     filter: {order: '!Mean Rank Score'}
                 });
-            return diseaseList.getListQuery('download',true).then(rows => {
+            return diseaseList.getListQuery('download', true).then(rows => {
                 if (!rows || rows.length === 0) {
                     return null;
                 }
@@ -1483,7 +1517,14 @@ const resolvers = {
         targets: async function (result, args, {dataSources}) {
             args.filter = result.filter;
             args.batch = result.batch;
-            let q = new TargetList(dataSources.tcrd, args).getListQuery('list');
+            const listObj = new TargetList(dataSources.tcrd, args);
+            await listObj.getDrugTargetPredictions();
+            dataSources.associatedTarget = listObj.associatedTarget;
+            dataSources.associatedDisease = listObj.associatedDisease;
+            dataSources.similarity = listObj.similarity;
+            dataSources.associatedSmiles = listObj.associatedSmiles;
+            dataSources.associatedLigand = listObj.associatedLigand;
+            const q = listObj.getListQuery('list');
             //console.log(q.toString());
             return q.then(targets => {
                 dataSources.listResults = targets;
@@ -1732,13 +1773,16 @@ const resolvers = {
     }
 };
 
-function getTargetResult(args, dataSources) {
+async function getTargetResult(args, dataSources) {
     //console.log(JSON.stringify(args));
     args.batch = args.targets;
     const targetList = new TargetList(dataSources.tcrd, args);
+    await targetList.getDrugTargetPredictions();
     dataSources.associatedTarget = targetList.associatedTarget;
     dataSources.associatedDisease = targetList.associatedDisease;
     dataSources.similarity = targetList.similarity;
+    dataSources.associatedSmiles = targetList.associatedSmiles;
+    dataSources.associatedLigand = targetList.associatedLigand;
     const proteinListQuery = targetList.fetchProteinList();
     if (!!proteinListQuery) {
         return proteinListQuery.then(rows => {

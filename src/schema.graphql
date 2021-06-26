@@ -24,6 +24,10 @@ type DownloadResult {
      warnings: [String]
 }
 
+type UpsetResult {
+     values: [String]
+     count: Int
+}
 
 type Xref @cacheControl(maxAge: 604800) {
      source: String!
@@ -70,14 +74,26 @@ type Facet @cacheControl(maxAge: 604800) {
      sourceExplanation: String
 }
 
+input IUpsetOptions {
+     inGroup: [String]
+     outGroup: [String]
+}
+
 input IFilterFacet {
      facet: String!
      values: [String]
+     upSets: [IUpsetOptions]
+}
+
+type UpsetOptions @cacheControl(maxAge: 604800) {
+     inGroup: [String]
+     outGroup: [String]
 }
 
 type FilterFacet @cacheControl(maxAge: 604800) {
      facet: String!
      values: [String]
+     upSets: [UpsetOptions]
 }
 
 """Input IRangeFloat: [start, end)"""
@@ -168,6 +184,7 @@ type Ortholog @cacheControl(maxAge: 604800) {
      orid: Int!
      species: String!
      sym: String
+     mod_url: String
      name: String!
      dbid: String
      geneid: Int
@@ -435,7 +452,6 @@ type LinkInfo @cacheControl(maxAge: 604800) {
      sourceName: String
      description: String
      url: String
-     image: String
 }
 
 """Target entity"""
@@ -517,7 +533,7 @@ type Target @cacheControl(maxAge: 604800){
 
      """Ortholog protein"""
      orthologCounts: [IntProp]
-     orthologs(skip: Int=0, top: Int=10, filter: IFilter): [Ortholog]
+     orthologs(skip: Int=0, top: Int=5, filter: IFilter): [Ortholog]
 
      """GWAS catalog"""
      gwasCounts: [IntProp]
@@ -548,6 +564,7 @@ type Target @cacheControl(maxAge: 604800){
      ppiTargetInteractionDetails: InteractionDetails
      diseaseAssociationDetails: [AssociationDetails]
      ligandAssociationDetails: LigandAssocDetails
+     targetPredictionDetails: TargetPredictionDetails
 
      interactingViruses: [VirusDetails]
 
@@ -655,8 +672,17 @@ type AssociationDetails @cacheControl(maxAge: 604800){
 
 type LigandAssocDetails @cacheControl(maxAge: 604800){
      actVals: String
-     maxActVal: Float
+     avgActVal: Float
      modeOfAction: String
+}
+
+type TargetPredictionDetails @cacheControl(maxAge: 604800) {
+     similarity: Float
+     result: Float
+     training_smiles: String
+     training_activity: String
+     model_name: String
+     target_chembl_id: String
 }
 
 type InteractionDetails @cacheControl(maxAge: 604800){
@@ -734,7 +760,11 @@ type DataSourceCount @cacheControl(maxAge: 604800){
 }
 
 type PharosConfiguration{
-     downloadLists (modelName: String, associatedModelName: String, similarityQuery: Boolean = false): [FieldList]
+     downloadLists (modelName: String,
+          associatedModelName: String,
+          similarityQuery: Boolean = false,
+          associatedLigand: String = "",
+          associatedSmiles: String = ""): [FieldList]
 }
 
 type FieldList{
@@ -768,6 +798,8 @@ type Query{
 
      download(model: String!, fields: [String!], sqlOnly: Boolean = true, skip: Int, top: Int, filter: IFilter, batch: [String]): DownloadResult
 
+     upset(model: String!, facetName: String!, values: [String!], filter: IFilter, batch: [String]): [UpsetResult]
+
      autocomplete(name: String): [SuggestionResults]
 
      dataSourceCounts: [DataSourceCount]
@@ -777,7 +809,7 @@ type Query{
      target(q: ITarget): Target
 
      disease(name: String): Disease
-     diseases(skip: Int = 0, top: Int = 10, filter: IFilter): DiseaseResult
+     diseases(skip: Int = 0, top: Int = 10, facets: [String!], filter: IFilter): DiseaseResult
      diseaseOntology(doid: String, name: String): [DiseaseOntology]
      doTree: [DiseaseOntology]
 
@@ -785,7 +817,7 @@ type Query{
      dtoNode(dtoid: String, name: String): [DTO]
 
      ligand(ligid: String): Ligand
-     ligands(skip: Int=0, top: Int=10, filter: IFilter): LigandResult
+     ligands(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter): LigandResult
 
      pubCount(term: String = ""): Int
      pubmed(pmid: Int!): PubMed

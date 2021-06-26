@@ -12,6 +12,7 @@ export class FieldInfo {
     description: string;
 
     schema: string;
+    requirement: string;
     table: string;
     column: string;
     alias: string;
@@ -35,22 +36,24 @@ export class FieldInfo {
     typeModifier: string;
     valuesDelimited: boolean;
     allowedValues: string[];
+    upsetValues: { inGroup: string[], outGroup: string[] }[];
     parent: DataModelList;
 
     isFromListQuery: boolean;
+    isForUpsetPlot: boolean;
 
     constructor(obj: any) {
         this.name = obj?.name || '';
         this.schema = obj?.schema || '';
+        this.requirement = obj?.requirement || '';
         this.description = obj?.description || '';
 
         this.table = obj?.table || '';
         this.column = obj?.column || '';
-        if(obj?.column){
-            if(obj.column.includes(' ')){
+        if (obj?.column) {
+            if (obj.column.includes(' ')) {
                 this.column = '`' + obj.column + '`';
-            }
-            else{
+            } else {
                 this.column = obj.column;
             }
         }
@@ -74,18 +77,19 @@ export class FieldInfo {
         this.typeModifier = obj?.typeModifier || "";
         this.valuesDelimited = obj?.valuesDelimited || false;
         this.allowedValues = obj?.allowedValues || [];
+        this.upsetValues = obj?.upSet || [];
         this.parent = obj?.parent || {};
 
         this.isFromListQuery = obj?.isFromListQuery || false;
+        this.isForUpsetPlot = obj?.isForUpsetPlot || false;
 
         this.select = obj?.log ? (`log(${this.dataString()})`) : obj?.select || this.dataString();
-
         this.handleWeirdCases();
     }
 
     // TODO, make this not necessary :(
-    handleWeirdCases(){
-        if(this.table==='ncats_ppi' && this.column === 'ppitypes'){
+    handleWeirdCases() {
+        if (this.table === 'ncats_ppi' && this.column === 'ppitypes') {
             this.valuesDelimited = true;
         }
     }
@@ -160,6 +164,51 @@ export class FieldInfo {
         }
         query.whereNotNull(`${this.parent.rootTable}.${this.parent.keyColumn}`);
         // console.log(query.toString());
+        return query;
+    }
+
+    getUpsetConstraintQuery() {
+        const queries: any[] = [];
+        this.upsetValues.forEach(upSet => {
+            const upsetList = this.getUpsetFacetQuery(upSet);
+            queries.push(this.parent.database(upsetList.as('subq')).select('id')
+                .where('values', upSet.inGroup.sort((a, b) => {
+                    return a.toLowerCase().localeCompare(b.toLowerCase());
+                }).join('|')));
+        });
+        return queries;
+    }
+
+    getUpsetFacetQuery(upSet: { inGroup: string[], outGroup: string[] }) {
+        const queryDefinition = QueryDefinition.GenerateQueryDefinition(
+            {
+                database: this.parent.database,
+                databaseConfig: this.parent.databaseConfig,
+                associatedTarget: this.parent.associatedTarget,
+                associatedDisease: this.parent.associatedDisease,
+                rootTable: new SqlTable(this.table, {schema: this.schema}),
+                ppiConfidence: this.parent.ppiConfidence,
+                getSpecialModelWhereClause: this.parent.getSpecialModelWhereClause.bind(this.parent),
+                tableJoinShouldFilterList: this.parent.tableJoinShouldFilterList.bind(this.parent)
+            }, [
+                new FieldInfo({
+                    table: this.parent.rootTable,
+                    column: this.parent.keyColumn,
+                    alias: 'id'
+                } as FieldInfo),
+                new FieldInfo({
+                    ...this,
+                    group_method: 'group_concat',
+                    isForUpsetPlot: true,
+                    alias: 'values'
+                })
+            ]);
+        const query = queryDefinition.generateBaseQuery(true);
+        query.whereIn(this.table + '.' + this.column, [...upSet.inGroup, ...upSet.outGroup]);
+        query.groupBy(this.parent.keyString());
+        if (this.where_clause.length > 0) {
+            query.whereRaw(this.where_clause);
+        }
         return query;
     }
 

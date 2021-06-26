@@ -24,7 +24,7 @@ export class ListManager {
         list.push(new FieldInfo(field));
     }
 
-    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false) {
+    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false, associatedLigand: string = '', associatedSmiles: string = '') {
         const lists: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
         this.listMap.forEach((fields, key) => {
             const listObj: ListContext = JSON.parse(key);
@@ -39,7 +39,17 @@ export class ListManager {
                 } else {
                     lists.set(listObj.listName, list);
                 }
-                list.push(...fields);
+                list.push(...fields.filter(field => {
+                    if (!field.requirement) {
+                        return true;
+                    }
+                    if (field.requirement === 'associatedLigand') {
+                        return associatedLigand && associatedLigand.length > 0;
+                    }
+                    if (field.requirement === 'associatedSmiles') {
+                        return associatedSmiles && associatedSmiles.length > 0;
+                    }
+                }));
                 if(listObj.listName === 'Single Value Fields' && similarityQuery){
                     list.push(...ListManager.similarityFields());
                 }
@@ -71,14 +81,15 @@ export class ListManager {
         return fieldList;
     }
 
-    getTheseFilteringFields(listObj: DataModelList, type: string, fields: { facet: string, values: string[] }[]) {
+    getTheseFilteringFields(listObj: DataModelList, type: string, fields: { facet: string, values: string[], upSets: {inGroup: string[], outGroup: string[]}[] }[]) {
         const context = this.getContext(listObj, type);
         const list = this.listMap.get(context.toString()) || [];
         const filteringFacets: FieldInfo[] = [];
         fields.forEach(ff => {
             const facet = list.find(field => field.name === ff.facet)?.copy();
             if (facet) {
-                facet.allowedValues = ff.values;
+                facet.allowedValues = ff.values || [];
+                facet.upsetValues = ff.upSets || [];
                 facet.parent = listObj;
                 filteringFacets.push(facet);
             }
@@ -93,7 +104,15 @@ export class ListManager {
             context = new ListContext(listObj.modelInfo.name, '', type, name);
             list = this.listMap.get(context.toString()) || [];
         }
-        const fields = list.filter(field => field.order > 0).sort((a, b) => a.order - b.order)
+        const fields = list.filter(field => {
+            if (field.requirement.length > 0){
+                // @ts-ignore
+                if (listObj[field.requirement].length === 0) {
+                    return false;
+                }
+            }
+            return (field.order > 0);
+        }).sort((a, b) => a.order - b.order)
             .map(f =>
         {
             const f2 = f.copy();
