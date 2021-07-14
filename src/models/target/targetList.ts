@@ -155,24 +155,8 @@ export class TargetList extends DataModelList {
     }
 
     getDiseaseQuery() {
-        return this.database.select(this.database.raw(` 
-distinct protein_id
-FROM
-    disease as d
-JOIN (SELECT 
-            lst.name
-        FROM
-            ncats_do lst,
-            (SELECT 
-                MIN(lft) AS 'lft', MIN(rght) AS 'rght'
-            FROM
-                ncats_do
-            WHERE
-                name = "${this.associatedDisease}") AS finder
-        WHERE
-            finder.lft <= lst.lft
-                AND finder.rght >= lst.rght) as diseaseList
-ON diseaseList.name = d.ncats_name`));
+        const q = this.database('ncats_p2da').distinct('protein_id').where('name', this.associatedDisease);
+        return q;
     }
 
     cacheProteinList(list: string[]) {
@@ -217,19 +201,7 @@ ON diseaseList.name = d.ncats_name`));
             if(modifiedFacet) {
                 modifiedFacet.typeModifier = this.associatedDisease;
             }
-            return `disease.ncats_name in (
-            SELECT 
-                lst.name
-            FROM
-                ncats_do lst, (SELECT 
-                MIN(lft) AS 'lft', MIN(rght) AS 'rght'
-            FROM
-                ncats_do
-            WHERE
-                name = "${this.associatedDisease}") AS finder
-            WHERE
-                finder.lft <= lst.lft
-                    AND finder.rght + 0 >= lst.rght)`;
+            return `disease.id in (select disease_assoc_id from ncats_p2da where name = '${this.associatedDisease}')`;
         }
         if (this.associatedLigand && (fieldInfo.table === 'ncats_ligand_activity' || rootTableOverride === 'ncats_ligand_activity')) {
             const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);

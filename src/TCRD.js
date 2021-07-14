@@ -601,12 +601,10 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
     }
 
     getDisease(name) {
-        let descendentQuery = this.db("disease").select(this.db.raw(`'name' as "name"`))
-            .union(DiseaseList.getDescendentsQuery(this.db, name));
-        let q = this.db("disease")
+        const q = this.db('ncats_p2da')
             .select(this.db.raw(`'name' as "name"`))
             .count({associationCount: this.db.raw("distinct protein_id")})
-            .join(descendentQuery.as("diseaseList"), "diseaseList.name", this.db.raw("disease.ncats_name"));
+            .where('name', name);
         return q;
     }
 

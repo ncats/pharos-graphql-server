@@ -552,6 +552,7 @@ const resolvers = {
                 return null;
             }
             const q = DiseaseList.getAssociationDetails(dataSources.tcrd.db, dataSources.associatedDisease, target.tcrdid);
+            // console.log(q.toString());
             return q.then(rows => {
                 return rows;
             });
@@ -1851,13 +1852,22 @@ function getDiseaseResult(args, tcrd) {
 
         let facets = [];
         for (var i in rows) {
+            let rowData = rows[i];
+            if (diseaseList.facetsToFetch[i].dataType == FacetDataType.numeric) {
+                rowData = rowData.map(p => {
+                    p.name = p.bin;
+                    return p;
+                })
+            }
             facets.push({
+                dataType: diseaseList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
+                binSize: diseaseList.facetsToFetch[i].binSize,
                 sql: queries[i].toString(),
                 elapsedTime: diseaseList.getElapsedTime(diseaseList.facetsToFetch[i].name),
                 facet: diseaseList.facetsToFetch[i].name,
                 modifier: diseaseList.facetsToFetch[i].typeModifier,
-                count: rows[i].length,
-                values: rows[i],
+                count: rowData.length,
+                values: rowData,
                 sourceExplanation: diseaseList.facetsToFetch[i].description
             })
         }

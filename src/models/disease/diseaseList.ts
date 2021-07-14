@@ -5,31 +5,20 @@ import {SqlTable} from "../sqlTable";
 export class DiseaseList extends DataModelList {
 
     static getAssociationDetails(knex: any, diseaseName: string, targetId: number) {
-        let descendentQuery = DiseaseList.getDescendentsQuery(knex, diseaseName);
-        return knex({disease: "disease", t2tc: "t2tc"})
+        return knex({disease: 'disease', t2tc: 't2tc', ncats_p2da: 'ncats_p2da'})
             .select({name: "ncats_name", dataType: "dtype", evidence: "evidence", zscore: "zscore",
                 conf: "conf", reference: "reference", drug_name: "drug_name", log2foldchange: "log2foldchange",
                 pvalue: "pvalue", score: "score", source: "source", O2S: "O2S", S2O: "S2O"})
-            .where("t2tc.target_id",targetId)
-            .andWhere("disease.protein_id",knex.raw("t2tc.protein_id"))
-            .whereIn("disease.ncats_name",descendentQuery);
-    }
-
-    static getDescendentsQuery(knex: any, diseaseName: string) {
-        let finderQuery = knex("ncats_do")
-            .min({lft: 'lft', rght: 'rght'})
-            .whereRaw(`name = ?`, diseaseName);
-        let query = knex({lst: 'ncats_do', finder: finderQuery})
-            .select('lst.name')
-            .where('finder.lft', '<=', knex.raw('lst.lft'))
-            .andWhere('finder.rght', '>=', knex.raw('lst.rght'));
-        return query;
+            .where('t2tc.target_id', targetId)
+            .andWhere('ncats_p2da.disease_assoc_id', knex.raw('disease.id'))
+            .andWhere('ncats_p2da.protein_id', knex.raw('t2tc.protein_id'))
+            .andWhere('ncats_p2da.name', diseaseName);
     }
 
     static getTinxQuery(knex: any, diseaseName: string) {
-        let doidList = knex("disease")
-            .distinct('did')
-            .whereIn('ncats_name', DiseaseList.getDescendentsQuery(knex, diseaseName));
+        let doidList = knex({disease: 'disease', ncats_p2da: 'ncats_p2da'}).distinct('clean_did')
+            .where('disease_assoc_id', knex.raw('disease.id'))
+            .andWhere('ncats_p2da.name', diseaseName);
         let tinxQuery = knex({target: "target", t2tc:"t2tc", tinx_novelty:"tinx_novelty", tinx_importance:"tinx_importance", tinx_disease:"tinx_disease"})
             .select({
                 targetID: 'target.id',
@@ -40,7 +29,7 @@ export class DiseaseList extends DataModelList {
                 name:knex.raw('(tinx_disease.name)'),
                 importance:knex.raw('(tinx_importance.score)')
             })
-            .join(doidList.as('idList'), 'idList.did', 'tinx_disease.doid')
+            .join(doidList.as('idList'), 'idList.clean_did', 'tinx_disease.doid')
             .where(knex.raw('tinx_importance.doid = tinx_disease.doid'))
             .andWhere(knex.raw('tinx_importance.protein_id = t2tc.protein_id'))
             .andWhere(knex.raw('tinx_importance.protein_id = tinx_novelty.protein_id'))
