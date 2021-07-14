@@ -202,6 +202,7 @@ type OrthologDisease @cacheControl(maxAge: 604800) {
 type Disease @cacheControl(maxAge: 604800) {
      name: String!
      associationCount: Int!
+     datasource_count: Int
      associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
      uniprotDescription: String
      doDescription: String
@@ -764,7 +765,8 @@ type PharosConfiguration{
           associatedModelName: String,
           similarityQuery: Boolean = false,
           associatedLigand: String = "",
-          associatedSmiles: String = ""): [FieldList]
+          associatedSmiles: String = "",
+          associatedTarget: String = ""): [FieldList]
 }
 
 type FieldList{

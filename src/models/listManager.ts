@@ -24,7 +24,7 @@ export class ListManager {
         list.push(new FieldInfo(field));
     }
 
-    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false, associatedLigand: string = '', associatedSmiles: string = '') {
+    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false, associatedLigand: string = '', associatedSmiles: string = '', associatedTarget: string = '') {
         const lists: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
         this.listMap.forEach((fields, key) => {
             const listObj: ListContext = JSON.parse(key);
@@ -49,10 +49,16 @@ export class ListManager {
                     if (field.requirement === 'associatedSmiles') {
                         return associatedSmiles && associatedSmiles.length > 0;
                     }
+                    if (field.requirement === 'associatedTarget') {
+                        return associatedTarget && associatedTarget.length > 0;
+                    }
                 }));
                 if(listObj.listName === 'Single Value Fields' && similarityQuery){
                     list.push(...ListManager.similarityFields());
                 }
+                list = list.filter((item, pos) => {
+                    return list.findIndex(e => e.name === item.name) === pos;
+                });
             }
         });
         return lists;

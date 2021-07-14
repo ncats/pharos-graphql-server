@@ -46,6 +46,9 @@ export class DiseaseList extends DataModelList {
         if (this.fields.length > 0) {
             return [{column: 'id', order: 'asc'}];
         }
+        if (this.associatedTarget) {
+            return [{column: 'datasource_count', order: 'desc'}];
+        }
         return [{column: 'count', order: 'desc'}]
     };
 

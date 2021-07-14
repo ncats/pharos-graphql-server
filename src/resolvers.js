@@ -13,7 +13,7 @@ const resolvers = {
 
     PharosConfiguration: {
         downloadLists: async function (config, args, {dataSources}) {
-            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery, args.associatedLigand, args.associatedSmiles);
+            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery, args.associatedLigand, args.associatedSmiles, args.associatedTarget);
             const retArray = [];
             lists.forEach((fields, listName) => {
                 retArray.push({
