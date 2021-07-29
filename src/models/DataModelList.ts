@@ -270,7 +270,7 @@ export abstract class DataModelList implements IBuildable {
                 col = sortFieldInfo.group_method + "(`" + sortFieldInfo.alias + "`)";
             }
         } else {
-            col = "`" + (sortTable.alias || sortTable.tableName) + "`.`" + sortFieldInfo.alias + "`";
+            col = "`" + sortFieldInfo.alias + "`";
         }
         let dir = this.direction;
         if (sortTable.tableName === "disease" && sortFieldInfo.column === "pvalue") { // workaround TCRD bug  https://github.com/unmtransinfo/TCRD/issues/3
