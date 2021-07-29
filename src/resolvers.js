@@ -787,7 +787,17 @@ const resolvers = {
                 console.error(error);
             });
         },
-
+        gtex: async function (target, args, {dataSources}) {
+            const q = dataSources.tcrd.db({t2tc: 't2tc', gtex: 'gtex'})
+                .leftJoin('uberon', 'uberon_id', 'uberon.uid')
+                .select(['name', 'def', 'comment',
+                `tissue`, `gender`, `tpm`, `tpm_rank`, `tpm_rank_bysex`, `tpm_level`,
+                `tpm_level_bysex`, `tpm_f`, `tpm_m`, `log2foldchange`, `tau`, `tau_bysex`,
+                `uberon_id`]).where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
+                .andWhere('t2tc.target_id', target.tcrdid);
+            console.log(q.toString());
+            return q;
+        },
         orthologCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologCountsForTarget(target);
             return q.then(rows => {
@@ -1442,7 +1452,19 @@ const resolvers = {
             });
         }
     },
-
+    GTEXExpression: {
+        uberon: async function (expr, args, {dataSources}) {
+            if (expr.uberon_id && expr.name) {
+                return {
+                    uid: expr.uberon_id,
+                    name: expr.name,
+                    def: expr.def,
+                    comment: expr.comment
+                };
+            }
+            return null;
+        },
+    },
     Expression: {
         uberon: async function (expr, args, {dataSources}) {
             if (expr.uberon_id) {

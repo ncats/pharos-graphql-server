@@ -1467,8 +1467,8 @@ group by etype order by value desc`, [target.tcrdid]));
     getExpressionsForTarget(target, args) {
         const EXPRESSION_SQL = `
 d.*,f.*, d.id as expid, d.etype as type, 
-d.cell_id as cellid, d.oid as btoid, d.qual_value as qual
-from t2tc c, expression d 
+d.cell_id as cellid, d.oid as btoid, d.qual_value as qual, e.source_rank
+from t2tc c, ncats_expression e, expression d 
 left join uberon f on f.uid = d.uberon_id`;
         let q = this.db.select(this.db.raw(EXPRESSION_SQL));
         if (args.filter) {
@@ -1487,6 +1487,7 @@ match(d.tissue) against(? in boolean mode)`, [args.filter.term]));
 
         q = q.andWhere(this.db.raw(`            
 d.protein_id = c.protein_id
+and e.id = d.id
 and c.target_id = ?`, [target.tcrdid]));
         if (args.top) {
             q.limit(args.top);
