@@ -274,6 +274,7 @@ type Uberon @cacheControl(maxAge: 604800) {
      name: String!
      def: String
      comment: String
+     ancestors: [Uberon]
 }
 
 """Expression entity"""

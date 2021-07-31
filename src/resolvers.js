@@ -1452,6 +1452,19 @@ const resolvers = {
             });
         }
     },
+    Uberon: {
+        ancestors: async function (expr, args, {dataSources}) {
+            const query = dataSources.tcrd.db({uberon: 'uberon', uberon_ancestry: 'uberon_ancestry'})
+                .select({
+                    uid: 'uid',
+                    name: 'name',
+                    def: 'def',
+                    comment: 'comment'
+                }).where('uberon.uid', dataSources.tcrd.db.raw('uberon_ancestry.ancestor_uberon_id'))
+                .andWhere('uberon_id', expr.uid);
+            return query;
+        }
+    },
     GTEXExpression: {
         uberon: async function (expr, args, {dataSources}) {
             if (expr.uberon_id && expr.name) {
