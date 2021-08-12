@@ -1854,6 +1854,7 @@ async function getTargetResult(args, dataSources) {
                 facets.push({
                     dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                     binSize: targetList.facetsToFetch[i].binSize,
+                    single_response: targetList.facetsToFetch[i].single_response,
                     facet: targetList.facetsToFetch[i].name,
                     modifier: targetList.facetsToFetch[i].typeModifier,
                     count: rowData.length,
@@ -1897,6 +1898,7 @@ function getDiseaseResult(args, tcrd) {
             facets.push({
                 dataType: diseaseList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                 binSize: diseaseList.facetsToFetch[i].binSize,
+                single_response: diseaseList.facetsToFetch[i].single_response,
                 sql: queries[i].toString(),
                 elapsedTime: diseaseList.getElapsedTime(diseaseList.facetsToFetch[i].name),
                 facet: diseaseList.facetsToFetch[i].name,
@@ -1962,6 +1964,7 @@ async function getLigandResult(args, dataSources) {
             facets.push({
                 dataType: ligandList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                 binSize: ligandList.facetsToFetch[i].binSize,
+                single_response: ligandList.facetsToFetch[i].single_response,
                 facet: ligandList.facetsToFetch[i].name,
                 modifier: ligandList.facetsToFetch[i].typeModifier,
                 count: rowData.length,

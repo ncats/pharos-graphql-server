@@ -75,6 +75,7 @@ type Facet @cacheControl(maxAge: 604800) {
      dataType: FacetDataType
      binSize: Float
      sql: String
+     single_response: Boolean
      elapsedTime: Float
      sourceExplanation: String
 }
@@ -816,6 +817,7 @@ type FieldDetails{
      dataType: String
      binSize: String
      log: String
+     single_response: Boolean
      default: Boolean
 }
 

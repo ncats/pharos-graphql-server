@@ -27,6 +27,7 @@ export class FieldInfo {
 
     dataType: FacetDataType;
     binSize: number;
+    single_response: boolean;
     log: boolean;
 
     order: number;
@@ -60,6 +61,7 @@ export class FieldInfo {
         this.alias = obj?.alias || this.column;
         this.where_clause = obj?.where_clause || '';
         this.group_method = obj?.group_method || '';
+        this.single_response = obj?.single_response || false;
 
         this.null_table = obj?.null_table || '';
         this.null_column = obj?.null_column || '';
