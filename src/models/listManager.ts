@@ -148,7 +148,7 @@ export class ListManager {
     }
 
     getOneField(listObj: DataModelList, type: string, fieldName: string, listName: string = '', includeSVF: boolean = true) {
-        let f: FieldInfo | undefined = this.getOneFromContextList(listObj, type, fieldName, listName);
+        let f: FieldInfo | undefined | null = this.getOneFromContextList(listObj, type, fieldName, listName);
         if (f || !includeSVF) {
             return f;
         }
@@ -158,7 +158,12 @@ export class ListManager {
                 return f;
             }
         }
-        return this.getOneFromSVFList(listObj, fieldName);
+        f = this.getOneFromSVFList(listObj, fieldName);
+        if (f) {
+            return f;
+        }
+        f = this.getOneFromContextList(listObj, 'facet', fieldName);
+        return f;
     }
 
     private getContext(listObj: DataModelList, type: string, name: string = '') {
