@@ -20,8 +20,8 @@ describe('all the queries should be consistent with each other', function () {
 
         const batchListQuery = batchList.getListQuery('list');
         const batchCountQuery = batchList.getCountQuery();
-        const fullTdlFacet = fullList.facetsToFetch.find(f => f.name == 'Target Development Level').getFacetQuery();
-        const batchTdlFacet = batchList.facetsToFetch.find(f => f.name == 'Target Development Level').getFacetQuery();
+        const fullTdlFacet = fullList.facetsToFetch.find(f => f.name == 'Highest TDL').getFacetQuery();
+        const batchTdlFacet = batchList.facetsToFetch.find(f => f.name == 'Highest TDL').getFacetQuery();
 
         return Promise.all([batchCountQuery, batchTdlFacet, fullTdlFacet, batchListQuery]).then(res => {
             const batchCount = res[0][0].count;
@@ -43,12 +43,12 @@ describe('all the queries should be consistent with each other', function () {
 
         const fullCountQuery = fullList.getCountQuery();
         const fullListQuery = fullList.getListQuery('list');
-        const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
+        const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Highest TDL');
         const fullTypeFacetQuery = fullTypeFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
         const filteredListQuery = filteredList.getListQuery('list');
-        const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
+        const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Highest TDL');
         const filteredTypeFacetQuery = filteredTypeFacet.getFacetQuery();
         const filteredTypeConstraintQuery = filteredList.filteringFacets[0].getFacetConstraintQuery();
 
@@ -93,12 +93,12 @@ describe('all the queries should be consistent with each other', function () {
 
         const fullCountQuery = fullList.getCountQuery();
         const fullListQuery = fullList.getListQuery('list');
-        const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
+        const fullTypeFacet = fullList.facetsToFetch.find(facet => facet.name === 'Highest TDL');
         const fullTypeFacetQuery = fullTypeFacet.getFacetQuery();
 
         const filteredCountQuery = filteredList.getCountQuery();
         const filteredListQuery = filteredList.getListQuery('list');
-        const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Target Development Level');
+        const filteredTypeFacet = filteredList.facetsToFetch.find(facet => facet.name === 'Highest TDL');
         const filteredTypeFacetQuery = filteredTypeFacet.getFacetQuery();
         const filteredTypeConstraintQuery = filteredList.filteringFacets[0].getFacetConstraintQuery();
 

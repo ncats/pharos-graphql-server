@@ -24,7 +24,7 @@ export class ListManager {
         list.push(new FieldInfo(field));
     }
 
-    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false, associatedLigand: string = '', associatedSmiles: string = '') {
+    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false, associatedLigand: string = '', associatedSmiles: string = '', associatedTarget: string = '') {
         const lists: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
         this.listMap.forEach((fields, key) => {
             const listObj: ListContext = JSON.parse(key);
@@ -49,10 +49,16 @@ export class ListManager {
                     if (field.requirement === 'associatedSmiles') {
                         return associatedSmiles && associatedSmiles.length > 0;
                     }
+                    if (field.requirement === 'associatedTarget') {
+                        return associatedTarget && associatedTarget.length > 0;
+                    }
                 }));
                 if(listObj.listName === 'Single Value Fields' && similarityQuery){
                     list.push(...ListManager.similarityFields());
                 }
+                list = list.filter((item, pos) => {
+                    return list.findIndex(e => e.name === item.name) === pos;
+                });
             }
         });
         return lists;
@@ -142,7 +148,7 @@ export class ListManager {
     }
 
     getOneField(listObj: DataModelList, type: string, fieldName: string, listName: string = '', includeSVF: boolean = true) {
-        let f: FieldInfo | undefined = this.getOneFromContextList(listObj, type, fieldName, listName);
+        let f: FieldInfo | undefined | null = this.getOneFromContextList(listObj, type, fieldName, listName);
         if (f || !includeSVF) {
             return f;
         }
@@ -152,7 +158,12 @@ export class ListManager {
                 return f;
             }
         }
-        return this.getOneFromSVFList(listObj, fieldName);
+        f = this.getOneFromSVFList(listObj, fieldName);
+        if (f) {
+            return f;
+        }
+        f = this.getOneFromContextList(listObj, 'facet', fieldName);
+        return f;
     }
 
     private getContext(listObj: DataModelList, type: string, name: string = '') {

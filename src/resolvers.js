@@ -13,7 +13,7 @@ const resolvers = {
 
     PharosConfiguration: {
         downloadLists: async function (config, args, {dataSources}) {
-            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery, args.associatedLigand, args.associatedSmiles);
+            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery, args.associatedLigand, args.associatedSmiles, args.associatedTarget);
             const retArray = [];
             lists.forEach((fields, listName) => {
                 retArray.push({
@@ -552,6 +552,7 @@ const resolvers = {
                 return null;
             }
             const q = DiseaseList.getAssociationDetails(dataSources.tcrd.db, dataSources.associatedDisease, target.tcrdid);
+            // console.log(q.toString());
             return q.then(rows => {
                 return rows;
             });
@@ -786,7 +787,17 @@ const resolvers = {
                 console.error(error);
             });
         },
-
+        gtex: async function (target, args, {dataSources}) {
+            const q = dataSources.tcrd.db({t2tc: 't2tc', gtex: 'gtex'})
+                .leftJoin('uberon', 'uberon_id', 'uberon.uid')
+                .select(['name', 'def', 'comment',
+                `tissue`, `gender`, `tpm`, `tpm_rank`, `tpm_rank_bysex`, `tpm_level`,
+                `tpm_level_bysex`, `tpm_f`, `tpm_m`, `log2foldchange`, `tau`, `tau_bysex`,
+                `uberon_id`]).where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
+                .andWhere('t2tc.target_id', target.tcrdid);
+            // console.log(q.toString());
+            return q;
+        },
         orthologCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologCountsForTarget(target);
             return q.then(rows => {
@@ -1441,7 +1452,32 @@ const resolvers = {
             });
         }
     },
-
+    Uberon: {
+        ancestors: async function (expr, args, {dataSources}) {
+            const query = dataSources.tcrd.db({uberon: 'uberon', uberon_ancestry: 'uberon_ancestry'})
+                .select({
+                    uid: 'uid',
+                    name: 'name',
+                    def: 'def',
+                    comment: 'comment'
+                }).where('uberon.uid', dataSources.tcrd.db.raw('uberon_ancestry.ancestor_uberon_id'))
+                .andWhere('uberon_id', expr.uid);
+            return query;
+        }
+    },
+    GTEXExpression: {
+        uberon: async function (expr, args, {dataSources}) {
+            if (expr.uberon_id && expr.name) {
+                return {
+                    uid: expr.uberon_id,
+                    name: expr.name,
+                    def: expr.def,
+                    comment: expr.comment
+                };
+            }
+            return null;
+        },
+    },
     Expression: {
         uberon: async function (expr, args, {dataSources}) {
             if (expr.uberon_id) {
@@ -1818,6 +1854,7 @@ async function getTargetResult(args, dataSources) {
                 facets.push({
                     dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                     binSize: targetList.facetsToFetch[i].binSize,
+                    single_response: targetList.facetsToFetch[i].single_response,
                     facet: targetList.facetsToFetch[i].name,
                     modifier: targetList.facetsToFetch[i].typeModifier,
                     count: rowData.length,
@@ -1851,13 +1888,23 @@ function getDiseaseResult(args, tcrd) {
 
         let facets = [];
         for (var i in rows) {
+            let rowData = rows[i];
+            if (diseaseList.facetsToFetch[i].dataType == FacetDataType.numeric) {
+                rowData = rowData.map(p => {
+                    p.name = p.bin;
+                    return p;
+                })
+            }
             facets.push({
+                dataType: diseaseList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
+                binSize: diseaseList.facetsToFetch[i].binSize,
+                single_response: diseaseList.facetsToFetch[i].single_response,
                 sql: queries[i].toString(),
                 elapsedTime: diseaseList.getElapsedTime(diseaseList.facetsToFetch[i].name),
                 facet: diseaseList.facetsToFetch[i].name,
                 modifier: diseaseList.facetsToFetch[i].typeModifier,
-                count: rows[i].length,
-                values: rows[i],
+                count: rowData.length,
+                values: rowData,
                 sourceExplanation: diseaseList.facetsToFetch[i].description
             })
         }
@@ -1917,6 +1964,7 @@ async function getLigandResult(args, dataSources) {
             facets.push({
                 dataType: ligandList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                 binSize: ligandList.facetsToFetch[i].binSize,
+                single_response: ligandList.facetsToFetch[i].single_response,
                 facet: ligandList.facetsToFetch[i].name,
                 modifier: ligandList.facetsToFetch[i].typeModifier,
                 count: rowData.length,

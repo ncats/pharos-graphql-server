@@ -87,7 +87,8 @@ export class DatabaseTable {
             ["protein-ncats_idg_list_type", ["ncats_idg_list"]],
             ["protein-ncats_ligands", ["ncats_ligand_activity", "target", "t2tc"]],
             ["protein-ncats_ligand_activity", ["target", "t2tc"]],
-            ["protein-drgc_resource", ["target", "t2tc"]]
+            ["protein-drgc_resource", ["target", "t2tc"]],
+            ["protein-ncats_expression", ["expression"]]
         ]);
 
     static getRequiredLinks(table1: string, table2: string): string[] | undefined {

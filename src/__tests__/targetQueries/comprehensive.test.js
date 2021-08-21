@@ -172,8 +172,8 @@ describe('all the queries should be consistent with each other', function () {
     });
 
     test('Associated Disease query', () => {
-        const fullList = new TargetList(tcrd, {top:1000000, filter: {associatedDisease:"carcinoma"}});
-        const filteredList = new TargetList(tcrd, {filter: {associatedDisease:"carcinoma", facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
+        const fullList = new TargetList(tcrd, {top:1000000, filter: {associatedDisease:"asthma"}});
+        const filteredList = new TargetList(tcrd, {filter: {associatedDisease:"asthma", facets: [{facet: "Target Development Level", values: ["Tclin"]}]}});
 
         const fullCountQuery = fullList.getCountQuery();
         const fullListQuery = fullList.getListQuery('list');

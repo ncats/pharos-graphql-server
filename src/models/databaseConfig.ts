@@ -86,6 +86,7 @@ export class DatabaseConfig {
                     // numeric facets
                     dataType: 'field.dataType',
                     binSize: 'field.binSize',
+                    single_response: 'field.single_response',
                     log: 'field.log'
                 })
             .where('field_context.model_id', this.database.raw('model.id'))

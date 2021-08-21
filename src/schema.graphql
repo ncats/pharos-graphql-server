@@ -14,6 +14,11 @@ enum FacetDataType {
      Numeric
 }
 
+enum Gender {
+     M
+     F
+}
+
 scalar JSON
 
 type DownloadResult {
@@ -70,6 +75,7 @@ type Facet @cacheControl(maxAge: 604800) {
      dataType: FacetDataType
      binSize: Float
      sql: String
+     single_response: Boolean
      elapsedTime: Float
      sourceExplanation: String
 }
@@ -202,6 +208,7 @@ type OrthologDisease @cacheControl(maxAge: 604800) {
 type Disease @cacheControl(maxAge: 604800) {
      name: String!
      associationCount: Int!
+     datasource_count: Int
      associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
      uniprotDescription: String
      doDescription: String
@@ -268,6 +275,7 @@ type Uberon @cacheControl(maxAge: 604800) {
      name: String!
      def: String
      comment: String
+     ancestors: [Uberon]
 }
 
 """Expression entity"""
@@ -287,6 +295,23 @@ type Expression @cacheControl(maxAge: 604800) {
      uberon: Uberon
      pub: PubMed
      url: String
+     source_rank: Float
+}
+
+type GTEXExpression @cacheControl(maxAge: 604800) {
+     tissue: String!
+     gender: Gender!
+     tpm: Float!
+     tpm_rank: Float!
+     tpm_rank_bysex: Float!
+     tpm_level: String
+     tpm_level_bysex: Float!
+     tpm_f: Float
+     tpm_m: Float
+     log2foldchange: Float
+     tau: Float!
+     tau_bysex: Float!
+     uberon: Uberon
 }
 
 type GO @cacheControl(maxAge: 604800) {
@@ -530,6 +555,7 @@ type Target @cacheControl(maxAge: 604800){
      """Tissue expression"""
      expressionCounts: [IntProp]
      expressions(skip: Int=0, top: Int=10, filter: IFilter): [Expression]
+     gtex: [GTEXExpression]
 
      """Ortholog protein"""
      orthologCounts: [IntProp]
@@ -764,7 +790,8 @@ type PharosConfiguration{
           associatedModelName: String,
           similarityQuery: Boolean = false,
           associatedLigand: String = "",
-          associatedSmiles: String = ""): [FieldList]
+          associatedSmiles: String = "",
+          associatedTarget: String = ""): [FieldList]
 }
 
 type FieldList{
@@ -790,6 +817,7 @@ type FieldDetails{
      dataType: String
      binSize: String
      log: String
+     single_response: Boolean
      default: Boolean
 }
 
