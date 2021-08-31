@@ -201,14 +201,14 @@ export class TargetList extends DataModelList {
             if(modifiedFacet) {
                 modifiedFacet.typeModifier = this.associatedDisease;
             }
-            return `disease.id in (select disease_assoc_id from ncats_p2da where name = '${this.associatedDisease}')`;
+            return `disease.id in (select disease_assoc_id from ncats_p2da where name = "${this.associatedDisease}")`;
         }
         if (this.associatedLigand && (fieldInfo.table === 'ncats_ligand_activity' || rootTableOverride === 'ncats_ligand_activity')) {
             const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
             if(modifiedFacet) {
                 modifiedFacet.typeModifier = this.associatedLigand;
             }
-            return `ncats_ligand_activity.ncats_ligand_id = (select id from ncats_ligands where identifier = '${this.associatedLigand}')`;
+            return `ncats_ligand_activity.ncats_ligand_id = (select id from ncats_ligands where identifier = "${this.associatedLigand}")`;
         }
         if (this.associatedSmiles && (fieldInfo.table === 'predictor_results' || rootTableOverride === 'predictor_results')) {
             const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
