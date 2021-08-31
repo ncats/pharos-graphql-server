@@ -8,6 +8,7 @@ const {TargetList} = require("./models/target/targetList");
 const {Virus} = require("./models/virus/virusQuery");
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
+const binomialTest = require('@stdlib/stats-binomial-test');
 
 const resolvers = {
 
@@ -26,6 +27,19 @@ const resolvers = {
     },
 
     Query: {
+        normalizableFilters: async function (_, args, {dataSources}) {
+            const targetFilters = dataSources.tcrd.tableInfo.listManager.listMap.get(
+                (new ListContext('Target', '', 'facet')).toString()) || [];
+            const diseaseFilters = dataSources.tcrd.tableInfo.listManager.listMap.get(
+                (new ListContext('Disease', '', 'facet')).toString()) || [];
+            const ligandFilters = dataSources.tcrd.tableInfo.listManager.listMap.get(
+                (new ListContext('Ligand', '', 'facet')).toString()) || [];
+            return {
+                targetFacets: targetFilters.filter(f => f.dataType === 'category').map(f => f.name),
+                diseaseFacets: diseaseFilters.filter(f => f.dataType === 'category').map(f => f.name),
+                ligandFacets: ligandFilters.filter(f => f.dataType === 'category').map(f => f.name)
+            };
+        },
         upset: async function (_, args, {dataSources}) {
             const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
             if (listObj instanceof LigandList) {
@@ -791,9 +805,9 @@ const resolvers = {
             const q = dataSources.tcrd.db({t2tc: 't2tc', gtex: 'gtex'})
                 .leftJoin('uberon', 'uberon_id', 'uberon.uid')
                 .select(['name', 'def', 'comment',
-                `tissue`, `gender`, `tpm`, `tpm_rank`, `tpm_rank_bysex`, `tpm_level`,
-                `tpm_level_bysex`, `tpm_f`, `tpm_m`, `log2foldchange`, `tau`, `tau_bysex`,
-                `uberon_id`]).where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
+                    `tissue`, `gender`, `tpm`, `tpm_rank`, `tpm_rank_bysex`, `tpm_level`,
+                    `tpm_level_bysex`, `tpm_f`, `tpm_m`, `log2foldchange`, `tau`, `tau_bysex`,
+                    `uberon_id`]).where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
                 .andWhere('t2tc.target_id', target.tcrdid);
             // console.log(q.toString());
             return q;
@@ -1529,8 +1543,47 @@ const resolvers = {
     },
 
     Facet: {
-        values: async function (facet, args, _) {
+        values: async function (facet, args, {dataSources}) {
             let values = facet.values;
+            if (facet.dataType == 'Category' && !facet.usedForFiltering && !facet.nullQuery && facet.enrichFacets) {
+                const pValues = [];
+                values.forEach(v => {
+                    const data = dataSources.tcrd.tableInfo.findValueProbability(facet.model, facet.facet, v.name);
+                    if (data) {
+                        const stats = binomialTest(v.value, facet.totalCount,
+                            {
+                                p: data.p
+                            });
+                        if (stats.statistic == stats.nullValue) {
+                            stats.representation = 0;
+                        } else if (stats.statistic > stats.nullValue) {
+                            stats.representation = 1;
+                        } else if (stats.statistic < stats.nullValue) {
+                            stats.representation = -1;
+                        }
+                        v.stats = stats;
+                        pValues.push(stats.pValue);
+                    }
+                });
+                pValues.sort((a, b) => a - b);
+                let criticalP = 0;
+                for (let i = 0; i < pValues.length; i++) {
+                    const tempAlpha = (i + 1) / pValues.length * .05;
+                    if (pValues[i] < tempAlpha) {
+                        criticalP = pValues[i];
+                    }
+                }
+                values.forEach(v => { // correct H0 rejections based on Benjamini-Hochberg procedure to control False Discovery Rate FDR  https://egap.org/resource/10-things-to-know-about-multiple-comparisons/
+                    const retStats = {...v.stats};
+                    retStats.alpha = criticalP;
+                    if (retStats.pValue <= criticalP) {
+                        retStats.rejected = true;
+                    } else {
+                        retStats.rejected = false;
+                    }
+                    v.stats = retStats;
+                });
+            }
             if (args.name) {
                 values = filter(values, x => {
                     var matched = x.name == args.name;
@@ -1541,7 +1594,22 @@ const resolvers = {
                     return matched;
                 });
             }
-            if (facet.dataType == "Numeric") {
+            if(facet.enrichFacets) {
+                values.sort((a, b) => {
+                    if (a.stats && b.stats) {
+                        if (a.stats.representation === b.stats.representation) {
+                            if (a.stats.pValue === b.stats.pValue) {
+                                return b.count - a.count;
+                            }
+                            return a.stats.representation * (a.stats.pValue - b.stats.pValue);
+                        } else {
+                            return b.stats.representation - a.stats.representation;
+                        }
+                    }
+                    return b.count - a.count;
+                });
+            }
+            if (facet.dataType == "Numeric" || args.all) {
                 return values;
             }
             return slice(values, args.skip, args.top + args.skip);
@@ -1852,6 +1920,10 @@ async function getTargetResult(args, dataSources) {
                     })
                 }
                 facets.push({
+                    model: 'Target',
+                    totalCount: count,
+                    usedForFiltering: targetList.filteringFacets.map(f => f.name).includes(targetList.facetsToFetch[i].name),
+                    nullQuery: targetList.isNull(),
                     dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                     binSize: targetList.facetsToFetch[i].binSize,
                     single_response: targetList.facetsToFetch[i].single_response,
@@ -1896,6 +1968,10 @@ function getDiseaseResult(args, tcrd) {
                 })
             }
             facets.push({
+                model: 'Disease',
+                totalCount: count,
+                usedForFiltering: diseaseList.filteringFacets.map(f => f.name).includes(diseaseList.facetsToFetch[i].name),
+                nullQuery: diseaseList.isNull(),
                 dataType: diseaseList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                 binSize: diseaseList.facetsToFetch[i].binSize,
                 single_response: diseaseList.facetsToFetch[i].single_response,
@@ -1962,6 +2038,10 @@ async function getLigandResult(args, dataSources) {
                 })
             }
             facets.push({
+                model: 'Ligand',
+                totalCount: count,
+                usedForFiltering: ligandList.filteringFacets.map(f => f.name).includes(ligandList.facetsToFetch[i].name),
+                nullQuery: ligandList.isNull(),
                 dataType: ligandList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                 binSize: ligandList.facetsToFetch[i].binSize,
                 single_response: ligandList.facetsToFetch[i].single_response,
@@ -2067,6 +2147,7 @@ function filterResultFacets(result, args) {
                 return !matched;
             }));
     }
+    facets.forEach(f => f.enrichFacets = args.enrichFacets);
     return facets;
 }
 

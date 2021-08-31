@@ -21,6 +21,12 @@ enum Gender {
 
 scalar JSON
 
+type NormalizableFilterSets {
+    targetFacets: [String]
+    diseaseFacets: [String]
+    ligandFacets: [String]
+}
+
 type DownloadResult {
      result: Boolean
      data: JSON
@@ -51,6 +57,24 @@ type IntProp @cacheControl(maxAge: 604800) {
      value: Int!
 }
 
+type BinomialStats @cacheControl(maxAge: 604800) {
+    rejected: Boolean
+    alpha: Float
+    pValue: Float
+    statistic: Float
+    ci: [Float]
+    nullValue: Float
+    alternative: String
+    method: String
+    representation: String
+}
+
+type FacetProp @cacheControl(maxAge: 604800) {
+    name: String!
+    value: Int!
+    stats: BinomialStats
+}
+
 type HSummaryProp @cacheControl(maxAge: 604800) {
      name: String!
      value: Float!
@@ -71,7 +95,7 @@ type Facet @cacheControl(maxAge: 604800) {
      facet: String!
      modifier: String
      count: Int
-     values (skip: Int=0, top: Int=20, name: String): [IntProp]
+     values (skip: Int=0, top: Int=20, name: String, all: Boolean = false): [FacetProp]
      dataType: FacetDataType
      binSize: Float
      sql: String
@@ -130,6 +154,7 @@ input IFilter {
      associatedStructure: String
      similarity: String
      ppiConfidence: Int = 400
+     noOptimization: Boolean = false
 }
 
 type Filter @cacheControl(maxAge: 604800) {
@@ -724,7 +749,7 @@ type InteractionDetails @cacheControl(maxAge: 604800){
 type TargetResult @cacheControl(maxAge: 604800){
      filter: Filter
      count: Int
-     facets (include: [String], exclude: [String]): [Facet]
+     facets (include: [String], exclude: [String], enrichFacets: Boolean = false): [Facet]
      targets(skip: Int=0, top: Int=10): [Target]
      similarityTarget: Target
 }
@@ -742,7 +767,7 @@ type SuggestionCategory @cacheControl(maxAge: 60){
 type DiseaseResult @cacheControl(maxAge: 604800) {
      filter: Filter
      count: Int
-     facets (include: [String], exclude: [String]): [Facet]
+     facets (include: [String], exclude: [String], enrichFacets: Boolean = false): [Facet]
      diseases(skip: Int=0, top: Int=10): [Disease]
 }
 
@@ -810,10 +835,6 @@ type FieldDetails{
      select: String
      where_clause: String
      group_method: String
-     null_table: String
-     null_column: String
-     null_count_column: String
-     null_where_clause: String
      dataType: String
      binSize: String
      log: String
@@ -837,7 +858,7 @@ type Query{
      target(q: ITarget): Target
 
      disease(name: String): Disease
-     diseases(skip: Int = 0, top: Int = 10, facets: [String!], filter: IFilter): DiseaseResult
+     diseases(skip: Int = 0, top: Int = 10, facets: [String!], filter: IFilter, diseases: [String]): DiseaseResult
      diseaseOntology(doid: String, name: String): [DiseaseOntology]
      doTree: [DiseaseOntology]
 
@@ -845,7 +866,7 @@ type Query{
      dtoNode(dtoid: String, name: String): [DTO]
 
      ligand(ligid: String): Ligand
-     ligands(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter): LigandResult
+     ligands(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter, ligands: [String]): LigandResult
 
      pubCount(term: String = ""): Int
      pubmed(pmid: Int!): PubMed
@@ -858,4 +879,6 @@ type Query{
      batch(targets: [String], ligands: [String],
           diseases:[String], filter: IFilter): Result
      xref(source: String!, value: String!): Xref
+
+     normalizableFilters: NormalizableFilterSets
 }

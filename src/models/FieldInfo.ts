@@ -20,11 +20,6 @@ export class FieldInfo {
     where_clause: string;
     group_method: string;
 
-    null_table: string;
-    null_column: string;
-    null_count_column: string;
-    null_where_clause: string;
-
     dataType: FacetDataType;
     binSize: number;
     single_response: boolean;
@@ -62,11 +57,6 @@ export class FieldInfo {
         this.where_clause = obj?.where_clause || '';
         this.group_method = obj?.group_method || '';
         this.single_response = obj?.single_response || false;
-
-        this.null_table = obj?.null_table || '';
-        this.null_column = obj?.null_column || '';
-        this.null_count_column = obj?.null_count_column || '';
-        this.null_where_clause = obj?.null_where_clause || '';
 
         this.dataType = obj?.dataType || FacetDataType.category;
         this.binSize = obj?.binSize || 1;
@@ -219,10 +209,10 @@ export class FieldInfo {
             return null;
         }
         let query;
-        if (this.parent.isNull() && this.null_count_column) {
-            query = this.getPrecalculatedFacetQuery();
-        } else if (this.dataType === FacetDataType.numeric) {
+        if (this.dataType === FacetDataType.numeric) {
             query = this.getNumericFacetQuery();
+        } else if (this.parent.isNull() && !this.parent.noOptimization) {
+            query = this.getPrecalculatedFacetQuery();
         } else {
             query = this.getStandardFacetQuery();
         }
@@ -232,14 +222,13 @@ export class FieldInfo {
     }
 
     private getPrecalculatedFacetQuery() {
-        let query = this.parent.database(this.null_table).select({
-            name: this.null_column,
-            value: this.null_count_column
-        });
-        if (this.null_where_clause.length > 0) {
-            query.whereRaw(this.null_where_clause);
-        }
-        query.orderBy('value', 'desc');
+        let query = this.parent.database('ncats_unfiltered_counts').select({
+            name: 'value',
+            value: 'count'
+        }).where('schema', this.parent.databaseConfig.configDB)
+            .andWhere('model', this.parent.modelInfo.name)
+            .andWhere('filter', this.name)
+            .orderBy('value', 'desc');
         return query;
     }
 

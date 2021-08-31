@@ -22,6 +22,7 @@ export abstract class DataModelList implements IBuildable {
     warnings: string[] = [];
     rootTable: string;
     keyColumn: string;
+    noOptimization: boolean = false;
     filteringFacets: FieldInfo[] = [];
     facetsToFetch: FieldInfo[] = [];
     dataFields: FieldInfo[] = [];
@@ -131,6 +132,9 @@ export abstract class DataModelList implements IBuildable {
                 let ch = json.filter.order.charAt(0);
                 this.direction = (ch == '^') ? 'asc' : 'desc';
             }
+            if (json.filter.noOptimization) {
+                this.noOptimization = json.filter.noOptimization;
+            }
         }
 
         if (json && json.facets) {
@@ -174,6 +178,7 @@ export abstract class DataModelList implements IBuildable {
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query, false);
         this.captureQueryPerformance(query, "list count");
+        // console.log(query.toString());
         return query;
     };
 
