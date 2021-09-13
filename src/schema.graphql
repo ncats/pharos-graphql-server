@@ -881,4 +881,6 @@ type Query{
      xref(source: String!, value: String!): Xref
 
      normalizableFilters: NormalizableFilterSets
+
+     browse(filter: IFilter) : JSON
 }
