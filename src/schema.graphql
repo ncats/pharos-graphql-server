@@ -882,5 +882,5 @@ type Query{
 
      normalizableFilters: NormalizableFilterSets
 
-     browse(filter: IFilter) : JSON
+     searchDB(filter: IFilter) : JSON
 }

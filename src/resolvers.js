@@ -27,7 +27,7 @@ const resolvers = {
     },
 
     Query: {
-        browse: async function (_, args, {dataSources}) {
+        searchDB: async function (_, args, {dataSources}) {
             let term;
             const knex = dataSources.tcrd.db;
             if (args && args.filter && args.filter.term && args.filter.term.length > 0) {
