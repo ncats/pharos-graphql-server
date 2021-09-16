@@ -27,117 +27,67 @@ const resolvers = {
     },
 
     Query: {
-        searchDB: async function (_, args, {dataSources}) {
-            let term;
-            const knex = dataSources.tcrd.db;
-            if (args && args.filter && args.filter.term && args.filter.term.length > 0) {
-                term = args.filter.term.toLowerCase();
-            } else {
-                return '';
+        filterSearch: async function (_, args, {dataSources}) {
+            if (!args || !args.term || args.term.trim().length === 0) {
+                return [];
             }
-            const pushResult = (list, entry) => {
-                if(entry.name && entry.count) {
-                    list.push(entry);
-                }
-            };
-            const parseTermResult = (term, row, type) => {
-                const entry = {
-                    id: type + '-' + row.name,
-                    entityType: type,
-                    name: row.name,
-                    matches: [],
-                    count: row.count
-                };
-                let isExact = false;
-                let isWord = false;
-                const val = row.name ? row.name.toLowerCase() : '';
+            const term = args.term.trim().toLowerCase();
+            const targetList = new TargetList(dataSources.tcrd);
+            const diseaseList = new DiseaseList(dataSources.tcrd);
+            const ligandList = new LigandList(dataSources.tcrd);
+            const facetQueries = [...targetList.getFacetQueries(), ...diseaseList.getFacetQueries(), ...ligandList.getFacetQueries()];
+            return Promise.all(facetQueries).then(res => {
 
-                let matchType = undefined;
-                switch (true) {
-                    case val === term:
-                        matchType = 'exact';
-                        isExact = true;
-                        break;
-                    case new RegExp('\\b' + term + '\\b').test(val):
-                        matchType = 'word';
-                        isWord = true;
-                        break;
-                    case val.includes(term):
-                        matchType = 'partial';
-                        break;
-                }
-                if (matchType) {
-                    entry.matches.push({
-                        field: row.type || type,
-                        matchType: matchType,
-                        match: row.name
-                    });
-                }
-                entry.matchType = isExact ? 'exact' : (isWord ? 'word' : 'partial');
-                return entry;
-            };
-
-            const pathways = knex('pathway').select({name: 'name', type: 'pwtype', count: knex.raw('count(distinct protein_id)')})
-                .where('name', 'regexp', term).groupBy(['pwtype', 'name']);
-
-            const goTerms = knex('goa').distinct({name: 'go_term_text', type: 'go_type', count: knex.raw('count(distinct protein_id)')})
-                .where('go_term_text', 'regexp', term).groupBy(['go_type', 'go_term_text']);
-
-            const keywords = knex('xref').distinct({name: 'xtra', count: knex.raw('count(distinct protein_id)')})
-                .where('xtra', 'regexp', term).andWhere('xtype', 'UniProt Keyword').groupBy('xtra');
-
-            const caseWhen = `case target.fam when 'IC' then 'Ion Channel' when 'TF; Epigenetic' then 'TF-Epigenetic' when 'TF' then 'Transcription Factor' when 'NR' then 'Nuclear Receptor' else if(target.fam is null,'Other',target.fam) end`;
-            const families = knex({target: 'target', t2tc: 't2tc'}).distinct({name: knex.raw(caseWhen), count: knex.raw('count(distinct protein_id)')})
-                .where(knex.raw(caseWhen), 'regexp', term).andWhere('target.id', knex.raw('t2tc.target_id')).groupBy('fam');
-
-            const phenotypes = knex('phenotype').distinct({name: 'term_name', type: 'ptype', count: knex.raw('count(distinct protein_id)')})
-                .where('term_name', 'regexp', term).andWhere('ptype', '!=', 'OMIM'); // OMIM is a mess
-
-            return Promise.all([pathways, goTerms, keywords, families, phenotypes]).then(res => {
-                const entries = [];
-                res[0].forEach(row => {
-                    const chunks = row.type.split(':');
-                    const entry = parseTermResult(term.toLowerCase(), row, chunks[0] + ' Pathway' +((chunks.length > 1) ? (':' + chunks[1]) : ''));
-                    pushResult(entries, entry);
-                });
-                res[1].forEach(row => {
-                    const entry = parseTermResult(term.toLowerCase(), row, 'GO ' + row.type);
-                    pushResult(entries, entry);
-                });
-                res[2].forEach(row => {
-                    const entry = parseTermResult(term.toLowerCase(), row, 'UniProt Keyword');
-                    pushResult(entries, entry);
-                });
-                res[3].forEach(row => {
-                    const entry = parseTermResult(term.toLowerCase(), row, 'Family');
-                    pushResult(entries, entry);
-                });
-                res[4].forEach(row => {
-                    if (row.type) {
-                        const chunks = row.type.split(' ');
-                        const entry = parseTermResult(term.toLowerCase(), row, chunks[0] + ' Phenotype');
-                        pushResult(entries, entry);
+                const filtered = [];
+                const loopObjs = [
+                    {
+                        list: targetList,
+                        model: 'Target'
+                    },
+                    {
+                        list: diseaseList,
+                        model: 'Disease'
+                    },
+                    {
+                        list: ligandList,
+                        model: 'Ligand'
                     }
+                ];
+
+                let resultIndex = 0;
+                loopObjs.forEach(entity => {
+                    let listIndex = 0;
+                    entity.list.facetsToFetch.forEach(facet => {
+                        const results = res[resultIndex];
+                        const f = [];
+                        results.forEach(v => {
+                            if (v.name && v.name.toLowerCase().includes(term)) {
+                                f.push(v);
+                            }
+                        });
+
+                        if (f.length > 0) {
+                            filtered.push({
+                                all: true,
+                                model: entity.model,
+                                dataType: facet.dataType == FacetDataType.numeric ? "Numeric" : "Category",
+                                binSize: facet.binSize,
+                                single_response: facet.single_response,
+                                facet: facet.name,
+                                modifier: facet.typeModifier,
+                                count: f.length,
+                                values: f,
+                                sql: facetQueries[resultIndex].toString(),
+                                elapsedTime: entity.list.getElapsedTime(facet.name),
+                                sourceExplanation: facet.description
+                            });
+                        }
+
+                        resultIndex++;
+                        listIndex++;
+                    });
                 });
-                return {
-                    entries: entries.sort((a, b) => {
-                        if (a.matchType == 'exact' && b.matchType != 'exact') {
-                            return -1;
-                        } else if (b.matchType == 'exact' && a.matchType != 'exact') {
-                            return 1;
-                        } else if (a.matchType == 'word' && b.matchType != 'word') {
-                            return -1;
-                        } else if (b.matchType == 'word' && a.matchType != 'word') {
-                            return 1;
-                        }
-                        if (a.count == b.count) {
-                            return a.id.localeCompare(b.id);
-                        }
-                        return b.count - a.count;
-                    })
-                };
-            }).catch(err => {
-                console.error(err);
+                return filtered;
             });
         },
         normalizableFilters: async function (_, args, {dataSources}) {
@@ -1722,7 +1672,7 @@ const resolvers = {
                     return b.count - a.count;
                 });
             }
-            if (facet.dataType == "Numeric" || args.all) {
+            if (facet.dataType == "Numeric" || args.all || facet.all) {
                 return values;
             }
             return slice(values, args.skip, args.top + args.skip);

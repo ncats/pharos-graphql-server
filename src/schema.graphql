@@ -102,6 +102,7 @@ type Facet @cacheControl(maxAge: 604800) {
      single_response: Boolean
      elapsedTime: Float
      sourceExplanation: String
+     model: String
 }
 
 input IUpsetOptions {
@@ -882,5 +883,5 @@ type Query{
 
      normalizableFilters: NormalizableFilterSets
 
-     searchDB(filter: IFilter) : JSON
+     filterSearch(term: String) : [Facet]
 }
