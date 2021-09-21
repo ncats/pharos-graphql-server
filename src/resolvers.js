@@ -9,6 +9,7 @@ const {Virus} = require("./models/virus/virusQuery");
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 const binomialTest = require('@stdlib/stats-binomial-test');
+const {LigandDetails} = require("./models/ligand/ligandDetails");
 
 const resolvers = {
 
@@ -263,35 +264,12 @@ const resolvers = {
         },
 
         ligand: async function (_, args, {dataSources}) {
-            return Promise.all([
-                dataSources.tcrd.getDrug(args.ligid),
-                dataSources.tcrd.getLigand(args.ligid)
-            ]).then(rows => {
-                let lig = null;
-                if (rows[0]) {
-                    rows[0].forEach(r => {
-                        if (!lig)
-                            lig = toLigand(r);
-                        else
-                            toLigand(r, lig);
-                    });
-
-                    if (lig) {
-                        lig.actcnt = rows[0].length;
-                    }
+            const ligandDetails = new LigandDetails(dataSources.tcrd.db);
+            return ligandDetails.getDetailsQuery(args.ligid).then(rows => {
+                if (rows && rows.length > 0) {
+                    return rows[0];
                 }
-                if (rows[1]) {
-                    rows[1].forEach(r => {
-                        if (!lig) lig = toLigand(r);
-                        else toLigand(r, lig);
-                    });
-                    if (lig) {
-                        lig.actcnt += rows[1].length;
-                    }
-                }
-                return lig;
-            }).catch(function (error) {
-                console.error(error);
+                return null;
             });
         },
         ligands: async function (_, args, {dataSources}) {
@@ -2212,70 +2190,6 @@ function filterResultFacets(result, args) {
     }
     facets.forEach(f => f.enrichFacets = args.enrichFacets);
     return facets;
-}
-
-function toLigand(r, lig) {
-    let l = {};
-    if (r.lychi_h4) {
-        l.ligid = r.lychi_h4;
-        if (r.drug) {
-            l.isdrug = true;
-            l.name = r.drug;
-        } else {
-            l.name = r.cmpd_name_in_src;
-            l.isdrug = false;
-        }
-    } else if (r.drug) {
-        l.ligid = r.drug;
-        l.name = r.drug;
-        l.isdrug = true;
-    } else {
-        l.ligid = r.cmpd_id_in_src;
-        l.name = r.cmpd_name_in_src;
-        l.isdrug = false;
-    }
-
-    l.smiles = r.smiles;
-    l.description = r.nlm_drug_info;
-
-    l.synonyms = [];
-    if (r.cmpd_pubchem_cid) {
-        let s = {
-            name: 'PubChem',
-            value: r.cmpd_pubchem_cid
-        };
-        if (lig && !filter(lig.synonyms, {name: s.name}))
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    if (r.cmpd_id_in_src) {
-        let s = {
-            name: r.catype,
-            value: r.cmpd_id_in_src
-        };
-        if (lig && !filter(lig.synonyms, {name: s.name}))
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    if (r.dcid) {
-        let s = {
-            name: 'DrugCentral',
-            value: r.dcid
-        };
-        if (lig && !filter(lig.synonyms, {name: s.name}))
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    if (r.reference) {
-        let s = {
-            name: r.source,
-            value: r.reference
-        };
-        if (lig && !filter(lig.synonyms, {name: s.name}))
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    return l;
 }
 
 module.exports = resolvers;

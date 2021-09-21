@@ -1686,25 +1686,6 @@ and b.target_id = ?`, [target.tcrdid]));
         return q;
     }
 
-    getLigand(id) {
-        let q = this.db.select(this.db.raw(`
-catype,cmpd_id_in_src,cmpd_name_in_src,cmpd_pubchem_cid,smiles,lychi_h4
-from cmpd_activity`))
-            .where('lychi_h4', id)
-            .orWhere('cmpd_id_in_src', id);
-        return q;
-    }
-
-    getDrug(id) {
-        let q = this.db.select(this.db.raw(`
-drug, cmpd_chemblid, nlm_drug_info, cmpd_pubchem_cid, dcid,smiles,lychi_h4
-from drug_activity`))
-            .where('lychi_h4', id)
-            .orWhere('drug', id)
-            .orWhere('cmpd_chemblid', id);
-        return q;
-    }
-
     getDOHierarchy() {
         let q = this.db.select(this.db.raw(`
 a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
