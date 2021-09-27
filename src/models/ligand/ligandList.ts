@@ -53,7 +53,7 @@ export class LigandList extends DataModelList {
                 query.join(associatedTargetQuery, 'assocTarget.identifier', 'ncats_ligands.identifier');
             }
         } else if (this.term.length > 0) {
-            query.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against("${this.term}*" in boolean mode)`);
+            query.whereRaw(`match(ncats_ligands.name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against("${this.term}*" in boolean mode)`);
         } else if (this.associatedSmiles) {
             if (!this.filterAppliedOnJoin(query, 'structure_search_results')) {
                 const that = this;
@@ -71,7 +71,9 @@ export class LigandList extends DataModelList {
     getBatchQuery(batch: string[]) {
         return this.database('ncats_ligands').distinct({ligand_id: 'id'})
             .whereIn('identifier', batch)
-            .orWhereIn('name', batch);
+            .orWhereIn('name', batch)
+            .orWhereIn('ChEMBL', batch)
+            .orWhereIn('unii', batch);
     }
 
     tableJoinShouldFilterList(sqlTable: SqlTable) {
