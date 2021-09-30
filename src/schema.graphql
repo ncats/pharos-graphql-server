@@ -775,7 +775,7 @@ type DiseaseResult @cacheControl(maxAge: 604800) {
 type LigandResult @cacheControl(maxAge: 604800) {
      filter: Filter
      count: Int
-     facets (include: [String], exclude: [String]): [Facet]
+     facets (include: [String], exclude: [String], enrichFacets: Boolean = false): [Facet]
      ligands(skip: Int=0, top: Int=10): [Ligand]
 }
 
@@ -884,4 +884,6 @@ type Query{
      normalizableFilters: NormalizableFilterSets
 
      filterSearch(term: String) : [Facet]
+
+     listCross(model: String!, crossModel: String!, filter: IFilter, batch: [String]): JSON
 }

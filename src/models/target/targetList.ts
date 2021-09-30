@@ -96,6 +96,74 @@ export class TargetList extends DataModelList {
             this.rootTable, this.database, this.databaseConfig).getListQuery(true);
     }
 
+    getAllLigandActivities(): any {
+        if (this.isNull()) {
+            return null;
+        }
+        const query = this.database({ncats_ligands: 'ncats_ligands', ncats_ligand_activity: 'ncats_ligand_activity', t2tc: 't2tc', protein: 'protein'})
+            .select(['ncats_ligand_id', 't2tc.target_id', 'ncats_ligands.smiles', 'ncats_ligands.name', 'protein.sym'])
+            .avg({mean: 'act_value'})
+            .select({std: this.database.raw('std(act_value)')})
+            .count({count: 'act_value'})
+            .select({references: this.database.raw('group_concat(distinct reference)')})
+            .select({pmids: this.database.raw('group_concat(distinct pubmed_ids)')})
+            .where('ncats_ligand_activity.target_id', this.database.raw('t2tc.target_id'))
+            .andWhere('ncats_ligands.id', this.database.raw('ncats_ligand_activity.ncats_ligand_id'))
+            .andWhere('t2tc.protein_id', this.database.raw('protein.id'))
+            .whereNotNull('act_value')
+            .limit(50000);
+        this.addFacetConstraints(query, this.filteringFacets);
+        const proteinQuery = this.fetchProteinList();
+        if(!!proteinQuery) {
+            if (Array.isArray(proteinQuery)) { // cached protein list
+                query.whereIn('t2tc.protein_id', proteinQuery);
+            } else {
+                query.join(proteinQuery.limit(1000).as("proteinQuery"), 'proteinQuery.protein_id', 'protein.id');
+            }
+        }
+        if (this.batch && this.batch.length > 0) {
+            query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.protein_id', 'protein.id');
+        }
+
+        query.groupBy(['ncats_ligand_id', 't2tc.target_id'])
+            .orderBy('mean', 'desc');
+        // console.log(query.toString());
+        return query;
+    }
+
+    getAllDiseaseConfidences(): any {
+        if (this.isNull()) {
+            return null;
+        }
+        const query = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
+            .select(['ncats_disease.name', 'protein.sym', 'protein.description'])
+            .avg({mean: 'conf'})
+            .select({std: this.database.raw('std(conf)')})
+            .count({count: 'conf'})
+            .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
+            .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
+            .andWhere('disease.protein_id', this.database.raw('protein.id'))
+            // .andWhere('ncats_d2da.direct', 1)
+            .whereNotNull('conf')
+            .limit(50000);
+        this.addFacetConstraints(query, this.filteringFacets);
+        const proteinQuery = this.fetchProteinList();
+        if(!!proteinQuery) {
+            if (Array.isArray(proteinQuery)) { // cached protein list
+                query.whereIn('disease.protein_id', proteinQuery);
+            } else {
+                query.join(proteinQuery.limit(1000).as("proteinQuery"), 'proteinQuery.protein_id', 'protein.id');
+            }
+        }
+        if (this.batch && this.batch.length > 0) {
+            query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.protein_id', 'protein.id');
+        }
+        query.groupBy(['ncats_disease.name', 'protein.description'])
+            .orderBy('mean', 'desc');
+        // console.log(query.toString());
+        return query;
+    }
+
     fetchProteinList(): any {
         if (this.term.length == 0 &&
             this.associatedTarget.length == 0 &&

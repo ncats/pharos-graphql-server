@@ -28,6 +28,18 @@ const resolvers = {
     },
 
     Query: {
+        listCross: async function (_, args, {dataSources}) {
+            if (args.model == 'Target') {
+                const listObj = new TargetList(dataSources.tcrd, args);
+                if (args.crossModel == 'Ligand') {
+                    return listObj.getAllLigandActivities();
+                } else if (args.crossModel == 'Disease') {
+                    return listObj.getAllDiseaseConfidences();
+                }
+            }
+            return {up: 'down'};
+        },
+
         filterSearch: async function (_, args, {dataSources}) {
             if (!args || !args.term || args.term.trim().length === 0) {
                 return [];

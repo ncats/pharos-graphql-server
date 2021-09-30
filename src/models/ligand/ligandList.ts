@@ -53,7 +53,10 @@ export class LigandList extends DataModelList {
                 query.join(associatedTargetQuery, 'assocTarget.identifier', 'ncats_ligands.identifier');
             }
         } else if (this.term.length > 0) {
-            query.whereRaw(`match(ncats_ligands.name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against("${this.term}*" in boolean mode)`);
+            query.whereRaw(`match(ncats_ligands.name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against("${this.term}*" in boolean mode)`)
+                .orWhere('identifier', this.term)
+                .orWhere('unii', this.term)
+                .orWhere('pt', this.term);
         } else if (this.associatedSmiles) {
             if (!this.filterAppliedOnJoin(query, 'structure_search_results')) {
                 const that = this;
@@ -69,11 +72,17 @@ export class LigandList extends DataModelList {
     }
 
     getBatchQuery(batch: string[]) {
-        return this.database('ncats_ligands').distinct({ligand_id: 'id'})
+        const query = this.database('ncats_ligands').distinct({ligand_id: 'id'})
             .whereIn('identifier', batch)
             .orWhereIn('name', batch)
-            .orWhereIn('ChEMBL', batch)
-            .orWhereIn('unii', batch);
+            .orWhereIn('unii', batch)
+            .orWhereIn('pt', batch);
+        batch.forEach(id => {
+            if (id.startsWith('CHEMBL')) {
+                query.orWhere('ChEMBL', 'like', `%${id}%`);
+            }
+        });
+        return query;
     }
 
     tableJoinShouldFilterList(sqlTable: SqlTable) {
