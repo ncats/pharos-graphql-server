@@ -1597,6 +1597,17 @@ const resolvers = {
 
     Facet: {
         values: async function (facet, args, {dataSources}) {
+            const getTotalCount = () => {
+                switch (facet.model) {
+                    case 'Target':
+                        return dataSources.tcrd.tableInfo.targetCount;
+                    case 'Disease':
+                        return dataSources.tcrd.tableInfo.diseaseCount;
+                    case 'Ligand':
+                        return dataSources.tcrd.tableInfo.ligandCount;
+                }
+            };
+
             let values = facet.values;
             if (facet.dataType == 'Category' && !facet.usedForFiltering && !facet.nullQuery && facet.enrichFacets) {
                 const pValues = [];

@@ -313,6 +313,9 @@ export abstract class DataModelList implements IBuildable {
         if (this.batch.length > 0) {
             return false;
         }
+        if (this.similarity.match.length > 0) {
+            return false;
+        }
         if (this.term.length > 0) {
             return false;
         }

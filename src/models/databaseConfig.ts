@@ -49,6 +49,9 @@ export class FieldList {
 export class DatabaseConfig {
     tables: DatabaseTable[] = [];
     listManager: ListManager = new ListManager();
+    targetCount = 0;
+    diseaseCount = 0;
+    ligandCount = 0;
 
     probMap: Map<string, {count: number, p: number}> = new Map<string, {count: number, p: number}>();
     probKey(model: string, filter: string, value: string) {
@@ -142,7 +145,18 @@ export class DatabaseConfig {
         this.database = database;
         this.dbName = dbName;
         this.configDB = configDB;
-        this.loadPromise = Promise.all([this.parseTables(), this.populateFieldLists(), this.loadModelMap(), this.loadProbMap()]);
+        this.loadPromise = Promise.all([this.parseTables(), this.populateFieldLists(), this.loadModelMap(), this.loadProbMap(), this.loadCounts()]);
+    }
+
+    loadCounts() {
+        const targetCount = this.database('protein').count({count: 'id'});
+        const diseaseCount = this.database('ncats_disease').count({count: 'id'});
+        const ligandCount = this.database('ncats_ligands').count({count: 'id'});
+        return Promise.all([targetCount, diseaseCount, ligandCount]).then((rows: any[]) =>  {
+            this.targetCount = rows[0][0].count;
+            this.diseaseCount = rows[1][0].count;
+            this.ligandCount = rows[2][0].count;
+        })
     }
 
     loadProbMap() {

@@ -244,6 +244,7 @@ export class FieldInfo {
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
         this.parent.addModelSpecificFiltering(query, false);
         query.groupBy(1).orderBy('value', 'desc');
+        // console.log(query.toString());
         return query;
     }
 
