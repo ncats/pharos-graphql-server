@@ -57,22 +57,20 @@ type IntProp @cacheControl(maxAge: 604800) {
      value: Int!
 }
 
-type BinomialStats @cacheControl(maxAge: 604800) {
+type FisherStats @cacheControl(maxAge: 604800) {
     rejected: Boolean
     alpha: Float
     pValue: Float
+    oddsRatio: Float
     statistic: Float
-    ci: [Float]
     nullValue: Float
-    alternative: String
-    method: String
-    representation: String
+    representation: Int
 }
 
 type FacetProp @cacheControl(maxAge: 604800) {
     name: String!
     value: Int!
-    stats: BinomialStats
+    stats: FisherStats
 }
 
 type HSummaryProp @cacheControl(maxAge: 604800) {

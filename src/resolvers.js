@@ -1,3 +1,4 @@
+const {PythonCalculation} = require("./models/externalAPI/PythonCalculation");
 const {ListContext} = require("./models/listManager");
 const {DataModelListFactory} = require("./models/DataModelListFactory");
 const {TargetDetails} = require("./models/target/targetDetails");
@@ -8,7 +9,6 @@ const {TargetList} = require("./models/target/targetList");
 const {Virus} = require("./models/virus/virusQuery");
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
-const binomialTest = require('@stdlib/stats-binomial-test');
 const {LigandDetails} = require("./models/ligand/ligandDetails");
 
 const resolvers = {
@@ -1610,43 +1610,50 @@ const resolvers = {
 
             let values = facet.values;
             if (facet.dataType == 'Category' && !facet.usedForFiltering && !facet.nullQuery && facet.enrichFacets) {
-                const pValues = [];
-                values.forEach(v => {
+                const tables = [];
+                const indexMap = new Map();
+                for (let i = 0 ; i < values.length ; i++) {
+                    const v = values[i];
                     const data = dataSources.tcrd.tableInfo.findValueProbability(facet.model, facet.facet, v.name);
                     if (data) {
-                        const stats = binomialTest(v.value, facet.totalCount,
-                            {
-                                p: data.p
-                            });
-                        if (stats.statistic == stats.nullValue) {
-                            stats.representation = 0;
-                        } else if (stats.statistic > stats.nullValue) {
-                            stats.representation = 1;
-                        } else if (stats.statistic < stats.nullValue) {
-                            stats.representation = -1;
-                        }
-                        v.stats = stats;
-                        pValues.push(stats.pValue);
-                    }
-                });
-                pValues.sort((a, b) => a - b);
-                let criticalP = 0;
-                for (let i = 0; i < pValues.length; i++) {
-                    const tempAlpha = (i + 1) / pValues.length * .05;
-                    if (pValues[i] < tempAlpha) {
-                        criticalP = pValues[i];
+                        const inListHasValue = v.value;
+                        const inListNoValue = data.count - v.value;
+                        const outListHasValue = facet.totalCount - v.value;
+                        const outListNoValue = getTotalCount() - inListHasValue - inListNoValue - outListHasValue;
+                        tables.push([[inListHasValue, inListNoValue], [outListHasValue, outListNoValue]]);
+                        indexMap.set(i, {...data, facetCount: facet.totalCount});
                     }
                 }
-                values.forEach(v => { // correct H0 rejections based on Benjamini-Hochberg procedure to control False Discovery Rate FDR  https://egap.org/resource/10-things-to-know-about-multiple-comparisons/
-                    const retStats = {...v.stats};
-                    retStats.alpha = criticalP;
-                    if (retStats.pValue <= criticalP) {
-                        retStats.rejected = true;
-                    } else {
-                        retStats.rejected = false;
+                if (tables.length > 0) {
+                    const stats = await new PythonCalculation().calculateFisherTest(tables).then(results => {
+                        indexMap.forEach((data, index) => {
+                            values[index].stats = {oddsRatio: results[index][0], pValue: results[index][1]};
+                        })
+                    });
+                    const pValues = values.map(r => r.stats.pValue).sort((a, b) => a - b);
+                    let criticalP = 0;
+                    for (let i = 0; i < pValues.length; i++) {
+                        const tempAlpha = (i + 1) / pValues.length * .05;
+                        if (pValues[i] < tempAlpha) {
+                            criticalP = pValues[i];
+                        }
                     }
-                    v.stats = retStats;
-                });
+
+                    indexMap.forEach((data, index) => {
+                        v = values[index];
+                        const retStats = {...v.stats};
+                        retStats.alpha = criticalP;
+                        if (retStats.pValue <= criticalP) {
+                            retStats.rejected = true;
+                        } else {
+                            retStats.rejected = false;
+                        }
+                        retStats.statistic = v.value / data.facetCount;
+                        retStats.nullValue = data.p;
+                        retStats.representation = retStats.oddsRatio === 1 ? 0 : retStats.oddsRatio > 1 ? 1 : -1;
+                        v.stats = retStats;
+                    });
+                }
             }
             if (args.name) {
                 values = filter(values, x => {
@@ -1663,14 +1670,14 @@ const resolvers = {
                     if (a.stats && b.stats) {
                         if (a.stats.representation === b.stats.representation) {
                             if (a.stats.pValue == b.stats.pValue) {
-                                return b.count - a.count;
+                                return b.value - a.value;
                             }
                             return a.stats.representation * (a.stats.pValue - b.stats.pValue);
                         } else {
                             return b.stats.representation - a.stats.representation;
                         }
                     }
-                    return b.count - a.count;
+                    return b.value - a.value;
                 });
             }
             if (facet.dataType == "Numeric" || args.all || facet.all) {
