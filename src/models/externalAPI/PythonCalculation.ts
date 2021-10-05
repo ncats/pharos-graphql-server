@@ -12,7 +12,7 @@ export class PythonCalculation {
 
         const queries = [];
         while(filterCounts.length > 0){
-            const chunk = filterCounts.splice(0, 500);
+            const chunk = filterCounts.splice(0, 250);
             const counts = {filterCounts: chunk};
             queries.push(axios.post('https://mq2qwdmec1.execute-api.us-east-1.amazonaws.com/pharos-python37-compute', counts));
         }
