@@ -23,8 +23,10 @@ export class PythonCalculation {
                 responses.forEach((response: any) => {
                     let data = response.data;
                     if(!Array.isArray(response.data)) {
-                        data = response.data.replace(/-Infinity/g, `"-Infinity"`);
-                        data = JSON.parse(data.replace(/\[Infinity/g, `["Infinity"`), (key, value) => {
+                        data = response.data.replace(/-Infinity/g, "\"-Infinity\"")
+                            .replace(/\[Infinity/g, "[\"Infinity\"")
+                            .replace(/NaN/g, "\"NaN\"");
+                        data = JSON.parse(data, (key, value) => {
                             if (value === 'NaN') {
                                 return NaN;
                             }
