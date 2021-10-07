@@ -97,9 +97,6 @@ export class TargetList extends DataModelList {
     }
 
     getAllLigandActivities(): any {
-        if (this.isNull()) {
-            return null;
-        }
         const query = this.database({ncats_ligands: 'ncats_ligands', ncats_ligand_activity: 'ncats_ligand_activity', t2tc: 't2tc', protein: 'protein'})
             .select(['ncats_ligand_id', 't2tc.target_id', 'ncats_ligands.smiles', 'ncats_ligands.name', 'protein.sym'])
             .avg({mean: 'act_value'})
@@ -111,7 +108,7 @@ export class TargetList extends DataModelList {
             .andWhere('ncats_ligands.id', this.database.raw('ncats_ligand_activity.ncats_ligand_id'))
             .andWhere('t2tc.protein_id', this.database.raw('protein.id'))
             .whereNotNull('act_value')
-            .limit(50000);
+            .limit(10000);
         this.addFacetConstraints(query, this.filteringFacets);
         const proteinQuery = this.fetchProteinList();
         if(!!proteinQuery) {
@@ -132,9 +129,6 @@ export class TargetList extends DataModelList {
     }
 
     getAllDiseaseConfidences(): any {
-        if (this.isNull()) {
-            return null;
-        }
         const query = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
             .select(['ncats_disease.name', 'protein.sym', 'protein.description'])
             .avg({mean: 'conf'})
@@ -145,7 +139,7 @@ export class TargetList extends DataModelList {
             .andWhere('disease.protein_id', this.database.raw('protein.id'))
             // .andWhere('ncats_d2da.direct', 1)
             .whereNotNull('conf')
-            .limit(50000);
+            .limit(10000);
         this.addFacetConstraints(query, this.filteringFacets);
         const proteinQuery = this.fetchProteinList();
         if(!!proteinQuery) {
