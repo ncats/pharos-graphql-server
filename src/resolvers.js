@@ -1617,10 +1617,18 @@ const resolvers = {
                     const data = dataSources.tcrd.tableInfo.findValueProbability(facet.model, facet.facet, v.name);
                     if (data) {
                         const inListHasValue = v.value;
-                        const inListNoValue = data.count - v.value;
-                        const outListHasValue = facet.totalCount - v.value;
+                        const outListHasValue = data.count - v.value;
+                        const inListNoValue = facet.totalCount - v.value;
                         const outListNoValue = getTotalCount() - inListHasValue - inListNoValue - outListHasValue;
-                        tables.push([[inListHasValue, inListNoValue], [outListHasValue, outListNoValue]]);
+
+                        v.table = {
+                            inListHasValue: inListHasValue,
+                            inListNoValue: inListNoValue,
+                            outListHasValue: outListHasValue,
+                            outListNoValue: outListNoValue
+                        };
+
+                        tables.push([[inListHasValue, outListHasValue], [inListNoValue, outListNoValue]]);
                         indexMap.set(i, {...data, facetCount: facet.totalCount});
                     }
                 }

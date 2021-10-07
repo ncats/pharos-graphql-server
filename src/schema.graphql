@@ -71,6 +71,14 @@ type FacetProp @cacheControl(maxAge: 604800) {
     name: String!
     value: Int!
     stats: FisherStats
+    table: ContingencyTable
+}
+
+type ContingencyTable @cacheControl(maxAge: 604800) {
+    inListHasValue: Int
+    outListHasValue: Int
+    inListNoValue: Int
+    outListNoValue: Int
 }
 
 type HSummaryProp @cacheControl(maxAge: 604800) {
