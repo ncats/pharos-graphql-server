@@ -1640,6 +1640,7 @@ const resolvers = {
                     });
                     const pValues = values.map(r => r.stats.pValue).sort((a, b) => a - b);
                     let criticalP = 0;
+                     // correct H0 rejections based on Benjamini-Hochberg procedure to control False Discovery Rate FDR  https://egap.org/resource/10-things-to-know-about-multiple-comparisons/
                     for (let i = 0; i < pValues.length; i++) {
                         const tempAlpha = (i + 1) / pValues.length * .05;
                         if (pValues[i] < tempAlpha) {
