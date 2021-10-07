@@ -30,15 +30,12 @@ export class PythonCalculation {
                             if (value === 'NaN') {
                                 return NaN;
                             }
-
                             if (value === 'Infinity') {
                                 return Number.MAX_VALUE;
                             }
-
                             if (value === '-Infinity') {
                                 return -Number.MAX_VALUE;
                             }
-
                             return value;
                         });
                     }
