@@ -892,4 +892,5 @@ type Query{
      filterSearch(term: String) : [Facet]
 
      listCross(model: String!, crossModel: String!, filter: IFilter, batch: [String]): JSON
+     listCrossDetails(model: String!, crossModel: String!, filter: IFilter, batch: [String], modelID: String, crossModelID: String): JSON
 }

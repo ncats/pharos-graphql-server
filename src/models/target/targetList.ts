@@ -96,9 +96,40 @@ export class TargetList extends DataModelList {
             this.rootTable, this.database, this.databaseConfig).getListQuery(true);
     }
 
+    getLigandActivityDetails(uniprot: string, identifier: string): any {
+        if (!identifier && !uniprot) {
+            return null;
+        }
+        const query = this.database({ncats_ligands: 'ncats_ligands', ncats_ligand_activity: 'ncats_ligand_activity', t2tc: 't2tc', protein: 'protein', target: 'target'})
+            .select({
+                type: 'ncats_ligand_activity.act_type',
+                value: 'ncats_ligand_activity.act_value',
+                moa: 'ncats_ligand_activity.action_type',
+                reference: 'ncats_ligand_activity.reference',
+                pmids: 'ncats_ligand_activity.pubmed_ids',
+                symbol: 'protein.sym',
+                idgTLD: 'target.tdl',
+                name: 'protein.description',
+                accession: 'protein.uniprot'
+            })
+            .where('ncats_ligand_activity.target_id', this.database.raw('t2tc.target_id'))
+            .andWhere('ncats_ligands.id', this.database.raw('ncats_ligand_activity.ncats_ligand_id'))
+            .andWhere('t2tc.protein_id', this.database.raw('protein.id'))
+            .andWhere('t2tc.target_id', this.database.raw('target.id'))
+            .orderBy([{column: 'moa', order: 'desc'}, {column: 'pmids', order: 'desc'}]);
+        if(identifier) {
+            query.andWhere('ncats_ligands.identifier', identifier);
+        }
+        if (uniprot) {
+            query.andWhere('protein.uniprot', uniprot);
+        }
+        console.log(query.toString());
+        return query;
+    }
+
     getAllLigandActivities(): any {
         const query = this.database({ncats_ligands: 'ncats_ligands', ncats_ligand_activity: 'ncats_ligand_activity', t2tc: 't2tc', protein: 'protein'})
-            .select(['ncats_ligand_id', 't2tc.target_id', 'ncats_ligands.smiles', 'ncats_ligands.name', 'protein.sym'])
+            .select(['ncats_ligand_id', 't2tc.target_id', 'ncats_ligands.identifier', 'ncats_ligands.smiles', 'ncats_ligands.name', 'protein.sym', 'protein.uniprot'])
             .avg({mean: 'act_value'})
             .select({std: this.database.raw('std(act_value)')})
             .count({count: 'act_value'})
@@ -123,22 +154,43 @@ export class TargetList extends DataModelList {
         }
 
         query.groupBy(['ncats_ligand_id', 't2tc.target_id'])
-            .orderBy('mean', 'desc');
+            .orderByRaw('count(distinct protein.id) desc');
         // console.log(query.toString());
         return query;
     }
 
-    getAllDiseaseConfidences(): any {
+    getDiseaseAssociationDetails(uniprot: string, name: string): any {
+        if (!name && !uniprot) {
+            return null;
+        }
         const query = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
-            .select(['ncats_disease.name', 'protein.sym', 'protein.description'])
-            .avg({mean: 'conf'})
-            .select({std: this.database.raw('std(conf)')})
-            .count({count: 'conf'})
+            .select([{type: 'dtype', drug: 'drug_name'}])
+            .select([
+                'disease.did', 'disease.description', 'disease.evidence', 'disease.zscore', 'disease.conf', 'disease.reference',
+                'disease.log2foldchange', 'disease.pvalue', 'disease.score', 'disease.source', 'disease.O2S', 'disease.S2O'
+                ])
+            .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
+            .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
+            .andWhere('disease.protein_id', this.database.raw('protein.id'));
+            // .orderBy([{column: 'moa', order: 'desc'}, {column: 'pmids', order: 'desc'}]);
+        if (name) {
+            query.andWhere('ncats_disease.name', name);
+        }
+        if (uniprot) {
+            query.andWhere('protein.uniprot', uniprot);
+        }
+        console.log(query.toString());
+        return query;
+    }
+
+    getAllDiseaseAssociations(): any {
+        const query = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
+            .select(['ncats_disease.name', 'protein.sym', 'protein.description', 'protein.uniprot'])
+            .count({count: 'disease.id'})
             .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
             .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
             .andWhere('disease.protein_id', this.database.raw('protein.id'))
             // .andWhere('ncats_d2da.direct', 1)
-            .whereNotNull('conf')
             .limit(10000);
         this.addFacetConstraints(query, this.filteringFacets);
         const proteinQuery = this.fetchProteinList();
@@ -153,7 +205,7 @@ export class TargetList extends DataModelList {
             query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.protein_id', 'protein.id');
         }
         query.groupBy(['ncats_disease.name', 'protein.description'])
-            .orderBy('mean', 'desc');
+            .orderByRaw('count(distinct protein.id) desc');
         // console.log(query.toString());
         return query;
     }

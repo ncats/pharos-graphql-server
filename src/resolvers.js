@@ -34,10 +34,23 @@ const resolvers = {
                 if (args.crossModel == 'Ligand') {
                     return listObj.getAllLigandActivities();
                 } else if (args.crossModel == 'Disease') {
-                    return listObj.getAllDiseaseConfidences();
+                    return listObj.getAllDiseaseAssociations();
                 }
             }
             return {up: 'down'};
+        },
+
+        listCrossDetails: async function (_, args, {dataSources}) {
+            //(model:$model, crossModel:$crossModel, filter:$filter, batch:$batch, modelID:$modelID, crossModelID:$crossModelID)
+            if (args.model == 'Target') {
+                const listObj = new TargetList(dataSources.tcrd, args);
+                if (args.crossModel == 'Ligand') {
+                    return listObj.getLigandActivityDetails(args.modelID, args.crossModelID);
+                } else if (args.crossModel == 'Disease') {
+                    return listObj.getDiseaseAssociationDetails(args.modelID, args.crossModelID);
+                }
+            }
+            return {down: 'up'};
         },
 
         filterSearch: async function (_, args, {dataSources}) {
