@@ -36,6 +36,16 @@ const resolvers = {
                 } else if (args.crossModel == 'Disease') {
                     return listObj.getAllDiseaseAssociations();
                 }
+            } else if (args.model == 'Disease') {
+                const listObj = new DiseaseList(dataSources.tcrd, args);
+                if (args.crossModel == 'Target') {
+                    return listObj.getAllTargetAssociations();
+                }
+            } else if (args.model == 'Ligand') {
+                const listObj = new LigandList(dataSources.tcrd, args);
+                if (args.crossModel == 'Target') {
+                    return listObj.getAllTargetActivities();
+                }
             }
             return {up: 'down'};
         },
@@ -48,6 +58,16 @@ const resolvers = {
                     return listObj.getLigandActivityDetails(args.modelID, args.crossModelID);
                 } else if (args.crossModel == 'Disease') {
                     return listObj.getDiseaseAssociationDetails(args.modelID, args.crossModelID);
+                }
+            } else if (args.model == 'Disease') {
+                const listObj = new DiseaseList(dataSources.tcrd, args);
+                if (args.crossModel == 'Target') {
+                    return listObj.getTargetAssociationDetails(args.modelID, args.crossModelID);
+                }
+            } else if (args.model == 'Ligand') {
+                const listObj = new LigandList(dataSources.tcrd, args);
+                if (args.crossModel == 'Target') {
+                    return listObj.getTargetActivityDetails(args.modelID, args.crossModelID);
                 }
             }
             return {down: 'up'};

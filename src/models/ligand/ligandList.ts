@@ -20,6 +20,60 @@ export class LigandList extends DataModelList {
         super(tcrd, 'Ligand', json);
     }
 
+
+
+    getTargetActivityDetails(identifier: string, uniprot: string): any {
+        if (!identifier && !uniprot) {
+            return null;
+        }
+        const query = this.database({ncats_ligands: 'ncats_ligands', ncats_ligand_activity: 'ncats_ligand_activity', t2tc: 't2tc', protein: 'protein', target: 'target'})
+            .select({
+                type: 'ncats_ligand_activity.act_type',
+                value: 'ncats_ligand_activity.act_value',
+                moa: 'ncats_ligand_activity.action_type',
+                reference: 'ncats_ligand_activity.reference',
+                pmids: 'ncats_ligand_activity.pubmed_ids',
+                symbol: 'protein.sym',
+                idgTLD: 'target.tdl',
+                name: 'protein.description',
+                accession: 'protein.uniprot'
+            })
+            .where('ncats_ligand_activity.target_id', this.database.raw('t2tc.target_id'))
+            .andWhere('ncats_ligands.id', this.database.raw('ncats_ligand_activity.ncats_ligand_id'))
+            .andWhere('t2tc.protein_id', this.database.raw('protein.id'))
+            .andWhere('t2tc.target_id', this.database.raw('target.id'))
+            .orderBy([{column: 'moa', order: 'desc'}, {column: 'pmids', order: 'desc'}]);
+        if(identifier) {
+            query.andWhere('ncats_ligands.identifier', identifier);
+        }
+        if (uniprot) {
+            query.andWhere('protein.uniprot', uniprot);
+        }
+        // console.log(query.toString());
+        return query;
+    }
+
+    getAllTargetActivities(): any {
+        const query = this.database({protein: 'protein', t2tc: 't2tc', ncats_ligand_activity: 'ncats_ligand_activity', ncats_ligands: 'ncats_ligands'})
+            .select(['ncats_ligand_id', 't2tc.target_id', 'ncats_ligands.identifier', 'ncats_ligands.smiles', 'ncats_ligands.name', 'protein.sym', 'protein.uniprot'])
+            .avg({mean: 'act_value'})
+            .select({std: this.database.raw('std(act_value)')})
+            .count({count: 'act_value'})
+            .select({references: this.database.raw('group_concat(distinct reference)')})
+            .select({pmids: this.database.raw('group_concat(distinct pubmed_ids)')})
+            .where('ncats_ligand_activity.target_id', this.database.raw('t2tc.target_id'))
+            .andWhere('ncats_ligands.id', this.database.raw('ncats_ligand_activity.ncats_ligand_id'))
+            .andWhere('t2tc.protein_id', this.database.raw('protein.id'))
+            // .whereNotNull('act_value')
+            .limit(10000);
+        this.addFacetConstraints(query, this.filteringFacets);
+        this.addModelSpecificFiltering(query, false);
+        query.groupBy(['ncats_ligand_id', 't2tc.target_id'])
+            .orderByRaw('count(distinct protein.id) desc');
+        console.log(query.toString());
+        return query;
+    }
+
     getSimilarLigands() {
         const sSearch = new StructureSearch(this.database, this.associatedSmiles, this.associatedStructureMethod);
         this.structureQueryHash = sSearch.queryHash;

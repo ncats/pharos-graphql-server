@@ -41,6 +41,47 @@ export class DiseaseList extends DataModelList {
         super(tcrd, 'Disease', json);
     }
 
+    getTargetAssociationDetails(name: string, uniprot: string): any {
+        if (!name && !uniprot) {
+            return null;
+        }
+        const query = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
+            .select([{type: 'dtype', drug: 'drug_name'}])
+            .select([
+                'disease.did', 'disease.description', 'disease.evidence', 'disease.zscore', 'disease.conf', 'disease.reference',
+                'disease.log2foldchange', 'disease.pvalue', 'disease.score', 'disease.source', 'disease.O2S', 'disease.S2O'
+            ])
+            .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
+            .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
+            .andWhere('disease.protein_id', this.database.raw('protein.id'));
+        // .orderBy([{column: 'moa', order: 'desc'}, {column: 'pmids', order: 'desc'}]);
+        if (name) {
+            query.andWhere('ncats_disease.name', name);
+        }
+        if (uniprot) {
+            query.andWhere('protein.uniprot', uniprot);
+        }
+        // console.log(query.toString());
+        return query;
+    }
+
+    getAllTargetAssociations(): any {
+        const query = this.database({protein: 'protein', disease: 'disease', ncats_d2da: 'ncats_d2da', ncats_disease: 'ncats_disease'})
+            .select(['ncats_disease.name', 'protein.sym', 'protein.description', 'protein.uniprot'])
+            .count({count: 'disease.id'})
+            .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
+            .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
+            .andWhere('disease.protein_id', this.database.raw('protein.id'))
+            // .andWhere('ncats_d2da.direct', 1)
+            .limit(10000);
+        this.addFacetConstraints(query, this.filteringFacets);
+        this.addModelSpecificFiltering(query, false);
+        query.groupBy(['ncats_disease.name', 'protein.description'])
+            .orderByRaw('count(distinct protein.id) desc');
+        // console.log(query.toString());
+        return query;
+    }
+
     defaultSortParameters(): {column: string; order: string}[]
     {
         if (this.fields.length > 0) {
