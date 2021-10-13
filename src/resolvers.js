@@ -36,6 +36,8 @@ const resolvers = {
                     return listObj.getAllLigandActivities();
                 } else if (args.crossModel == 'Disease') {
                     return listObj.getAllDiseaseAssociations();
+                } else if (args.crossModel == 'Target') {
+                    return listObj.getAllTargetInteractions();
                 }
             } else if (args.model == 'Disease') {
                 const listObj = new DiseaseList(dataSources.tcrd, args);
@@ -61,6 +63,8 @@ const resolvers = {
                     return listObj.getLigandActivityDetails(args.modelID, args.crossModelID);
                 } else if (args.crossModel == 'Disease') {
                     return listObj.getDiseaseAssociationDetails(args.modelID, args.crossModelID);
+                } else if (args.crossModel == 'Target') {
+                    return listObj.getTargetInteractionDetails(args.modelID, args.crossModelID);
                 }
             } else if (args.model == 'Disease') {
                 const listObj = new DiseaseList(dataSources.tcrd, args);

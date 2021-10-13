@@ -210,6 +210,64 @@ export class TargetList extends DataModelList {
         return query;
     }
 
+    getTargetInteractionDetails(uniprot: string, otherUniprot: string) {
+        const query = this.database({other: 'protein', ncats_ppi: 'ncats_ppi', protein: 'protein'})
+            .select({
+                sym: 'protein.sym',
+                uniprot: 'protein.uniprot',
+                name: 'protein.description',
+                score: this.database.raw('score / 1000'),
+                otherSym: 'other.sym',
+                otherUniprot: 'other.uniprot',
+                otherName: 'other.description'
+            })
+            .select([`ncats_ppi.ppitypes`, `ncats_ppi.p_int`, `ncats_ppi.p_ni`,
+                `ncats_ppi.p_wrong`, `ncats_ppi.evidence`, `ncats_ppi.interaction_type`])
+            .where('protein.id', this.database.raw('ncats_ppi.protein_id'))
+            .andWhere('other.id', this.database.raw('ncats_ppi.other_id'));
+
+        if (uniprot) {
+            query.andWhere('protein.uniprot', uniprot);
+        }
+        if (otherUniprot) {
+            query.andWhere('other.uniprot', otherUniprot);
+        }
+        return query;
+    }
+
+    getAllTargetInteractions(): any {
+        const query = this.database({other: 'protein', ncats_ppi: 'ncats_ppi', protein: 'protein'})
+            .select({
+                sym: 'protein.sym',
+                uniprot: 'protein.uniprot',
+                name: 'protein.description',
+                score: this.database.raw('score / 1000'),
+                otherSym: 'other.sym',
+                otherUniprot: 'other.uniprot',
+                otherName: 'other.description'
+            })
+            .where('protein.id', this.database.raw('ncats_ppi.protein_id'))
+            .andWhere('other.id', this.database.raw('ncats_ppi.other_id'))
+            .whereRaw(`NOT (ncats_ppi.ppitypes = 'STRINGDB' AND ncats_ppi.score < ${this.ppiConfidence})`)
+            .limit(10000);
+        this.addFacetConstraints(query, this.filteringFacets);
+        const proteinQuery = this.fetchProteinList();
+        if(!!proteinQuery) {
+            if (Array.isArray(proteinQuery)) { // cached protein list
+                query.whereIn('disease.protein_id', proteinQuery);
+            } else {
+                query.join(proteinQuery.limit(1000).as("proteinQuery"), 'proteinQuery.protein_id', 'protein.id');
+            }
+        }
+        if (this.batch && this.batch.length > 0) {
+            query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.protein_id', 'protein.id');
+        }
+        query.groupBy(['protein.uniprot', 'other.uniprot']);
+            // .orderByRaw('score desc');
+        // console.log(query.toString());
+        return query;
+    }
+
     fetchProteinList(): any {
         if (this.term.length == 0 &&
             this.associatedTarget.length == 0 &&
