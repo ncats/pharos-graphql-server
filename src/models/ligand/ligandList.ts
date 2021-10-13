@@ -70,7 +70,7 @@ export class LigandList extends DataModelList {
         this.addModelSpecificFiltering(query, false);
         query.groupBy(['ncats_ligand_activity.ncats_ligand_id', 't2tc.target_id'])
             .orderByRaw('count(distinct protein.id) desc');
-        console.log(query.toString());
+        // console.log(query.toString());
         return query;
     }
 

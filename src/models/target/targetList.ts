@@ -179,7 +179,7 @@ export class TargetList extends DataModelList {
         if (uniprot) {
             query.andWhere('protein.uniprot', uniprot);
         }
-        console.log(query.toString());
+        // console.log(query.toString());
         return query;
     }
 
