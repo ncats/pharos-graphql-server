@@ -31,6 +31,7 @@ const resolvers = {
         listCross: async function (_, args, {dataSources}) {
             if (args.model == 'Target') {
                 const listObj = new TargetList(dataSources.tcrd, args);
+                await listObj.getDrugTargetPredictions();
                 if (args.crossModel == 'Ligand') {
                     return listObj.getAllLigandActivities();
                 } else if (args.crossModel == 'Disease') {
@@ -43,6 +44,7 @@ const resolvers = {
                 }
             } else if (args.model == 'Ligand') {
                 const listObj = new LigandList(dataSources.tcrd, args);
+                await listObj.getSimilarLigands();
                 if (args.crossModel == 'Target') {
                     return listObj.getAllTargetActivities();
                 }
@@ -54,6 +56,7 @@ const resolvers = {
             //(model:$model, crossModel:$crossModel, filter:$filter, batch:$batch, modelID:$modelID, crossModelID:$crossModelID)
             if (args.model == 'Target') {
                 const listObj = new TargetList(dataSources.tcrd, args);
+                await listObj.getDrugTargetPredictions();
                 if (args.crossModel == 'Ligand') {
                     return listObj.getLigandActivityDetails(args.modelID, args.crossModelID);
                 } else if (args.crossModel == 'Disease') {
@@ -66,6 +69,7 @@ const resolvers = {
                 }
             } else if (args.model == 'Ligand') {
                 const listObj = new LigandList(dataSources.tcrd, args);
+                await listObj.getSimilarLigands();
                 if (args.crossModel == 'Target') {
                     return listObj.getTargetActivityDetails(args.modelID, args.crossModelID);
                 }
