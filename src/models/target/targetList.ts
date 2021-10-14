@@ -129,9 +129,20 @@ export class TargetList extends DataModelList {
 
     getAllLigandActivities(): any {
         const query = this.database({ncats_ligands: 'ncats_ligands', ncats_ligand_activity: 'ncats_ligand_activity', t2tc: 't2tc', protein: 'protein'})
-            .select(['ncats_ligand_id', 't2tc.target_id', 'ncats_ligands.identifier', 'ncats_ligands.smiles', 'ncats_ligands.name', 'protein.sym', 'protein.uniprot'])
+            .select([
+                'ncats_ligand_id',
+                't2tc.target_id',
+                'ncats_ligands.identifier',
+                'ncats_ligands.smiles',
+                'ncats_ligands.name',
+                'protein.sym',
+                'protein.uniprot'])
             .avg({mean: 'act_value'})
-            .select({std: this.database.raw('std(act_value)')})
+            .select({
+                std: this.database.raw('std(act_value)'),
+                chemblName: 'ncats_ligands.ChEMBL',
+                isdrug: 'isDrug'
+                })
             .count({count: 'act_value'})
             .select({references: this.database.raw('group_concat(distinct reference)')})
             .select({pmids: this.database.raw('group_concat(distinct pubmed_ids)')})
