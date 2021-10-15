@@ -141,12 +141,14 @@ export class LigandList extends DataModelList {
             .whereIn('identifier', batch)
             .orWhereIn('name', batch)
             .orWhereIn('unii', batch)
+            .orWhereIn('PubChem', batch)
             .orWhereIn('pt', batch);
         batch.forEach(id => {
             if (id.startsWith('CHEMBL')) {
-                query.orWhere('ChEMBL', 'like', `%${id}%`);
+                query.orWhere('ChEMBL', 'REGEXP', `[[:<:]]${id}[[:>:]]`);
             }
         });
+        // console.log(query.toString());
         return query;
     }
 
