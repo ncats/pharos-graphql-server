@@ -76,7 +76,7 @@ export class DiseaseList extends DataModelList {
             .limit(10000);
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query, false);
-        query.groupBy(['ncats_disease.name', 'protein.description'])
+        query.groupBy(['ncats_disease.name', 'protein.uniprot'])
             .orderByRaw('count(distinct protein.id) desc');
         // console.log(query.toString());
         return query;

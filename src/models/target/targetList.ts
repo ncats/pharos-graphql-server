@@ -215,7 +215,7 @@ export class TargetList extends DataModelList {
         if (this.batch && this.batch.length > 0) {
             query.join(this.getBatchQuery(this.batch).as('batchQuery'), 'batchQuery.protein_id', 'protein.id');
         }
-        query.groupBy(['ncats_disease.name', 'protein.description'])
+        query.groupBy(['ncats_disease.name', 'protein.uniprot'])
             .orderByRaw('count(distinct protein.id) desc');
         // console.log(query.toString());
         return query;
