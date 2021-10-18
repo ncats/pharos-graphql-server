@@ -1,3 +1,4 @@
+const {PythonCalculation} = require("./models/externalAPI/PythonCalculation");
 const {ListContext} = require("./models/listManager");
 const {DataModelListFactory} = require("./models/DataModelListFactory");
 const {TargetDetails} = require("./models/target/targetDetails");
@@ -8,6 +9,7 @@ const {TargetList} = require("./models/target/targetList");
 const {Virus} = require("./models/virus/virusQuery");
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
+const {LigandDetails} = require("./models/ligand/ligandDetails");
 
 const resolvers = {
 
@@ -26,6 +28,135 @@ const resolvers = {
     },
 
     Query: {
+        listCross: async function (_, args, {dataSources}) {
+            if (args.model == 'Target') {
+                const listObj = new TargetList(dataSources.tcrd, args);
+                await listObj.getDrugTargetPredictions();
+                if (args.crossModel == 'Ligand') {
+                    return listObj.getAllLigandActivities();
+                } else if (args.crossModel == 'Disease') {
+                    return listObj.getAllDiseaseAssociations();
+                } else if (args.crossModel == 'Target') {
+                    return listObj.getAllTargetInteractions();
+                }
+            } else if (args.model == 'Disease') {
+                const listObj = new DiseaseList(dataSources.tcrd, args);
+                if (args.crossModel == 'Target') {
+                    return listObj.getAllTargetAssociations();
+                }
+            } else if (args.model == 'Ligand') {
+                const listObj = new LigandList(dataSources.tcrd, args);
+                await listObj.getSimilarLigands();
+                if (args.crossModel == 'Target') {
+                    return listObj.getAllTargetActivities();
+                }
+            }
+            return {up: 'down'};
+        },
+
+        listCrossDetails: async function (_, args, {dataSources}) {
+            //(model:$model, crossModel:$crossModel, filter:$filter, batch:$batch, modelID:$modelID, crossModelID:$crossModelID)
+            if (args.model == 'Target') {
+                const listObj = new TargetList(dataSources.tcrd, args);
+                await listObj.getDrugTargetPredictions();
+                if (args.crossModel == 'Ligand') {
+                    return listObj.getLigandActivityDetails(args.modelID, args.crossModelID);
+                } else if (args.crossModel == 'Disease') {
+                    return listObj.getDiseaseAssociationDetails(args.modelID, args.crossModelID);
+                } else if (args.crossModel == 'Target') {
+                    return listObj.getTargetInteractionDetails(args.modelID, args.crossModelID);
+                }
+            } else if (args.model == 'Disease') {
+                const listObj = new DiseaseList(dataSources.tcrd, args);
+                if (args.crossModel == 'Target') {
+                    return listObj.getTargetAssociationDetails(args.modelID, args.crossModelID);
+                }
+            } else if (args.model == 'Ligand') {
+                const listObj = new LigandList(dataSources.tcrd, args);
+                await listObj.getSimilarLigands();
+                if (args.crossModel == 'Target') {
+                    return listObj.getTargetActivityDetails(args.modelID, args.crossModelID);
+                }
+            }
+            return {down: 'up'};
+        },
+
+        filterSearch: async function (_, args, {dataSources}) {
+            if (!args || !args.term || args.term.trim().length === 0) {
+                return [];
+            }
+            const term = args.term.trim().toLowerCase();
+            const targetList = new TargetList(dataSources.tcrd);
+            const diseaseList = new DiseaseList(dataSources.tcrd);
+            const ligandList = new LigandList(dataSources.tcrd);
+            const facetQueries = [...targetList.getFacetQueries(), ...diseaseList.getFacetQueries(), ...ligandList.getFacetQueries()];
+            return Promise.all(facetQueries).then(res => {
+
+                const filtered = [];
+                const loopObjs = [
+                    {
+                        list: targetList,
+                        model: 'Target'
+                    },
+                    {
+                        list: diseaseList,
+                        model: 'Disease'
+                    },
+                    {
+                        list: ligandList,
+                        model: 'Ligand'
+                    }
+                ];
+
+                let resultIndex = 0;
+                loopObjs.forEach(entity => {
+                    let listIndex = 0;
+                    entity.list.facetsToFetch.forEach(facet => {
+                        const results = res[resultIndex];
+                        const f = [];
+                        results.forEach(v => {
+                            if (v.name && v.name.toLowerCase().includes(term)) {
+                                f.push(v);
+                            }
+                        });
+
+                        if (f.length > 0) {
+                            filtered.push({
+                                all: true,
+                                model: entity.model,
+                                dataType: facet.dataType == FacetDataType.numeric ? "Numeric" : "Category",
+                                binSize: facet.binSize,
+                                single_response: facet.single_response,
+                                facet: facet.name,
+                                modifier: facet.typeModifier,
+                                count: f.length,
+                                values: f,
+                                sql: facetQueries[resultIndex].toString(),
+                                elapsedTime: entity.list.getElapsedTime(facet.name),
+                                sourceExplanation: facet.description
+                            });
+                        }
+
+                        resultIndex++;
+                        listIndex++;
+                    });
+                });
+                return filtered;
+            });
+        },
+        normalizableFilters: async function (_, args, {dataSources}) {
+            const targetFilters = dataSources.tcrd.tableInfo.listManager.listMap.get(
+                (new ListContext('Target', '', 'facet')).toString()) || [];
+            const diseaseFilters = dataSources.tcrd.tableInfo.listManager.listMap.get(
+                (new ListContext('Disease', '', 'facet')).toString()) || [];
+            const ligandFilters = dataSources.tcrd.tableInfo.listManager.listMap.get(
+                (new ListContext('Ligand', '', 'facet')).toString()) || [];
+            return {
+                targetFacets: targetFilters.filter(f => f.dataType === 'category').map(f => f.name),
+                diseaseFacets: diseaseFilters.filter(f => f.dataType === 'category').map(f => f.name),
+                ligandFacets: ligandFilters.filter(f => f.dataType === 'category').map(f => f.name)
+            };
+        },
         upset: async function (_, args, {dataSources}) {
             const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
             if (listObj instanceof LigandList) {
@@ -186,35 +317,12 @@ const resolvers = {
         },
 
         ligand: async function (_, args, {dataSources}) {
-            return Promise.all([
-                dataSources.tcrd.getDrug(args.ligid),
-                dataSources.tcrd.getLigand(args.ligid)
-            ]).then(rows => {
-                let lig = null;
-                if (rows[0]) {
-                    rows[0].forEach(r => {
-                        if (!lig)
-                            lig = toLigand(r);
-                        else
-                            toLigand(r, lig);
-                    });
-
-                    if (lig) {
-                        lig.actcnt = rows[0].length;
-                    }
+            const ligandDetails = new LigandDetails(dataSources.tcrd.db);
+            return ligandDetails.getDetailsQuery(args.ligid).then(rows => {
+                if (rows && rows.length > 0) {
+                    return rows[0];
                 }
-                if (rows[1]) {
-                    rows[1].forEach(r => {
-                        if (!lig) lig = toLigand(r);
-                        else toLigand(r, lig);
-                    });
-                    if (lig) {
-                        lig.actcnt += rows[1].length;
-                    }
-                }
-                return lig;
-            }).catch(function (error) {
-                console.error(error);
+                return null;
             });
         },
         ligands: async function (_, args, {dataSources}) {
@@ -791,9 +899,9 @@ const resolvers = {
             const q = dataSources.tcrd.db({t2tc: 't2tc', gtex: 'gtex'})
                 .leftJoin('uberon', 'uberon_id', 'uberon.uid')
                 .select(['name', 'def', 'comment',
-                `tissue`, `gender`, `tpm`, `tpm_rank`, `tpm_rank_bysex`, `tpm_level`,
-                `tpm_level_bysex`, `tpm_f`, `tpm_m`, `log2foldchange`, `tau`, `tau_bysex`,
-                `uberon_id`]).where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
+                    `tissue`, `gender`, `tpm`, `tpm_rank`, `tpm_rank_bysex`, `tpm_level`,
+                    `tpm_level_bysex`, `tpm_f`, `tpm_m`, `log2foldchange`, `tau`, `tau_bysex`,
+                    `uberon_id`]).where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
                 .andWhere('t2tc.target_id', target.tcrdid);
             // console.log(q.toString());
             return q;
@@ -1529,8 +1637,74 @@ const resolvers = {
     },
 
     Facet: {
-        values: async function (facet, args, _) {
+        values: async function (facet, args, {dataSources}) {
+            const getTotalCount = () => {
+                switch (facet.model) {
+                    case 'Target':
+                        return dataSources.tcrd.tableInfo.targetCount;
+                    case 'Disease':
+                        return dataSources.tcrd.tableInfo.diseaseCount;
+                    case 'Ligand':
+                        return dataSources.tcrd.tableInfo.ligandCount;
+                }
+            };
+
             let values = facet.values;
+            if (facet.dataType == 'Category' && !facet.usedForFiltering && !facet.nullQuery && facet.enrichFacets) {
+                const tables = [];
+                const indexMap = new Map();
+                for (let i = 0 ; i < values.length ; i++) {
+                    const v = values[i];
+                    const data = dataSources.tcrd.tableInfo.findValueProbability(facet.model, facet.facet, v.name);
+                    if (data) {
+                        const inListHasValue = v.value;
+                        const outListHasValue = data.count - v.value;
+                        const inListNoValue = facet.totalCount - v.value;
+                        const outListNoValue = getTotalCount() - inListHasValue - inListNoValue - outListHasValue;
+
+                        v.table = {
+                            inListHasValue: inListHasValue,
+                            inListNoValue: inListNoValue,
+                            outListHasValue: outListHasValue,
+                            outListNoValue: outListNoValue
+                        };
+
+                        tables.push([[inListHasValue, outListHasValue], [inListNoValue, outListNoValue]]);
+                        indexMap.set(i, {...data, facetCount: facet.totalCount});
+                    }
+                }
+                if (tables.length > 0) {
+                    const stats = await new PythonCalculation().calculateFisherTest(tables).then(results => {
+                        indexMap.forEach((data, index) => {
+                            values[index].stats = {oddsRatio: results[index][0], pValue: results[index][1]};
+                        })
+                    });
+                    const pValues = values.map(r => r.stats.pValue).sort((a, b) => a - b);
+                    let criticalP = 0;
+                     // correct H0 rejections based on Benjamini-Hochberg procedure to control False Discovery Rate FDR  https://egap.org/resource/10-things-to-know-about-multiple-comparisons/
+                    for (let i = 0; i < pValues.length; i++) {
+                        const tempAlpha = (i + 1) / pValues.length * .05;
+                        if (pValues[i] < tempAlpha) {
+                            criticalP = pValues[i];
+                        }
+                    }
+
+                    indexMap.forEach((data, index) => {
+                        v = values[index];
+                        const retStats = {...v.stats};
+                        retStats.alpha = criticalP;
+                        if (retStats.pValue <= criticalP) {
+                            retStats.rejected = true;
+                        } else {
+                            retStats.rejected = false;
+                        }
+                        retStats.statistic = v.value / data.facetCount;
+                        retStats.nullValue = data.p;
+                        retStats.representation = retStats.oddsRatio === 1 ? 0 : retStats.oddsRatio > 1 ? 1 : -1;
+                        v.stats = retStats;
+                    });
+                }
+            }
             if (args.name) {
                 values = filter(values, x => {
                     var matched = x.name == args.name;
@@ -1541,7 +1715,22 @@ const resolvers = {
                     return matched;
                 });
             }
-            if (facet.dataType == "Numeric") {
+            if (facet.enrichFacets) {
+                values.sort((a, b) => {
+                    if (a.stats && b.stats) {
+                        if (a.stats.representation === b.stats.representation) {
+                            if (a.stats.pValue == b.stats.pValue) {
+                                return b.value - a.value;
+                            }
+                            return a.stats.representation * (a.stats.pValue - b.stats.pValue);
+                        } else {
+                            return b.stats.representation - a.stats.representation;
+                        }
+                    }
+                    return b.value - a.value;
+                });
+            }
+            if (facet.dataType == "Numeric" || args.all || facet.all) {
                 return values;
             }
             return slice(values, args.skip, args.top + args.skip);
@@ -1852,6 +2041,10 @@ async function getTargetResult(args, dataSources) {
                     })
                 }
                 facets.push({
+                    model: 'Target',
+                    totalCount: count,
+                    usedForFiltering: targetList.filteringFacets.map(f => f.name).includes(targetList.facetsToFetch[i].name),
+                    nullQuery: targetList.isNull(),
                     dataType: targetList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                     binSize: targetList.facetsToFetch[i].binSize,
                     single_response: targetList.facetsToFetch[i].single_response,
@@ -1896,6 +2089,10 @@ function getDiseaseResult(args, tcrd) {
                 })
             }
             facets.push({
+                model: 'Disease',
+                totalCount: count,
+                usedForFiltering: diseaseList.filteringFacets.map(f => f.name).includes(diseaseList.facetsToFetch[i].name),
+                nullQuery: diseaseList.isNull(),
                 dataType: diseaseList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                 binSize: diseaseList.facetsToFetch[i].binSize,
                 single_response: diseaseList.facetsToFetch[i].single_response,
@@ -1962,6 +2159,10 @@ async function getLigandResult(args, dataSources) {
                 })
             }
             facets.push({
+                model: 'Ligand',
+                totalCount: count,
+                usedForFiltering: ligandList.filteringFacets.map(f => f.name).includes(ligandList.facetsToFetch[i].name),
+                nullQuery: ligandList.isNull(),
                 dataType: ligandList.facetsToFetch[i].dataType == FacetDataType.numeric ? "Numeric" : "Category",
                 binSize: ligandList.facetsToFetch[i].binSize,
                 single_response: ligandList.facetsToFetch[i].single_response,
@@ -2067,71 +2268,8 @@ function filterResultFacets(result, args) {
                 return !matched;
             }));
     }
+    facets.forEach(f => f.enrichFacets = args.enrichFacets);
     return facets;
-}
-
-function toLigand(r, lig) {
-    let l = {};
-    if (r.lychi_h4) {
-        l.ligid = r.lychi_h4;
-        if (r.drug) {
-            l.isdrug = true;
-            l.name = r.drug;
-        } else {
-            l.name = r.cmpd_name_in_src;
-            l.isdrug = false;
-        }
-    } else if (r.drug) {
-        l.ligid = r.drug;
-        l.name = r.drug;
-        l.isdrug = true;
-    } else {
-        l.ligid = r.cmpd_id_in_src;
-        l.name = r.cmpd_name_in_src;
-        l.isdrug = false;
-    }
-
-    l.smiles = r.smiles;
-    l.description = r.nlm_drug_info;
-
-    l.synonyms = [];
-    if (r.cmpd_pubchem_cid) {
-        let s = {
-            name: 'PubChem',
-            value: r.cmpd_pubchem_cid
-        };
-        if (lig && !filter(lig.synonyms, {name: s.name}))
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    if (r.cmpd_id_in_src) {
-        let s = {
-            name: r.catype,
-            value: r.cmpd_id_in_src
-        };
-        if (lig && !filter(lig.synonyms, {name: s.name}))
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    if (r.dcid) {
-        let s = {
-            name: 'DrugCentral',
-            value: r.dcid
-        };
-        if (lig && !filter(lig.synonyms, {name: s.name}))
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    if (r.reference) {
-        let s = {
-            name: r.source,
-            value: r.reference
-        };
-        if (lig && !filter(lig.synonyms, {name: s.name}))
-            lig.synonyms.push(s);
-        l.synonyms.push(s);
-    }
-    return l;
 }
 
 module.exports = resolvers;

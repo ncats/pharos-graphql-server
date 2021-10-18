@@ -42,7 +42,10 @@ module.exports.getProteinList = function(term) {
 };
 
 module.exports.getScoredProteinList = function(term) {
-    return this.db.select(['protein_id', 'match']).min('score as min_score').max('match_score as match_score').from(this._getTargetListQuery(term)).groupBy('protein_id');
+    const query = this.db.select(['protein_id', 'match']).min('score as min_score').max('match_score as match_score')
+        .from(this._getTargetListQuery(term)).groupBy('protein_id');
+    // console.log(query.toString());
+    return query;
 };
 
 module.exports.proteinSearch = function (db, term, score) {

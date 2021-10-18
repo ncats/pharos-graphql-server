@@ -49,6 +49,18 @@ export class FieldList {
 export class DatabaseConfig {
     tables: DatabaseTable[] = [];
     listManager: ListManager = new ListManager();
+    targetCount = 0;
+    diseaseCount = 0;
+    ligandCount = 0;
+
+    probMap: Map<string, {count: number, p: number}> = new Map<string, {count: number, p: number}>();
+    probKey(model: string, filter: string, value: string) {
+        return `${model}-${filter}-${value}`.replace(/[^a-zA-Z0-9\-\s\.]/g, " ");
+    }
+
+    findValueProbability(model: string, filter: string, value: string) {
+        return this.probMap.get(this.probKey(model, filter, value));
+    }
 
     populateFieldLists() {
         const query = this.database({...this.modelTable, ...this.fieldListTable, ...this.fieldTable, ...this.contextTable}
@@ -76,12 +88,6 @@ export class DatabaseConfig {
                     select: 'field.select',
                     where_clause: 'field.where_clause',
                     group_method: 'field.group_method',
-
-                    // when facets are precalculated
-                    null_table: 'field.null_table',
-                    null_column: 'field.null_column',
-                    null_count_column: 'field.null_count_column',
-                    null_where_clause: 'field.null_where_clause',
 
                     // numeric facets
                     dataType: 'field.dataType',
@@ -139,7 +145,34 @@ export class DatabaseConfig {
         this.database = database;
         this.dbName = dbName;
         this.configDB = configDB;
-        this.loadPromise = Promise.all([this.parseTables(), this.populateFieldLists(), this.loadModelMap()]);
+        this.loadPromise = Promise.all([this.parseTables(), this.populateFieldLists(), this.loadModelMap(), this.loadProbMap(), this.loadCounts()]);
+    }
+
+    loadCounts() {
+        const targetCount = this.database('protein').count({count: 'id'});
+        const diseaseCount = this.database('ncats_disease').count({count: 'id'});
+        const ligandCount = this.database('ncats_ligands').count({count: 'id'});
+        return Promise.all([targetCount, diseaseCount, ligandCount]).then((rows: any[]) =>  {
+            this.targetCount = rows[0][0].count;
+            this.diseaseCount = rows[1][0].count;
+            this.ligandCount = rows[2][0].count;
+        })
+    }
+
+    loadProbMap() {
+        let query = this.database('ncats_unfiltered_counts').select({
+            model: 'model',
+            filter: 'filter',
+            value: 'value',
+            count: 'count',
+            p: 'p'
+        }).where('schema', this.configDB);
+        return query.then((rows: any[]) => {
+            rows.forEach(row => {
+                const key = this.probKey(row.model, row.filter, row.value);
+                this.probMap.set(key, {count: row.count, p: row.p});
+            });
+        });
     }
 
     parseTables() {
