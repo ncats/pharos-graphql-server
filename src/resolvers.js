@@ -1676,8 +1676,19 @@ const resolvers = {
                 if (tables.length > 0) {
                     const stats = await new PythonCalculation().calculateFisherTest(tables).then(results => {
                         values.forEach((val, index) => {
+                            const oddsRatio = (val.table.inListHasValue * val.table.outListNoValue) /
+                                (val.table.inListNoValue * val.table.outListHasValue);
+                            const stErr = Math.sqrt(1 / val.table.inListHasValue + 1 / val.table.inListNoValue +
+                                                    1 / val.table.outListHasValue + 1 / val.table.outListNoValue);
+                            const zHalfAlpha = 1.96; // for 95% confidence and alpha = 0.5
+                            const upper95 = Math.exp(Math.log(oddsRatio) + zHalfAlpha * stErr);
+                            const lower95 = Math.exp(Math.log(oddsRatio) - zHalfAlpha * stErr);
                             val.stats = {
-                                oddsRatio: results[index][0],
+                                oddsRatio: {
+                                    value: oddsRatio.toString(),
+                                    upper95: upper95.toString(),
+                                    lower95: lower95.toString()
+                                },
                                 pValue: results[index][1]
                             };
                         });

@@ -61,9 +61,15 @@ type FisherStats @cacheControl(maxAge: 604800) {
     rejected: Boolean
     qValue: Float
     pValue: Float
-    oddsRatio: Float
+    oddsRatio: OddsRatio
     statistic: Float
     nullValue: Float
+}
+
+type OddsRatio @cacheControl(maxAge: 604800) {
+    value: String
+    lower95: String
+    upper95: String
 }
 
 type FacetProp @cacheControl(maxAge: 604800) {
