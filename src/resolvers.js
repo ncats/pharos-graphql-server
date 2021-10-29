@@ -1652,7 +1652,6 @@ const resolvers = {
             let values = facet.values;
             if (facet.dataType == 'Category' && !facet.usedForFiltering && !facet.nullQuery && facet.enrichFacets) {
                 const tables = [];
-                const indexMap = new Map();
                 for (let i = 0 ; i < values.length ; i++) {
                     const v = values[i];
                     const data = dataSources.tcrd.tableInfo.findValueProbability(facet.model, facet.facet, v.name);
@@ -1670,38 +1669,37 @@ const resolvers = {
                         };
 
                         tables.push([[inListHasValue, outListHasValue], [inListNoValue, outListNoValue]]);
-                        indexMap.set(i, {...data, facetCount: facet.totalCount});
+                        v.data = data;
+                        v.data.facetCount = facet.totalCount;
                     }
                 }
                 if (tables.length > 0) {
                     const stats = await new PythonCalculation().calculateFisherTest(tables).then(results => {
-                        indexMap.forEach((data, index) => {
-                            values[index].stats = {oddsRatio: results[index][0], pValue: results[index][1]};
-                        })
+                        values.forEach((val, index) => {
+                            val.stats = {
+                                oddsRatio: results[index][0],
+                                pValue: results[index][1]
+                            };
+                        });
                     });
-                    const pValues = values.map(r => r.stats.pValue).sort((a, b) => a - b);
-                    let criticalP = 0;
-                     // correct H0 rejections based on Benjamini-Hochberg procedure to control False Discovery Rate FDR  https://egap.org/resource/10-things-to-know-about-multiple-comparisons/
-                    for (let i = 0; i < pValues.length; i++) {
-                        const tempAlpha = (i + 1) / pValues.length * .05;
-                        if (pValues[i] < tempAlpha) {
-                            criticalP = pValues[i];
-                        }
-                    }
 
-                    indexMap.forEach((data, index) => {
-                        v = values[index];
-                        const retStats = {...v.stats};
-                        retStats.alpha = criticalP;
-                        if (retStats.pValue <= criticalP) {
-                            retStats.rejected = true;
+                    values.sort((a, b) => {
+                        return a.stats.pValue - b.stats.pValue;
+                    });
+
+                    let last = 0;
+                    values.forEach((val, index) => {
+                        const data = val.data;
+                        const tempQ = val.stats.pValue * values.length / (index + 1);
+                        val.stats.qValue = Math.min(Math.max(last, tempQ), 1);
+                        if (val.stats.qValue <= 0.05) {
+                            val.stats.rejected = true;
                         } else {
-                            retStats.rejected = false;
+                            val.stats.rejected = false;
                         }
-                        retStats.statistic = v.value / data.facetCount;
-                        retStats.nullValue = data.p;
-                        retStats.representation = retStats.oddsRatio === 1 ? 0 : retStats.oddsRatio > 1 ? 1 : -1;
-                        v.stats = retStats;
+                        val.stats.statistic = val.value / data.facetCount;
+                        val.stats.nullValue = data.p;
+                        last = val.stats.qValue;
                     });
                 }
             }
@@ -1713,21 +1711,6 @@ const resolvers = {
                         matched = re.test(x.name);
                     }
                     return matched;
-                });
-            }
-            if (facet.enrichFacets) {
-                values.sort((a, b) => {
-                    if (a.stats && b.stats) {
-                        if (a.stats.representation === b.stats.representation) {
-                            if (a.stats.pValue == b.stats.pValue) {
-                                return b.value - a.value;
-                            }
-                            return a.stats.representation * (a.stats.pValue - b.stats.pValue);
-                        } else {
-                            return b.stats.representation - a.stats.representation;
-                        }
-                    }
-                    return b.value - a.value;
                 });
             }
             if (facet.dataType == "Numeric" || args.all || facet.all) {
