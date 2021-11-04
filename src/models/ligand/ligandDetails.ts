@@ -25,7 +25,8 @@ export class LigandDetails {
         ).whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against('"${name}"' in boolean mode)`)
             .orWhere('identifier', name)
             .orWhere('unii', name)
-            .orWhere('pt', name);
+            .orWhere('pt', name)
+            .orderByRaw(`identifier = "${name}" desc`);
         // console.log(query.toString());
         return query;
     }

@@ -126,7 +126,7 @@ export class LigandList extends DataModelList {
             if (!this.filterAppliedOnJoin(query, 'structure_search_results')) {
                 const that = this;
                 query.join('result_cache.structure_search_results', function (this: any) {
-                    this.on('structure_search_results.ncats_ligand_id', that.keyString());
+                    this.on('structure_search_results.lychi_h4', that.database.raw('ncats_ligands.identifier'));
                     this.andOn('structure_search_results.query_hash', '=', that.database.raw(`"${that.structureQueryHash}"`));
                 });
             }
