@@ -15,8 +15,7 @@ TCRD Update Instructions :smiley_cat:
 
 2. Install it on your database server
     * Here's how to do that for our AWS server for tcrd6.6.0
-    ```
-    [ifxdev] $ mysql -uncats -htcrd-cluster-instance-1-us-east-1a.ceyknq0yekb3.us-east-1.rds.amazonaws.com -p
+    [ifxdev] $ mysql -uncats -htcrd-cluster.cluster-ceyknq0yekb3.us-east-1.rds.amazonaws.com -p
                     <enter password>
     mysql > create database tcrd660;
     mysql > GRANT SELECT ON `tcrd660`.* TO 'tcrd'@'%';

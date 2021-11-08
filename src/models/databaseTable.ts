@@ -56,8 +56,8 @@ export class DatabaseTable {
 
     static nonStandardLinks: Map<string, string> = new Map(
         [
-            ["structure_search_results-ncats_ligands", "ncats_ligand_id-id"],
-            ["ncats_ligands-structure_search_results", "id-ncats_ligand_id"],
+            ["structure_search_results-ncats_ligands", "lychi_h4-identifier"],
+            ["ncats_ligands-structure_search_results", "identifier-lychi_h4"],
             ["predictor_results-protein", "protein_id-id"],
             ["protein-predictor_results", "id-protein_id"]
         ]
@@ -88,7 +88,11 @@ export class DatabaseTable {
             ["protein-ncats_ligands", ["ncats_ligand_activity", "target", "t2tc"]],
             ["protein-ncats_ligand_activity", ["target", "t2tc"]],
             ["protein-drgc_resource", ["target", "t2tc"]],
-            ["protein-ncats_expression", ["expression"]]
+            ["protein-ncats_expression", ["expression"]],
+            ["ncats_ligands-panther_class", ["p2pc", "protein", "t2tc", "target", "ncats_ligand_activity"]],
+            ["ncats_ligands-dto", ["p2dto", "protein", "t2tc", "target", "ncats_ligand_activity"]],
+            ["ncats_ligands-pathway", ["protein", "t2tc", "target", "ncats_ligand_activity"]],
+            ["ncats_ligands-goa", ["protein", "t2tc", "target", "ncats_ligand_activity"]],
         ]);
 
     static getRequiredLinks(table1: string, table2: string): string[] | undefined {

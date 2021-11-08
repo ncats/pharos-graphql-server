@@ -62,7 +62,7 @@ app.get("/render", (req, res) => {
         const chunks = piece.split('=');
         paramMap[chunks[0]] = chunks[1];
     });
-    // res.redirect(`https://tripod.nih.gov/servlet/renderServletv13?standardize=true&size=${paramMap.size}&structure=${paramMap.structure}`);
+    // res.redirect(`https://tripod.nih.gov/servlet/renderServlet?standardize=true&size=${paramMap.size}&structure=${paramMap.structure}`);
     res.redirect(`https://pharos-ligand.ncats.io/indexer/render?structure=${paramMap.structure}&size=${paramMap.size}`);
 });
 

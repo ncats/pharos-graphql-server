@@ -52,7 +52,7 @@ export class StructureSearch {
                 id: null,
                 query_hash: this.queryHash,
                 structure: row.structure,
-                ncats_ligand_id: row.id,
+                lychi_h4: row.id,
                 similarity: row.similarity
             }
         });
