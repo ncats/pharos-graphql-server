@@ -67,3 +67,21 @@ module.exports.createStore = () => {
 
   return { users, trips };
 };
+
+module.exports.parseResidueData = (results) => {
+  const residueData = [];
+  let currentResidue = [];
+  let lastResidueIndex = -1;
+  results.forEach(row => {
+    if (lastResidueIndex != row.residue) {
+      lastResidueIndex = row.residue;
+      currentResidue = [];
+      residueData.push(currentResidue);
+    }
+    currentResidue.push({
+      aa: row.aa,
+      bits: row.bits
+    })
+  });
+  return residueData;
+};

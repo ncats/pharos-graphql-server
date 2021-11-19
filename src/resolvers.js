@@ -10,6 +10,7 @@ const {Virus} = require("./models/virus/virusQuery");
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 const {LigandDetails} = require("./models/ligand/ligandDetails");
+const { parseResidueData } = require('./utils');
 
 const resolvers = {
 
@@ -1123,20 +1124,7 @@ const resolvers = {
                 if (!results || results.length < 1) {
                     return null;
                 }
-                const residueData = [];
-                let currentResidue = [];
-                let lastResidueIndex = -1;
-                results.forEach(row => {
-                    if (lastResidueIndex != row.residue) {
-                        lastResidueIndex = row.residue;
-                        currentResidue = [];
-                        residueData.push(currentResidue);
-                    }
-                    currentResidue.push({
-                        aa: row.aa,
-                        bits: row.bits
-                    })
-                });
+                const residueData = parseResidueData(results);
                 return {residue_info: residueData, startResidue: results[0].residue};
             });
         },
