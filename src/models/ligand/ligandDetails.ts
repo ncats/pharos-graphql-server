@@ -22,7 +22,16 @@ export class LigandDetails {
                 DrugCentral: 'DrugCentral',
                 pt: 'pt'
             }
-        ).whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against('"${name}"' in boolean mode)`)
+        ).where((q: any) => {
+            q.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against('"${name}"' in boolean mode)`)
+                .andWhere((qq: any) => {
+                    qq.where('name', name)
+                      .orWhere('ChEMBL', name)
+                      .orWhere('PubChem', name)
+                      .orWhere('Guide to Pharmacology', name)
+                      .orWhere('DrugCentral', name)
+                })
+        })
             .orWhere('identifier', name)
             .orWhere('unii', name)
             .orWhere('pt', name)
@@ -30,5 +39,4 @@ export class LigandDetails {
         // console.log(query.toString());
         return query;
     }
-
 }
