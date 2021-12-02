@@ -860,7 +860,7 @@ type MutationSuccess {
 }
 
 type Mutation{
-    trackFeature(user: String!, feature: String!, details: String, extra: String): MutationSuccess!
+    trackFeature(user: String!, feature: String!, detail: String, extra: String): MutationSuccess!
 }
 
 type Query{
