@@ -28,13 +28,13 @@ const resolvers = {
         }
     },
 
-
     Mutation: {
         trackFeature: (_, args, {dataSources}) => {
             const insert = {
                 id: null,
                 user: args.user,
                 feature: args.feature,
+                feature_detail: args.detail,
                 feature_xtra: args.extra,
                 schema: dataSources.tcrd.tableInfo.configDB,
                 time_stamp: new Date().toISOString()
