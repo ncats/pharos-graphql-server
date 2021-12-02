@@ -854,6 +854,15 @@ type FieldDetails{
      default: Boolean
 }
 
+type MutationSuccess {
+    success: Boolean!
+    message: String
+}
+
+type Mutation{
+    trackFeature(user: String!, feature: String!, extra: String): MutationSuccess!
+}
+
 type Query{
      configuration: PharosConfiguration
 

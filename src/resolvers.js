@@ -28,6 +28,25 @@ const resolvers = {
         }
     },
 
+
+    Mutation: {
+        trackFeature: (_, args, {dataSources}) => {
+            const insert = {
+                id: null,
+                user: args.user,
+                feature: args.feature,
+                feature_xtra: args.extra,
+                schema: dataSources.tcrd.tableInfo.configDB,
+                time_stamp: new Date().toISOString()
+            };
+            return dataSources.tcrd.db('result_cache.feature_tracking').insert(insert).then(res => {
+                return {success: true};
+            }).catch((e) => {
+                return {success: false, message: e.message};
+            });
+        }
+    },
+
     Query: {
         listCross: async function (_, args, {dataSources}) {
             if (args.model == 'Target') {
