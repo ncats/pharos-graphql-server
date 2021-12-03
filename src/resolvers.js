@@ -34,8 +34,9 @@ const resolvers = {
                 id: null,
                 user: args.user,
                 feature: args.feature,
-                feature_detail: args.detail,
-                feature_xtra: args.extra,
+                detail1: args.detail1,
+                detail2: args.detail2,
+                detail3: args.detail3,
                 schema: dataSources.tcrd.tableInfo.configDB,
                 time_stamp: new Date().toISOString()
             };
