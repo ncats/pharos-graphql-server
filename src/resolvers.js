@@ -49,6 +49,35 @@ const resolvers = {
     },
 
     Query: {
+        usageData: async function (_, args, {dataSources}) {
+            const interval = args.interval;
+            let summaryColumn;
+            switch (args.interval) {
+                case 'day':
+                    summaryColumn = "DAYOFYEAR(CONVERT_TZ(time_stamp, 'UTC', 'EST'))";
+                    break;
+                case 'week':
+                    summaryColumn = "week(CONVERT_TZ(time_stamp, 'UTC', 'EST'), 1)";
+                    break;
+                case 'month':
+                    summaryColumn = "month(CONVERT_TZ(time_stamp, 'UTC', 'EST'))";
+                    break;
+                case 'year':
+                    summaryColumn = "year(CONVERT_TZ(time_stamp, 'UTC', 'EST'))";
+                    break;
+            }
+            const knex = dataSources.tcrd.db;
+            return knex('result_cache.feature_tracking')
+                .select({
+                    schema: 'schema',
+                    feature: 'feature',
+                    uses: knex.raw("count(*)"),
+                    users: knex.raw("count(distinct user)"),
+                    summary: knex.raw(summaryColumn)
+                })
+                .groupBy(['schema', 'feature', 'summary'])
+                .orderBy(['schema', 'feature', 'summary']);
+        },
         listCross: async function (_, args, {dataSources}) {
             if (args.model == 'Target') {
                 const listObj = new TargetList(dataSources.tcrd, args);

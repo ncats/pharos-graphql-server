@@ -9,6 +9,13 @@ enum CacheControlScope {
 }
 ##
 
+enum SummaryInterval {
+    day
+    week
+    month
+    year
+}
+
 enum FacetDataType {
      Category
      Numeric
@@ -907,4 +914,6 @@ type Query{
 
      listCross(model: String!, crossModel: String!, filter: IFilter, batch: [String]): JSON
      listCrossDetails(model: String!, crossModel: String!, filter: IFilter, batch: [String], modelID: String, crossModelID: String): JSON
+
+     usageData(interval: SummaryInterval!): JSON
 }
