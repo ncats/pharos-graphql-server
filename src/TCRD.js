@@ -601,11 +601,27 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
     }
 
     getDisease(name) {
-        const q = this.db('ncats_p2da')
-            .select(this.db.raw(`'name' as "name"`))
-            .count({associationCount: this.db.raw("distinct protein_id")})
-            .where('name', name);
-        return q;
+        if (name.startsWith('MIM:')) {
+            name = 'O' + name;
+        }
+        const columns = {
+            name: 'ncats_disease.name',
+            associationCount: 'ncats_disease.target_count',
+            mondoDescription: 'ncats_disease.mondo_description',
+            doDescription: 'ncats_disease.do_description',
+            uniprotDescription: 'ncats_disease.uniprot_description'
+        };
+
+        const tableQuery = this.db('ncats_disease').select(columns)
+            .where('ncats_disease.name', name)
+            .orWhere('ncats_disease.mondoid', name);
+        const idQuery = this.db({ncats_disease: 'ncats_disease', mondo_xref: 'mondo_xref'})
+            .select(columns)
+            .where('xref', name)
+            .andWhere('mondo_xref.mondoid', this.db.raw('ncats_disease.mondoid'))
+            .andWhere('mondo_xref.equiv_to', true);
+
+        return idQuery.union(tableQuery);
     }
 
     getDiseaseAssociations(args, constraints) {

@@ -111,8 +111,19 @@ export class DiseaseList extends DataModelList {
     }
 
     getBatchQuery(batch: string[]){
-        return this.database('ncats_disease').distinct({disease_id: 'id'})
-            .whereIn('name', batch);
+        const aliasList = this.database({
+            ncats_disease: 'ncats_disease',
+            mondo_xref: 'mondo_xref'
+        }).distinct({disease_id: 'ncats_disease.id'})
+            .where('ncats_disease.mondoid', this.database.raw('mondo_xref.mondoid'))
+            .where('mondo_xref.equiv_to', true)
+            .whereIn('mondo_xref.xref', batch);
+
+        const tableList = this.database('ncats_disease').distinct({disease_id: 'id'})
+            .whereIn('name', batch)
+            .orWhereIn('mondoid', batch);
+
+        return aliasList.union(tableList);
     }
 
     getTermQuery(){

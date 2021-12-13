@@ -354,7 +354,6 @@ const resolvers = {
                 .then(rows => {
                     rows = filter(rows, r => r.name != null && r.associationCount > 0);
                     if (rows.length > 0) {
-                        rows[0].name = args.name;
                         return rows[0];
                     }
                     return {name: args.name, associationCount: 0};
@@ -362,6 +361,7 @@ const resolvers = {
                     console.error(error);
                 });
         },
+
         diseases: async function (_, args, {dataSources}) {
             return getDiseaseResult(args, dataSources.tcrd);
         },
@@ -1355,34 +1355,6 @@ const resolvers = {
                 console.error(error);
             });
         },
-        uniprotDescription: async function (disease, args, {dataSources}) {
-            const q = dataSources.tcrd.db('disease')
-                .select('description')
-                .whereRaw(`ncats_name = "${disease.name}" and dtype = "UniProt Disease"`)
-                .limit(1);
-            return q.then(rows => {
-                if (rows.length) {
-                    return rows[0].description;
-                }
-                return '';
-            }).catch(function (error) {
-                console.error(error);
-            });
-        },
-        doDescription: async function (disease, args, {dataSources}) {
-            const q = dataSources.tcrd.db({disease: 'disease', do: 'do'})
-                .select({description: 'do.def'})
-                .whereRaw(`ncats_name = "${disease.name}" and do.doid = disease.did`)
-                .limit(1);
-            return q.then(rows => {
-                if (rows.length) {
-                    return rows[0].description;
-                }
-                return '';
-            }).catch(function (error) {
-                console.error(error);
-            });
-        },
         dids: async function (disease, args, {dataSources}) {
             const q = dataSources.tcrd.db('disease')
                 .select({
@@ -1520,7 +1492,8 @@ const resolvers = {
                     fields: [...Array.from(traitFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
                     filter: {order: '!Mean Rank Score'}
                 });
-            return diseaseList.getListQuery('download', true).then(rows => {
+            const query = diseaseList.getListQuery('download', true);
+            return query.then(rows => {
                 if (!rows || rows.length === 0) {
                     return null;
                 }

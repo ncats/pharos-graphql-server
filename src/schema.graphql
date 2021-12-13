@@ -256,6 +256,7 @@ type Disease @cacheControl(maxAge: 604800) {
      associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
      uniprotDescription: String
      doDescription: String
+     mondoDescription: String
      dids: [DiseaseID]
      targetCounts: [IntProp]
      targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
