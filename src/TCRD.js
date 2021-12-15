@@ -607,7 +607,9 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
         const columns = {
             name: 'ncats_disease.name',
             associationCount: 'ncats_disease.target_count',
+            directAssociationCount: 'ncats_disease.direct_target_count',
             mondoDescription: 'ncats_disease.mondo_description',
+            mondoID: 'ncats_disease.mondoid',
             doDescription: 'ncats_disease.do_description',
             uniprotDescription: 'ncats_disease.uniprot_description'
         };
@@ -621,7 +623,16 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
             .andWhere('mondo_xref.mondoid', this.db.raw('ncats_disease.mondoid'))
             .andWhere('mondo_xref.equiv_to', true);
 
-        return idQuery.union(tableQuery);
+        const mondoNavQuery = this.db('mondo').select({
+            name: 'name',
+            associationCount: 0,
+            directAssociationCount: 0,
+            mondoDescription: this.db.raw('null'),
+            mondoID: 'mondoid',
+            doDescription: this.db.raw('null'),
+            uniprotDescription: this.db.raw('null')
+        }).where('name', name).orWhere('mondoid', name);
+        return idQuery.union(tableQuery).union(mondoNavQuery);
     }
 
     getDiseaseAssociations(args, constraints) {

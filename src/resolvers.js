@@ -352,11 +352,11 @@ const resolvers = {
         disease: async function (_, args, {dataSources}) {
             return dataSources.tcrd.getDisease(args.name)
                 .then(rows => {
-                    rows = filter(rows, r => r.name != null && r.associationCount > 0);
+                    rows = filter(rows, r => r.name != null);
                     if (rows.length > 0) {
                         return rows[0];
                     }
-                    return {name: args.name, associationCount: 0};
+                    return {name: args.name, associationCount: 0, directAssociationCount: 0};
                 }).catch(function (error) {
                     console.error(error);
                 });
@@ -1344,6 +1344,21 @@ const resolvers = {
     },
 
     Disease: {
+        mondoEquivalents: async function (disease, args, {dataSources}) {
+            if (disease.mondoID) {
+                const query = dataSources.tcrd.db('mondo_xref').select({
+                    id: 'xref',
+                    name: dataSources.tcrd.db.raw('COALESCE(do.name, omim.title)')
+                }).leftJoin('do', 'mondo_xref.xref', 'do.doid')
+                    .leftJoin('omim', function() {
+                        this.on('mondo_xref.value', 'omim.mim').andOn('mondo_xref.db',dataSources.tcrd.db.raw(`"OMIM"`))
+                    })
+                    .where('mondo_xref.mondoid', disease.mondoID).andWhere('equiv_to', true);
+                return query.then(rows => {
+                    return rows;
+                });
+            }
+        },
         associations: async function (disease, args, {dataSources}) {
             //console.log('~~~~ disease "'+disease.name+'" (parent) = '+disease.parent);
             args.filter = disease.filter;
@@ -1404,14 +1419,25 @@ const resolvers = {
             });
         },
         parents: async function (disease, args, {dataSources}) {
-            let query = dataSources.tcrd.db({do_child: 'do', relationship: 'do_parent', do_par: 'do'})
-                .select(dataSources.tcrd.db.raw(`do_par.name, count(distinct protein_id) as 'associationCount'`))
-                .leftJoin('disease', 'disease.ncats_name', 'do_par.name')
-                .whereRaw(`do_child.name = "${disease.name}"`)
-                .whereRaw('do_child.doid = relationship.doid')
-                .whereRaw('do_par.doid = relationship.parent_id')
-                .groupBy('name')
-                .orderBy('associationCount', 'desc');
+            let query = dataSources.tcrd.db(
+                {
+                    mondo_child: 'mondo',
+                    relationship: 'mondo_parent',
+                    mondo_par: 'mondo'
+                })
+                .leftJoin('ncats_disease', 'mondo_par.mondoid', 'ncats_disease.mondoid')
+                .select(
+                {
+                    name: 'mondo_par.name',
+                    associationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.target_count, 0)'),
+                    directAssociationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.direct_target_count, 0)'),
+                    mondoDescription: 'ncats_disease.mondo_description',
+                    mondoID: 'mondo_par.mondoid',
+                    doDescription: 'ncats_disease.do_description',
+                    uniprotDescription: 'ncats_disease.uniprot_description'
+                }).where('mondo_child.mondoid', disease.mondoID)
+                .andWhere('mondo_child.mondoid', dataSources.tcrd.db.raw('relationship.mondoid'))
+                .andWhere('relationship.parentid', dataSources.tcrd.db.raw('mondo_par.mondoid'));
             return query.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -1419,14 +1445,25 @@ const resolvers = {
             });
         },
         children: async function (disease, args, {dataSources}) {
-            let query = dataSources.tcrd.db({do_par: 'do', relationship: 'do_parent', do_child: 'do'})
-                .select(dataSources.tcrd.db.raw(`do_child.name, count(distinct protein_id) as 'associationCount'`))
-                .leftJoin('disease', 'disease.ncats_name', 'do_child.name')
-                .whereRaw(`do_par.name = "${disease.name}"`)
-                .whereRaw('do_child.doid = relationship.doid')
-                .whereRaw('do_par.doid = relationship.parent_id')
-                .groupBy('name')
-                .orderBy('associationCount', 'desc');
+            let query = dataSources.tcrd.db(
+                {
+                    mondo_par: 'mondo',
+                    relationship: 'mondo_parent',
+                    mondo_child: 'mondo'
+                })
+                .leftJoin('ncats_disease', 'mondo_child.mondoid', 'ncats_disease.mondoid')
+                .select(
+                {
+                    name: 'mondo_child.name',
+                    associationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.target_count, 0)'),
+                    directAssociationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.direct_target_count, 0)'),
+                    mondoDescription: 'ncats_disease.mondo_description',
+                    mondoID: 'mondo_child.mondoid',
+                    doDescription: 'ncats_disease.do_description',
+                    uniprotDescription: 'ncats_disease.uniprot_description'
+                }).where('mondo_par.mondoid', disease.mondoID)
+                .andWhere('mondo_par.mondoid', dataSources.tcrd.db.raw('relationship.parentid'))
+                .andWhere('relationship.mondoid', dataSources.tcrd.db.raw('mondo_child.mondoid'));
             return query.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -2078,7 +2115,6 @@ function getDiseaseResult(args, tcrd) {
     let diseaseList = new DiseaseList(tcrd, args);
     let queries = diseaseList.getFacetQueries();
     queries.unshift(diseaseList.getCountQuery());
-
     return Promise.all(queries).then(rows => {
         let count = rows.shift()[0].count;
         queries.shift();

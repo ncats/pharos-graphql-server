@@ -252,6 +252,8 @@ type OrthologDisease @cacheControl(maxAge: 604800) {
 type Disease @cacheControl(maxAge: 604800) {
      name: String!
      associationCount: Int!
+     directAssociationCount: Int
+     mondoID: String
      datasource_count: Int
      associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
      uniprotDescription: String
@@ -264,6 +266,12 @@ type Disease @cacheControl(maxAge: 604800) {
      children: [Disease]
      tinx: [TINXTarget]
      gwasAnalytics: GwasDiseaseAnalytics
+     mondoEquivalents: [MondoEquivalent]
+}
+
+type MondoEquivalent @cacheControl(maxAge: 604800) {
+    id: String!
+    name: String
 }
 
 type DiseaseID @cacheControl(maxAge: 604800){
