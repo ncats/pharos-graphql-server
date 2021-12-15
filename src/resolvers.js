@@ -1419,6 +1419,9 @@ const resolvers = {
             });
         },
         parents: async function (disease, args, {dataSources}) {
+            if (!disease.mondoID) {
+                return;
+            }
             let query = dataSources.tcrd.db(
                 {
                     mondo_child: 'mondo',
@@ -1445,6 +1448,9 @@ const resolvers = {
             });
         },
         children: async function (disease, args, {dataSources}) {
+            if (!disease.mondoID) {
+                return;
+            }
             let query = dataSources.tcrd.db(
                 {
                     mondo_par: 'mondo',
