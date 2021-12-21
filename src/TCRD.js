@@ -865,6 +865,7 @@ from ncats_ppi a, t2tc b
 where a.protein_id = b.protein_id
 and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b.target_id = ?
+and ppitypes != 'mock'
 group by ppitypes order by value desc`, [target.tcrdid]));
     }
 
@@ -916,6 +917,7 @@ a.other_id = b2.protein_id
 and a.protein_id = b1.protein_id
 and d.id = b2.target_id
 and e.id = b2.protein_id
+and ppitypes != 'mock'
 and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ?`, [target.tcrdid]));
 
@@ -935,6 +937,7 @@ where a.other_id = b2.protein_id
 and a.protein_id = b1.protein_id
 and d.id = b2.target_id
 and e.id = b2.protein_id
+and ppitypes != 'mock'
 and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ? order by a.p_int desc, a.score desc
 limit ? offset ?`, [target.tcrdid, args.top, args.skip]));

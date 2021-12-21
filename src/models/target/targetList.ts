@@ -16,7 +16,7 @@ export class TargetList extends DataModelList {
             return [{column: 'search_score', order: 'asc'}, {column: 'name', order: 'asc'}];
         }
         if (this.associatedTarget) {
-            return [{column: 'p_int', order: 'desc'}, {column: 'score', order: 'desc'}];
+            return [{column: this.database.raw('ppitypes = "mock"'), order: 'desc'}, {column: 'p_int', order: 'desc'}, {column: 'score', order: 'desc'}];
         }
         if (this.associatedDisease) {
             return [{column: 'datasource_count', order: 'desc'}];
