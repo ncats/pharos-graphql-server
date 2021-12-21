@@ -627,7 +627,7 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
             name: 'name',
             associationCount: 0,
             directAssociationCount: 0,
-            mondoDescription: this.db.raw('null'),
+            mondoDescription: 'def',
             mondoID: 'mondoid',
             doDescription: this.db.raw('null'),
             uniprotDescription: this.db.raw('null')
