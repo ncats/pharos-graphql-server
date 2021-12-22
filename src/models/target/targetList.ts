@@ -197,7 +197,7 @@ export class TargetList extends DataModelList {
     getAllDiseaseAssociations(): any {
         const query = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
             .select(['ncats_disease.name', 'protein.sym', 'protein.description', 'protein.uniprot'])
-            .count({count: 'disease.id'})
+            .select({count: this.database.raw('count(distinct disease.dtype)')})
             .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
             .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
             .andWhere('disease.protein_id', this.database.raw('protein.id'))

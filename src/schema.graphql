@@ -905,7 +905,7 @@ type Query{
 """
 Use the ligid parameter to find specific ligands. Use a prefix to note which id type you have if there is a danger of
 collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral IDs, "G2P:" for Guide to Pharmacology IDs,
-"UNII:" for UNIIs, and "LYCHI:" for LyCHI layer 4. Prefixes are case insensitive.
+"UNII:" for UNIIs, "name" for the compound name, and "LYCHI:" for LyCHI layer 4. Prefixes are case insensitive.
 """
      ligand(ligid: String): Ligand
      ligands(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter, ligands: [String]): LigandResult
