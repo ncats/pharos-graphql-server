@@ -142,6 +142,8 @@ export class LigandList extends DataModelList {
             .orWhereIn('name', batch)
             .orWhereIn('unii', batch)
             .orWhereIn('PubChem', batch)
+            .orWhereIn('DrugCentral', batch)
+            .orWhereIn('Guide to Pharmacology', batch)
             .orWhereIn('pt', batch);
         batch.forEach(id => {
             if (id.startsWith('CHEMBL')) {
