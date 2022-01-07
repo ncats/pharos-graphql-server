@@ -16,7 +16,7 @@ export class TargetList extends DataModelList {
             return [{column: 'search_score', order: 'asc'}, {column: 'name', order: 'asc'}];
         }
         if (this.associatedTarget) {
-            return [{column: 'p_int', order: 'desc'}, {column: 'score', order: 'desc'}];
+            return [{column: this.database.raw('ppitypes = "mock"'), order: 'desc'}, {column: 'p_int', order: 'desc'}, {column: 'score', order: 'desc'}];
         }
         if (this.associatedDisease) {
             return [{column: 'datasource_count', order: 'desc'}];
@@ -197,7 +197,7 @@ export class TargetList extends DataModelList {
     getAllDiseaseAssociations(): any {
         const query = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
             .select(['ncats_disease.name', 'protein.sym', 'protein.description', 'protein.uniprot'])
-            .count({count: 'disease.id'})
+            .select({count: this.database.raw('count(distinct disease.dtype)')})
             .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
             .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
             .andWhere('disease.protein_id', this.database.raw('protein.id'))

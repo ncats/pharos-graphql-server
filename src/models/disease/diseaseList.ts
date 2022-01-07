@@ -16,7 +16,7 @@ export class DiseaseList extends DataModelList {
     }
 
     static getTinxQuery(knex: any, diseaseName: string) {
-        let doidList = knex({disease: 'disease', ncats_p2da: 'ncats_p2da'}).distinct('clean_did')
+        let doidList = knex({disease: 'disease', ncats_p2da: 'ncats_p2da'}).distinct('did')
             .where('disease_assoc_id', knex.raw('disease.id'))
             .andWhere('ncats_p2da.name', diseaseName);
         let tinxQuery = knex({target: "target", t2tc:"t2tc", tinx_novelty:"tinx_novelty", tinx_importance:"tinx_importance", tinx_disease:"tinx_disease"})
@@ -29,7 +29,7 @@ export class DiseaseList extends DataModelList {
                 name:knex.raw('(tinx_disease.name)'),
                 importance:knex.raw('(tinx_importance.score)')
             })
-            .join(doidList.as('idList'), 'idList.clean_did', 'tinx_disease.doid')
+            .join(doidList.as('idList'), 'idList.did', 'tinx_disease.doid')
             .where(knex.raw('tinx_importance.doid = tinx_disease.doid'))
             .andWhere(knex.raw('tinx_importance.protein_id = t2tc.protein_id'))
             .andWhere(knex.raw('tinx_importance.protein_id = tinx_novelty.protein_id'))
@@ -111,8 +111,19 @@ export class DiseaseList extends DataModelList {
     }
 
     getBatchQuery(batch: string[]){
-        return this.database('ncats_disease').distinct({disease_id: 'id'})
-            .whereIn('name', batch);
+        const aliasList = this.database({
+            ncats_disease: 'ncats_disease',
+            mondo_xref: 'mondo_xref'
+        }).distinct({disease_id: 'ncats_disease.id'})
+            .where('ncats_disease.mondoid', this.database.raw('mondo_xref.mondoid'))
+            .where('mondo_xref.equiv_to', true)
+            .whereIn('mondo_xref.xref', batch);
+
+        const tableList = this.database('ncats_disease').distinct({disease_id: 'id'})
+            .whereIn('name', batch)
+            .orWhereIn('mondoid', batch);
+
+        return aliasList.union(tableList);
     }
 
     getTermQuery(){

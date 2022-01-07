@@ -601,11 +601,38 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
     }
 
     getDisease(name) {
-        const q = this.db('ncats_p2da')
-            .select(this.db.raw(`'name' as "name"`))
-            .count({associationCount: this.db.raw("distinct protein_id")})
-            .where('name', name);
-        return q;
+        if (name.startsWith('MIM:')) {
+            name = 'O' + name;
+        }
+        const columns = {
+            name: 'ncats_disease.name',
+            associationCount: 'ncats_disease.target_count',
+            directAssociationCount: 'ncats_disease.direct_target_count',
+            mondoDescription: 'ncats_disease.mondo_description',
+            mondoID: 'ncats_disease.mondoid',
+            doDescription: 'ncats_disease.do_description',
+            uniprotDescription: 'ncats_disease.uniprot_description'
+        };
+
+        const tableQuery = this.db('ncats_disease').select(columns)
+            .where('ncats_disease.name', name)
+            .orWhere('ncats_disease.mondoid', name);
+        const idQuery = this.db({ncats_disease: 'ncats_disease', mondo_xref: 'mondo_xref'})
+            .select(columns)
+            .where('xref', name)
+            .andWhere('mondo_xref.mondoid', this.db.raw('ncats_disease.mondoid'))
+            .andWhere('mondo_xref.equiv_to', true);
+
+        const mondoNavQuery = this.db('mondo').select({
+            name: 'name',
+            associationCount: 0,
+            directAssociationCount: 0,
+            mondoDescription: 'def',
+            mondoID: 'mondoid',
+            doDescription: this.db.raw('null'),
+            uniprotDescription: this.db.raw('null')
+        }).where('name', name).orWhere('mondoid', name);
+        return idQuery.union(tableQuery).union(mondoNavQuery);
     }
 
     getDiseaseAssociations(args, constraints) {
@@ -838,6 +865,7 @@ from ncats_ppi a, t2tc b
 where a.protein_id = b.protein_id
 and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b.target_id = ?
+and ppitypes != 'mock'
 group by ppitypes order by value desc`, [target.tcrdid]));
     }
 
@@ -889,6 +917,7 @@ a.other_id = b2.protein_id
 and a.protein_id = b1.protein_id
 and d.id = b2.target_id
 and e.id = b2.protein_id
+and ppitypes != 'mock'
 and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ?`, [target.tcrdid]));
 
@@ -908,6 +937,7 @@ where a.other_id = b2.protein_id
 and a.protein_id = b1.protein_id
 and d.id = b2.target_id
 and e.id = b2.protein_id
+and ppitypes != 'mock'
 and NOT (a.ppitypes = 'STRINGDB' AND a.score < ${confidence})
 and b1.target_id = ? order by a.p_int desc, a.score desc
 limit ? offset ?`, [target.tcrdid, args.top, args.skip]));

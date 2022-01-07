@@ -9,6 +9,13 @@ enum CacheControlScope {
 }
 ##
 
+enum SummaryInterval {
+    day
+    week
+    month
+    year
+}
+
 enum FacetDataType {
      Category
      Numeric
@@ -245,10 +252,13 @@ type OrthologDisease @cacheControl(maxAge: 604800) {
 type Disease @cacheControl(maxAge: 604800) {
      name: String!
      associationCount: Int!
+     directAssociationCount: Int
+     mondoID: String
      datasource_count: Int
      associations (skip: Int=0, top: Int=10): [DiseaseAssociation]
      uniprotDescription: String
      doDescription: String
+     mondoDescription: String
      dids: [DiseaseID]
      targetCounts: [IntProp]
      targets (skip: Int=0, top: Int=10, filter: IFilter): [Target]
@@ -256,6 +266,12 @@ type Disease @cacheControl(maxAge: 604800) {
      children: [Disease]
      tinx: [TINXTarget]
      gwasAnalytics: GwasDiseaseAnalytics
+     mondoEquivalents: [MondoEquivalent]
+}
+
+type MondoEquivalent @cacheControl(maxAge: 604800) {
+    id: String!
+    name: String
 }
 
 type DiseaseID @cacheControl(maxAge: 604800){
@@ -854,6 +870,15 @@ type FieldDetails{
      default: Boolean
 }
 
+type MutationSuccess {
+    success: Boolean!
+    message: String
+}
+
+type Mutation{
+    trackFeature(user: String!, feature: String!, detail1: String, detail2: String, detail3: String): MutationSuccess!
+}
+
 type Query{
      configuration: PharosConfiguration
 
@@ -877,6 +902,11 @@ type Query{
      dto: [DTO]
      dtoNode(dtoid: String, name: String): [DTO]
 
+"""
+Use the ligid parameter to find specific ligands. Use a prefix to note which id type you have if there is a danger of
+collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral IDs, "G2P:" for Guide to Pharmacology IDs,
+"UNII:" for UNIIs, "name" for the compound name, and "LYCHI:" for LyCHI layer 4. Prefixes are case insensitive.
+"""
      ligand(ligid: String): Ligand
      ligands(skip: Int=0, top: Int=10, facets: [String!], filter: IFilter, ligands: [String]): LigandResult
 
@@ -898,4 +928,6 @@ type Query{
 
      listCross(model: String!, crossModel: String!, filter: IFilter, batch: [String]): JSON
      listCrossDetails(model: String!, crossModel: String!, filter: IFilter, batch: [String], modelID: String, crossModelID: String): JSON
+
+     usageData(interval: SummaryInterval!): JSON
 }

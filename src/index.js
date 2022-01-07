@@ -5,11 +5,14 @@ const {cred} = require('./db_credentials');
 const express = require('express');
 const { ApolloServer } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
+const { TargetDetails } = require("./models/target/targetDetails");
+const querystring = require('querystring');
 const TCRD = require('./TCRD');
 const fs = require('fs');
 var url = require("url");
 require('typescript-require');
 const responseCachePlugin = require('apollo-server-plugin-response-cache');
+const { parseResidueData } = require('./utils');
 
 const typeDefs = fs.readFileSync(__dirname + '/schema.graphql','utf8');
 const resolvers = require('./resolvers');
@@ -64,6 +67,28 @@ app.get("/render", (req, res) => {
     });
     // res.redirect(`https://tripod.nih.gov/servlet/renderServlet?standardize=true&size=${paramMap.size}&structure=${paramMap.structure}`);
     res.redirect(`https://pharos-ligand.ncats.io/indexer/render?structure=${paramMap.structure}&size=${paramMap.size}`);
+});
+
+app.get("/annotations?*", async (req, res) => {
+    const parsedUrl = url.parse(req.url);
+    const queryMap = querystring.parse(parsedUrl.query);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    const targetDetails = new TargetDetails({}, {uniprot: queryMap.uniprot}, tcrd);
+    const results = await targetDetails.getSequenceAnnotations();
+    res.end(JSON.stringify(results));
+});
+
+app.get("/variants?*", async (req, res) => {
+    const parsedUrl = url.parse(req.url);
+    const queryMap = querystring.parse(parsedUrl.query);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    const targetDetails = new TargetDetails({}, {uniprot: queryMap.uniprot}, tcrd);
+    const results = await targetDetails.getSequenceVariants();
+    res.end(JSON.stringify(parseResidueData(results)));
 });
 
 server.applyMiddleware({

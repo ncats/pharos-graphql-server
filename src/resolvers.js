@@ -10,6 +10,7 @@ const {Virus} = require("./models/virus/virusQuery");
 const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 const {LigandDetails} = require("./models/ligand/ligandDetails");
+const { parseResidueData } = require('./utils');
 
 const resolvers = {
 
@@ -27,7 +28,56 @@ const resolvers = {
         }
     },
 
+    Mutation: {
+        trackFeature: (_, args, {dataSources}) => {
+            const insert = {
+                id: null,
+                user: args.user,
+                feature: args.feature,
+                detail1: args.detail1,
+                detail2: args.detail2,
+                detail3: args.detail3,
+                schema: dataSources.tcrd.tableInfo.configDB,
+                time_stamp: new Date().toISOString()
+            };
+            return dataSources.tcrd.db('result_cache.feature_tracking').insert(insert).then(res => {
+                return {success: true};
+            }).catch((e) => {
+                return {success: false, message: e.message};
+            });
+        }
+    },
+
     Query: {
+        usageData: async function (_, args, {dataSources}) {
+            const interval = args.interval;
+            let summaryColumn;
+            switch (args.interval) {
+                case 'day':
+                    summaryColumn = "DAYOFYEAR(CONVERT_TZ(time_stamp, 'UTC', 'EST'))";
+                    break;
+                case 'week':
+                    summaryColumn = "week(CONVERT_TZ(time_stamp, 'UTC', 'EST'), 1)";
+                    break;
+                case 'month':
+                    summaryColumn = "month(CONVERT_TZ(time_stamp, 'UTC', 'EST'))";
+                    break;
+                case 'year':
+                    summaryColumn = "year(CONVERT_TZ(time_stamp, 'UTC', 'EST'))";
+                    break;
+            }
+            const knex = dataSources.tcrd.db;
+            return knex('result_cache.feature_tracking')
+                .select({
+                    schema: 'schema',
+                    feature: 'feature',
+                    uses: knex.raw("count(*)"),
+                    users: knex.raw("count(distinct user)"),
+                    summary: knex.raw(summaryColumn)
+                })
+                .groupBy(['schema', 'feature', 'summary'])
+                .orderBy(['schema', 'feature', 'summary']);
+        },
         listCross: async function (_, args, {dataSources}) {
             if (args.model == 'Target') {
                 const listObj = new TargetList(dataSources.tcrd, args);
@@ -302,16 +352,16 @@ const resolvers = {
         disease: async function (_, args, {dataSources}) {
             return dataSources.tcrd.getDisease(args.name)
                 .then(rows => {
-                    rows = filter(rows, r => r.name != null && r.associationCount > 0);
+                    rows = filter(rows, r => r.name != null);
                     if (rows.length > 0) {
-                        rows[0].name = args.name;
                         return rows[0];
                     }
-                    return {name: args.name, associationCount: 0};
+                    return {name: args.name, associationCount: 0, directAssociationCount: 0};
                 }).catch(function (error) {
                     console.error(error);
                 });
         },
+
         diseases: async function (_, args, {dataSources}) {
             return getDiseaseResult(args, dataSources.tcrd);
         },
@@ -1123,20 +1173,7 @@ const resolvers = {
                 if (!results || results.length < 1) {
                     return null;
                 }
-                const residueData = [];
-                let currentResidue = [];
-                let lastResidueIndex = -1;
-                results.forEach(row => {
-                    if (lastResidueIndex != row.residue) {
-                        lastResidueIndex = row.residue;
-                        currentResidue = [];
-                        residueData.push(currentResidue);
-                    }
-                    currentResidue.push({
-                        aa: row.aa,
-                        bits: row.bits
-                    })
-                });
+                const residueData = parseResidueData(results);
                 return {residue_info: residueData, startResidue: results[0].residue};
             });
         },
@@ -1307,6 +1344,21 @@ const resolvers = {
     },
 
     Disease: {
+        mondoEquivalents: async function (disease, args, {dataSources}) {
+            if (disease.mondoID) {
+                const query = dataSources.tcrd.db('mondo_xref').select({
+                    id: 'xref',
+                    name: dataSources.tcrd.db.raw('COALESCE(do.name, omim.title)')
+                }).leftJoin('do', 'mondo_xref.xref', 'do.doid')
+                    .leftJoin('omim', function() {
+                        this.on('mondo_xref.value', 'omim.mim').andOn('mondo_xref.db',dataSources.tcrd.db.raw(`"OMIM"`))
+                    })
+                    .where('mondo_xref.mondoid', disease.mondoID).andWhere('equiv_to', true);
+                return query.then(rows => {
+                    return rows;
+                });
+            }
+        },
         associations: async function (disease, args, {dataSources}) {
             //console.log('~~~~ disease "'+disease.name+'" (parent) = '+disease.parent);
             args.filter = disease.filter;
@@ -1314,34 +1366,6 @@ const resolvers = {
                 .getDiseaseAssociationsForDisease(disease, args);
             return q.then(rows => {
                 return rows;
-            }).catch(function (error) {
-                console.error(error);
-            });
-        },
-        uniprotDescription: async function (disease, args, {dataSources}) {
-            const q = dataSources.tcrd.db('disease')
-                .select('description')
-                .whereRaw(`ncats_name = "${disease.name}" and dtype = "UniProt Disease"`)
-                .limit(1);
-            return q.then(rows => {
-                if (rows.length) {
-                    return rows[0].description;
-                }
-                return '';
-            }).catch(function (error) {
-                console.error(error);
-            });
-        },
-        doDescription: async function (disease, args, {dataSources}) {
-            const q = dataSources.tcrd.db({disease: 'disease', do: 'do'})
-                .select({description: 'do.def'})
-                .whereRaw(`ncats_name = "${disease.name}" and do.doid = disease.did`)
-                .limit(1);
-            return q.then(rows => {
-                if (rows.length) {
-                    return rows[0].description;
-                }
-                return '';
             }).catch(function (error) {
                 console.error(error);
             });
@@ -1395,14 +1419,28 @@ const resolvers = {
             });
         },
         parents: async function (disease, args, {dataSources}) {
-            let query = dataSources.tcrd.db({do_child: 'do', relationship: 'do_parent', do_par: 'do'})
-                .select(dataSources.tcrd.db.raw(`do_par.name, count(distinct protein_id) as 'associationCount'`))
-                .leftJoin('disease', 'disease.ncats_name', 'do_par.name')
-                .whereRaw(`do_child.name = "${disease.name}"`)
-                .whereRaw('do_child.doid = relationship.doid')
-                .whereRaw('do_par.doid = relationship.parent_id')
-                .groupBy('name')
-                .orderBy('associationCount', 'desc');
+            if (!disease.mondoID) {
+                return;
+            }
+            let query = dataSources.tcrd.db(
+                {
+                    mondo_child: 'mondo',
+                    relationship: 'mondo_parent',
+                    mondo_par: 'mondo'
+                })
+                .leftJoin('ncats_disease', 'mondo_par.mondoid', 'ncats_disease.mondoid')
+                .select(
+                {
+                    name: 'mondo_par.name',
+                    associationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.target_count, 0)'),
+                    directAssociationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.direct_target_count, 0)'),
+                    mondoDescription: 'ncats_disease.mondo_description',
+                    mondoID: 'mondo_par.mondoid',
+                    doDescription: 'ncats_disease.do_description',
+                    uniprotDescription: 'ncats_disease.uniprot_description'
+                }).where('mondo_child.mondoid', disease.mondoID)
+                .andWhere('mondo_child.mondoid', dataSources.tcrd.db.raw('relationship.mondoid'))
+                .andWhere('relationship.parentid', dataSources.tcrd.db.raw('mondo_par.mondoid'));
             return query.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -1410,14 +1448,28 @@ const resolvers = {
             });
         },
         children: async function (disease, args, {dataSources}) {
-            let query = dataSources.tcrd.db({do_par: 'do', relationship: 'do_parent', do_child: 'do'})
-                .select(dataSources.tcrd.db.raw(`do_child.name, count(distinct protein_id) as 'associationCount'`))
-                .leftJoin('disease', 'disease.ncats_name', 'do_child.name')
-                .whereRaw(`do_par.name = "${disease.name}"`)
-                .whereRaw('do_child.doid = relationship.doid')
-                .whereRaw('do_par.doid = relationship.parent_id')
-                .groupBy('name')
-                .orderBy('associationCount', 'desc');
+            if (!disease.mondoID) {
+                return;
+            }
+            let query = dataSources.tcrd.db(
+                {
+                    mondo_par: 'mondo',
+                    relationship: 'mondo_parent',
+                    mondo_child: 'mondo'
+                })
+                .leftJoin('ncats_disease', 'mondo_child.mondoid', 'ncats_disease.mondoid')
+                .select(
+                {
+                    name: 'mondo_child.name',
+                    associationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.target_count, 0)'),
+                    directAssociationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.direct_target_count, 0)'),
+                    mondoDescription: 'ncats_disease.mondo_description',
+                    mondoID: 'mondo_child.mondoid',
+                    doDescription: 'ncats_disease.do_description',
+                    uniprotDescription: 'ncats_disease.uniprot_description'
+                }).where('mondo_par.mondoid', disease.mondoID)
+                .andWhere('mondo_par.mondoid', dataSources.tcrd.db.raw('relationship.parentid'))
+                .andWhere('relationship.mondoid', dataSources.tcrd.db.raw('mondo_child.mondoid'));
             return query.then(rows => {
                 return rows;
             }).catch(function (error) {
@@ -1483,7 +1535,8 @@ const resolvers = {
                     fields: [...Array.from(traitFieldMap.keys()), ...Array.from(assocFieldMap.keys())],
                     filter: {order: '!Mean Rank Score'}
                 });
-            return diseaseList.getListQuery('download', true).then(rows => {
+            const query = diseaseList.getListQuery('download', true);
+            return query.then(rows => {
                 if (!rows || rows.length === 0) {
                     return null;
                 }
@@ -2068,7 +2121,6 @@ function getDiseaseResult(args, tcrd) {
     let diseaseList = new DiseaseList(tcrd, args);
     let queries = diseaseList.getFacetQueries();
     queries.unshift(diseaseList.getCountQuery());
-
     return Promise.all(queries).then(rows => {
         let count = rows.shift()[0].count;
         queries.shift();
