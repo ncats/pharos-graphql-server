@@ -3,6 +3,7 @@ import {FieldInfo} from "../FieldInfo";
 import {Jaccard} from "../similarTargets/jaccard";
 import {SqlTable} from "../sqlTable";
 import {DrugTargetPrediction} from "../externalAPI/DrugTargetPrediction";
+import {SequenceSearch} from "../externalAPI/SequenceSearch";
 
 export class TargetList extends DataModelList {
     proteinList: string[] = [];
@@ -28,7 +29,10 @@ export class TargetList extends DataModelList {
             return [{column: 'avgActVal', order: 'desc'}];
         }
         if (this.associatedSmiles.length > 0) {
-            return [{column: 'result', order: 'desc'}]
+            return [{column: 'result', order: 'desc'}];
+        }
+        if (this.querySequence.length > 0) {
+            return [{column: 'bitscore', order: 'desc'}];
         }
         return [{column: 'novelty', order: 'desc'}];
     }
@@ -41,6 +45,12 @@ export class TargetList extends DataModelList {
         const sSearch = new DrugTargetPrediction(this.database, this.associatedSmiles);
         this.structureQueryHash = sSearch.queryHash;
         return sSearch.getPredictedTargets();
+    }
+
+    getSimilarSequences() {
+        const sSearch = new SequenceSearch(this.database, this.querySequence);
+        this.structureQueryHash = sSearch.queryHash;
+        return sSearch.runBlastSearch();
     }
 
     addModelSpecificFiltering(query: any, list: boolean = false): void {
@@ -69,6 +79,11 @@ export class TargetList extends DataModelList {
             }
             else if(this.associatedSmiles.length > 0) {
                 if (!this.filterAppliedOnJoin(query, 'predictor_results')) {
+                    filterQuery = this.fetchProteinList();
+                }
+            }
+            else if(this.querySequence.length > 0) {
+                if (!this.filterAppliedOnJoin(query, 'sequence_search_summary')) {
                     filterQuery = this.fetchProteinList();
                 }
             }
@@ -285,7 +300,8 @@ export class TargetList extends DataModelList {
             this.associatedDisease.length == 0 &&
             this.similarity.match.length == 0 &&
             this.associatedLigand.length == 0 &&
-            this.associatedSmiles.length == 0
+            this.associatedSmiles.length == 0 &&
+            this.querySequence.length == 0
         ) {
             return null;
         }
@@ -312,6 +328,8 @@ export class TargetList extends DataModelList {
             }
         } else if (this.associatedSmiles.length > 0) {
             proteinListQuery = this.getListFromPredictor();
+        } else if (this.querySequence.length > 0) {
+            proteinListQuery = this.getListFromSeqSearch();
         }
          else {
             proteinListQuery = this.getDiseaseQuery();
@@ -320,8 +338,18 @@ export class TargetList extends DataModelList {
         return proteinListQuery;
     }
 
+    private getListFromSeqSearch() {
+        return this.database('result_cache.sequence_search_summary').select('*')
+            .where('query_hash', '=', this.database.raw(`"${this.structureQueryHash}"`));
+    }
+
     private getListFromPredictor() {
         return this.database('result_cache.predictor_results').distinct('protein_id')
+            .where('query_hash', '=', this.database.raw(`"${this.structureQueryHash}"`));
+    }
+
+    private getListFromSequenceSearch() {
+        return this.database('result_cache.sequence_search_summary').distinct('protein_id')
             .where('query_hash', '=', this.database.raw(`"${this.structureQueryHash}"`));
     }
 
@@ -359,6 +387,9 @@ export class TargetList extends DataModelList {
             return true;
         }
         if (this.associatedTarget && sqlTable.tableName === 'ncats_ppi'){
+            return true;
+        }
+        if (this.querySequence && (sqlTable.tableName === 'sequence_search_summary')) {
             return true;
         }
         if (this.associatedLigand && (sqlTable.tableName === 'ncats_ligand_activity') && !this.associatedSmiles) {
@@ -399,6 +430,13 @@ export class TargetList extends DataModelList {
                 modifiedFacet.typeModifier = this.associatedSmiles.length > 30 ? this.associatedSmiles.slice(0, 30) + '...' : this.associatedSmiles;
             }
             return `predictor_results.query_hash = "${this.structureQueryHash}"`;
+        }
+        if (this.querySequence && (fieldInfo.table === 'sequence_search_summary' || rootTableOverride === 'sequence_search_summary')) {
+            const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
+            if(modifiedFacet) {
+                modifiedFacet.typeModifier = this.querySequence.length > 30 ? this.querySequence.slice(0, 30) + '...' : this.querySequence;
+            }
+            return `sequence_search_summary.query_hash = "${this.structureQueryHash}"`;
         }
         return "";
     }

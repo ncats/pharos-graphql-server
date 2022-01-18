@@ -171,6 +171,7 @@ input IFilter {
      associatedDisease: String
      associatedLigand: String
      associatedStructure: String
+     sequence: String
      similarity: String
      ppiConfidence: Int = 400
      noOptimization: Boolean = false
@@ -644,6 +645,7 @@ type Target @cacheControl(maxAge: 604800){
      diseaseAssociationDetails: [AssociationDetails]
      ligandAssociationDetails: LigandAssocDetails
      targetPredictionDetails: TargetPredictionDetails
+     sequenceSimilarityDetails: SequenceSimilarityDetails
 
      interactingViruses: [VirusDetails]
 
@@ -755,6 +757,13 @@ type LigandAssocDetails @cacheControl(maxAge: 604800){
      modeOfAction: String
 }
 
+type SequenceSimilarityDetails @cacheControl(maxAge: 604800) {
+    pident: Float
+    evalue : Float
+    bitscore: Int
+    qcovs: Float
+}
+
 type TargetPredictionDetails @cacheControl(maxAge: 604800) {
      similarity: Float
      result: Float
@@ -844,7 +853,8 @@ type PharosConfiguration{
           similarityQuery: Boolean = false,
           associatedLigand: String = "",
           associatedSmiles: String = "",
-          associatedTarget: String = ""): [FieldList]
+          associatedTarget: String = ""
+          sequence: String = ""): [FieldList]
 }
 
 type FieldList{

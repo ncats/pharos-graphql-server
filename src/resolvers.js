@@ -16,7 +16,14 @@ const resolvers = {
 
     PharosConfiguration: {
         downloadLists: async function (config, args, {dataSources}) {
-            const lists = config.listManager.getDownloadLists(args.modelName, args.associatedModelName, args.similarityQuery, args.associatedLigand, args.associatedSmiles, args.associatedTarget);
+            const lists = config.listManager.getDownloadLists(
+                args.modelName,
+                args.associatedModelName,
+                args.similarityQuery,
+                args.associatedLigand,
+                args.associatedSmiles,
+                args.associatedTarget,
+                args.sequence);
             const retArray = [];
             lists.forEach((fields, listName) => {
                 retArray.push({
@@ -81,7 +88,10 @@ const resolvers = {
         listCross: async function (_, args, {dataSources}) {
             if (args.model == 'Target') {
                 const listObj = new TargetList(dataSources.tcrd, args);
-                await listObj.getDrugTargetPredictions();
+                await Promise.all([
+                    listObj.getDrugTargetPredictions(),
+                    listObj.getSimilarSequences()
+                ]);
                 if (args.crossModel == 'Ligand') {
                     return listObj.getAllLigandActivities();
                 } else if (args.crossModel == 'Disease') {
@@ -108,7 +118,10 @@ const resolvers = {
             //(model:$model, crossModel:$crossModel, filter:$filter, batch:$batch, modelID:$modelID, crossModelID:$crossModelID)
             if (args.model == 'Target') {
                 const listObj = new TargetList(dataSources.tcrd, args);
-                await listObj.getDrugTargetPredictions();
+                await Promise.all([
+                    listObj.getDrugTargetPredictions(),
+                    listObj.getSimilarSequences()
+                ]);
                 if (args.crossModel == 'Ligand') {
                     return listObj.getLigandActivityDetails(args.modelID, args.crossModelID);
                 } else if (args.crossModel == 'Disease') {
@@ -213,7 +226,10 @@ const resolvers = {
                 await listObj.getSimilarLigands();
             }
             if (listObj instanceof TargetList) {
-                await listObj.getDrugTargetPredictions();
+                await Promise.all([
+                    listObj.getDrugTargetPredictions(),
+                    listObj.getSimilarSequences()
+                ]);
             }
             return listObj.getUpsetQuery(args.facetName, args.values).then(res => {
                 // console.log(res);
@@ -239,7 +255,10 @@ const resolvers = {
                     await listObj.getSimilarLigands();
                 }
                 if (listObj instanceof TargetList) {
-                    await listObj.getDrugTargetPredictions();
+                    await Promise.all([
+                        listObj.getDrugTargetPredictions(),
+                        listObj.getSimilarSequences()
+                    ]);
                 }
                 listQuery = listObj.getListQuery('download');
             } catch (e) {
@@ -733,6 +752,18 @@ const resolvers = {
                 };
             }
             return null;
+        },
+        sequenceSimilarityDetails: async function (target, args, {dataSources}) {
+            if ((target.qcovs || target.bitscore) && dataSources.querySequence && dataSources.querySequence.length > 0) {
+                return {
+                    pident: target.pident,
+                    evalue : target.evalue,
+                    bitscore: target.bitscore,
+                    qcovs: target.qcovs
+                };
+            }
+            return null;
+
         },
         diseaseCounts: async function (target, args, {dataSources}) {
             let diseaseArgs = args;
@@ -1790,11 +1821,15 @@ const resolvers = {
             args.filter = result.filter;
             args.batch = result.batch;
             const listObj = new TargetList(dataSources.tcrd, args);
-            await listObj.getDrugTargetPredictions();
+            await Promise.all([
+                listObj.getDrugTargetPredictions(),
+                listObj.getSimilarSequences()
+            ]);
             dataSources.associatedTarget = listObj.associatedTarget;
             dataSources.associatedDisease = listObj.associatedDisease;
             dataSources.similarity = listObj.similarity;
             dataSources.associatedSmiles = listObj.associatedSmiles;
+            dataSources.querySequence = listObj.querySequence;
             dataSources.associatedLigand = listObj.associatedLigand;
             const q = listObj.getListQuery('list');
             //console.log(q.toString());
@@ -2049,7 +2084,10 @@ async function getTargetResult(args, dataSources) {
     //console.log(JSON.stringify(args));
     args.batch = args.targets;
     const targetList = new TargetList(dataSources.tcrd, args);
-    await targetList.getDrugTargetPredictions();
+    await Promise.all([
+        targetList.getDrugTargetPredictions(),
+        targetList.getSimilarSequences()
+    ]);
     dataSources.associatedTarget = targetList.associatedTarget;
     dataSources.associatedDisease = targetList.associatedDisease;
     dataSources.similarity = targetList.similarity;
