@@ -1,3 +1,4 @@
+const {SequenceSearch} = require("./models/externalAPI/SequenceSearch");
 const {PythonCalculation} = require("./models/externalAPI/PythonCalculation");
 const {ListContext} = require("./models/listManager");
 const {DataModelListFactory} = require("./models/DataModelListFactory");
@@ -55,6 +56,16 @@ const resolvers = {
         }
     },
 
+    SequenceSimilarityDetails: {
+        alignments: async function (sequenceSimilarityDetails, args, {dataSources}) {
+            if (sequenceSimilarityDetails.alignments && sequenceSimilarityDetails.alignments.length > 0) {
+                return sequenceSimilarityDetails.alignments;
+            }
+            return dataSources.tcrd.db('result_cache.sequence_search_results').select('*')
+                .where('query_hash', sequenceSimilarityDetails.queryHash)
+                .andWhere('uniprot', sequenceSimilarityDetails.uniprot);
+        }
+    },
     Query: {
         usageData: async function (_, args, {dataSources}) {
             const interval = args.interval;
@@ -111,9 +122,12 @@ const resolvers = {
                     return listObj.getAllTargetActivities();
                 }
             }
-            return {up: 'down'};
+            return {};
         },
-
+        getSequenceAlignments: async function (_, args, {dataSources}) {
+            const ss = new SequenceSearch(dataSources.tcrd.db, args.sequence);
+            return ss.fetchAllResults();
+        },
         listCrossDetails: async function (_, args, {dataSources}) {
             //(model:$model, crossModel:$crossModel, filter:$filter, batch:$batch, modelID:$modelID, crossModelID:$crossModelID)
             if (args.model == 'Target') {
@@ -759,7 +773,9 @@ const resolvers = {
                     pident: target.pident,
                     evalue : target.evalue,
                     bitscore: target.bitscore,
-                    qcovs: target.qcovs
+                    qcovs: target.qcovs,
+                    uniprot: target.uniprot,
+                    queryHash: dataSources.queryHash
                 };
             }
             return null;
@@ -1830,6 +1846,7 @@ const resolvers = {
             dataSources.similarity = listObj.similarity;
             dataSources.associatedSmiles = listObj.associatedSmiles;
             dataSources.querySequence = listObj.querySequence;
+            dataSources.queryHash = listObj.structureQueryHash;
             dataSources.associatedLigand = listObj.associatedLigand;
             const q = listObj.getListQuery('list');
             //console.log(q.toString());

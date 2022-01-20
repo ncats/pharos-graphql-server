@@ -12,6 +12,58 @@ export class SequenceSearch {
         this.queryHash = this.getQueryHash();
     }
 
+    async fetchAllResults() {
+        await this.runBlastSearch();
+
+        const query = this.knex({
+            sequence_search_results: 'result_cache.sequence_search_results',
+            sequence_search_summary: 'result_cache.sequence_search_summary'
+        }).select({
+            uniprot: 'sequence_search_summary.uniprot',
+            summary_pident: 'sequence_search_summary.pident',
+            summary_evalue: 'sequence_search_summary.evalue',
+            summary_bitscore: 'sequence_search_summary.bitscore',
+            summary_qcovs: 'sequence_search_summary.qcovs',
+            sseqid: 'sequence_search_results.sseqid',
+            pident: 'sequence_search_results.pident',
+            length: 'sequence_search_results.length',
+            mismatch: 'sequence_search_results.mismatch',
+            gapopen: 'sequence_search_results.gapopen',
+            qstart: 'sequence_search_results.qstart',
+            qend: 'sequence_search_results.qend',
+            sstart: 'sequence_search_results.sstart',
+            send: 'sequence_search_results.send',
+            evalue: 'sequence_search_results.evalue',
+            bitscore: 'sequence_search_results.bitscore',
+            qseq: 'sequence_search_results.qseq',
+            sseq: 'sequence_search_results.sseq'
+        })
+            .where('sequence_search_results.query_hash', this.queryHash)
+            .andWhere('sequence_search_summary.query_hash', this.queryHash)
+            .andWhere('sequence_search_summary.uniprot', this.knex.raw('sequence_search_results.uniprot'))
+            .then((results: any[]) => {
+                const map: Map<string, any> = new Map<string, any>();
+                results.forEach((row: any) => {
+                    if (map.has(row.uniprot)) {
+                        const summaryDetails = map.get(row.uniprot);
+                        summaryDetails.alignments.push(row);
+                    } else {
+                        const summaryDetails = {
+                            uniprot: row.uniprot,
+                            pident: row.summary_pident,
+                            evalue: row.summary_evalue,
+                            bitscore: row.summary_bitscore,
+                            qcovs: row.summary_qcovs,
+                            alignments: [row]
+                        };
+                        map.set(row.uniprot, summaryDetails);
+                    }
+                });
+                return Array.from(map.values());
+            });
+        return query;
+    }
+
     async runBlastSearch() {
         if (!this.querySequence || this.querySequence.length === 0) {
             return [];
@@ -32,13 +84,13 @@ export class SequenceSearch {
                 axios.post(this.url(), blastArgs),
                 this.startNewQuery()
             ]).then((response: any) => {
-                    return Promise.all([
-                        this.addResults(response[0].data).then(() => {
-                            return this.updateProteinID();
-                        }),
-                        this.updateQueryStatus('success', '')
-                    ])
-                })
+                return Promise.all([
+                    this.addResults(response[0].data).then(() => {
+                        return this.updateProteinID();
+                    }),
+                    this.updateQueryStatus('success', '')
+                ])
+            })
                 .catch((error: any) => {
                     return this.updateQueryStatus('fail', JSON.stringify(error));
                 });
@@ -71,7 +123,7 @@ export class SequenceSearch {
         const summaryMap: Map<string, any[]> = new Map<string, any[]>();
 
         rows.forEach((row: string) => {
-            if(row && row.trim().length > 0) {
+            if (row && row.trim().length > 0) {
                 const parsedRow = this.parseResponse(row);
                 inserts.push(parsedRow);
                 this.addToMap(summaryMap, parsedRow);
@@ -179,14 +231,14 @@ export class SequenceSearch {
             query_hash: this.queryHash,
             sseqid: pieces[0],
             pident: Number.parseFloat(pieces[1]),
-            length : Number.parseInt(pieces[2]),
+            length: Number.parseInt(pieces[2]),
             mismatch: Number.parseInt(pieces[3]),
             gapopen: Number.parseInt(pieces[4]),
             qstart: Number.parseInt(pieces[5]),
             qend: Number.parseInt(pieces[6]),
             sstart: Number.parseInt(pieces[7]),
             send: Number.parseInt(pieces[8]),
-            evalue : Number.parseFloat(pieces[9]),
+            evalue: Number.parseFloat(pieces[9]),
             bitscore: Number.parseInt(pieces[10]),
             qcovs: Number.parseInt(pieces[11]),
             qseq: pieces[12],
