@@ -125,8 +125,12 @@ const resolvers = {
             return {};
         },
         getSequenceAlignments: async function (_, args, {dataSources}) {
-            const ss = new SequenceSearch(dataSources.tcrd.db, args.sequence);
-            return ss.fetchAllResults();
+            const targetList = new TargetList(dataSources.tcrd, args);
+            await Promise.all([
+                targetList.getDrugTargetPredictions(),
+                targetList.getSimilarSequences()
+            ]);
+            return targetList.getSequenceDetails();
         },
         listCrossDetails: async function (_, args, {dataSources}) {
             //(model:$model, crossModel:$crossModel, filter:$filter, batch:$batch, modelID:$modelID, crossModelID:$crossModelID)

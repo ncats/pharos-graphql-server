@@ -1,3 +1,5 @@
+import {TargetList} from "../target/targetList";
+
 const axios = require('axios');
 const crypto = require('crypto');
 
@@ -5,63 +7,13 @@ export class SequenceSearch {
     querySequence: string;
     knex: any;
     queryHash: string;
+    targetList?: TargetList;
 
-    constructor(knex: any, querySequence: string) {
+    constructor(knex: any, querySequence: string, targetList?: TargetList) {
         this.knex = knex;
         this.querySequence = querySequence;
+        this.targetList = targetList;
         this.queryHash = this.getQueryHash();
-    }
-
-    async fetchAllResults() {
-        await this.runBlastSearch();
-
-        const query = this.knex({
-            sequence_search_results: 'result_cache.sequence_search_results',
-            sequence_search_summary: 'result_cache.sequence_search_summary'
-        }).select({
-            uniprot: 'sequence_search_summary.uniprot',
-            summary_pident: 'sequence_search_summary.pident',
-            summary_evalue: 'sequence_search_summary.evalue',
-            summary_bitscore: 'sequence_search_summary.bitscore',
-            summary_qcovs: 'sequence_search_summary.qcovs',
-            sseqid: 'sequence_search_results.sseqid',
-            pident: 'sequence_search_results.pident',
-            length: 'sequence_search_results.length',
-            mismatch: 'sequence_search_results.mismatch',
-            gapopen: 'sequence_search_results.gapopen',
-            qstart: 'sequence_search_results.qstart',
-            qend: 'sequence_search_results.qend',
-            sstart: 'sequence_search_results.sstart',
-            send: 'sequence_search_results.send',
-            evalue: 'sequence_search_results.evalue',
-            bitscore: 'sequence_search_results.bitscore',
-            qseq: 'sequence_search_results.qseq',
-            sseq: 'sequence_search_results.sseq'
-        })
-            .where('sequence_search_results.query_hash', this.queryHash)
-            .andWhere('sequence_search_summary.query_hash', this.queryHash)
-            .andWhere('sequence_search_summary.uniprot', this.knex.raw('sequence_search_results.uniprot'))
-            .then((results: any[]) => {
-                const map: Map<string, any> = new Map<string, any>();
-                results.forEach((row: any) => {
-                    if (map.has(row.uniprot)) {
-                        const summaryDetails = map.get(row.uniprot);
-                        summaryDetails.alignments.push(row);
-                    } else {
-                        const summaryDetails = {
-                            uniprot: row.uniprot,
-                            pident: row.summary_pident,
-                            evalue: row.summary_evalue,
-                            bitscore: row.summary_bitscore,
-                            qcovs: row.summary_qcovs,
-                            alignments: [row]
-                        };
-                        map.set(row.uniprot, summaryDetails);
-                    }
-                });
-                return Array.from(map.values());
-            });
-        return query;
     }
 
     async runBlastSearch() {

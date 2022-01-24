@@ -959,5 +959,5 @@ collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral
 
      usageData(interval: SummaryInterval!): JSON
 
-     getSequenceAlignments(sequence: String!): [SequenceSimilarityDetails]
+     getSequenceAlignments(sequence: String!, filter: IFilter, batch: [String]): [SequenceSimilarityDetails]
 }
