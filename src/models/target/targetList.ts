@@ -286,6 +286,7 @@ export class TargetList extends DataModelList {
             protein: 'protein'
         }).select({
             uniprot: 'sequence_search_summary.uniprot',
+            sym: 'protein.sym',
             summary_pident: 'sequence_search_summary.pident',
             summary_evalue: 'sequence_search_summary.evalue',
             summary_bitscore: 'sequence_search_summary.bitscore',
@@ -331,6 +332,7 @@ export class TargetList extends DataModelList {
                     summaryDetails.alignments.push(row);
                 } else {
                     const summaryDetails = {
+                        sym: row.sym,
                         uniprot: row.uniprot,
                         pident: row.summary_pident,
                         evalue: row.summary_evalue,

@@ -759,6 +759,7 @@ type LigandAssocDetails @cacheControl(maxAge: 604800){
 
 type SequenceSimilarityDetails @cacheControl(maxAge: 604800) {
     uniprot: String
+    sym: String
     pident: Float
     evalue : Float
     bitscore: Int
