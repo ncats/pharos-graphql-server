@@ -516,12 +516,23 @@ export class TargetList extends DataModelList {
             }
             return `predictor_results.query_hash = "${this.structureQueryHash}"`;
         }
-        if (this.querySequence && (fieldInfo.table === 'sequence_search_summary' || rootTableOverride === 'sequence_search_summary')) {
+        if (this.querySequence && (
+            fieldInfo.table === 'sequence_search_summary' ||
+            rootTableOverride === 'sequence_search_summary')) {
             const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
             if (modifiedFacet) {
                 modifiedFacet.typeModifier = this.querySequence.length > 30 ? this.querySequence.slice(0, 30) + '...' : this.querySequence;
             }
             return `sequence_search_summary.query_hash = "${this.structureQueryHash}"`;
+        }
+        if (this.querySequence && (
+            fieldInfo.table === 'sequence_search_results' ||
+            rootTableOverride === 'sequence_search_results')) {
+            const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
+            if (modifiedFacet) {
+                modifiedFacet.typeModifier = this.querySequence.length > 30 ? this.querySequence.slice(0, 30) + '...' : this.querySequence;
+            }
+            return `sequence_search_results.query_hash = "${this.structureQueryHash}"`;
         }
         return "";
     }
