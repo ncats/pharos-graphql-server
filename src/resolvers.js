@@ -62,7 +62,7 @@ const resolvers = {
                 return sequenceSimilarityDetails.alignments;
             }
             return dataSources.tcrd.db('result_cache.sequence_search_results').select('*')
-                .where('query_hash', sequenceSimilarityDetails.queryHash)
+                .where('query_hash', sequenceSimilarityDetails.sequenceQueryHash)
                 .andWhere('uniprot', sequenceSimilarityDetails.uniprot);
         }
     },
@@ -779,7 +779,7 @@ const resolvers = {
                     bitscore: target.bitscore,
                     qcovs: target.qcovs,
                     uniprot: target.uniprot,
-                    queryHash: dataSources.queryHash
+                    queryHash: dataSources.sequenceQueryHash
                 };
             }
             return null;
@@ -1851,6 +1851,7 @@ const resolvers = {
             dataSources.associatedSmiles = listObj.associatedSmiles;
             dataSources.querySequence = listObj.querySequence;
             dataSources.queryHash = listObj.structureQueryHash;
+            dataSources.sequenceQueryHash = listObj.sequenceQueryHash;
             dataSources.associatedLigand = listObj.associatedLigand;
             const q = listObj.getListQuery('list');
             //console.log(q.toString());

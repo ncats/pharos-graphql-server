@@ -28,6 +28,7 @@ export abstract class DataModelList implements IBuildable {
     dataFields: FieldInfo[] = [];
 
     structureQueryHash: string = '';
+    sequenceQueryHash: string = '';
     associatedTarget: string = '';
     associatedDisease: string = '';
     associatedSmiles: string = '';

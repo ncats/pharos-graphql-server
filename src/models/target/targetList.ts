@@ -52,7 +52,7 @@ export class TargetList extends DataModelList {
 
     getSimilarSequences() {
         const sSearch = new SequenceSearch(this.database, this.querySequence);
-        this.structureQueryHash = sSearch.queryHash;
+        this.sequenceQueryHash = sSearch.queryHash;
         return sSearch.runBlastSearch();
     }
 
@@ -305,8 +305,8 @@ export class TargetList extends DataModelList {
             qseq: 'sequence_search_results.qseq',
             sseq: 'sequence_search_results.sseq'
         })
-            .where('sequence_search_results.query_hash', this.structureQueryHash)
-            .andWhere('sequence_search_summary.query_hash', this.structureQueryHash)
+            .where('sequence_search_results.query_hash', this.sequenceQueryHash)
+            .andWhere('sequence_search_summary.query_hash', this.sequenceQueryHash)
             .andWhere('sequence_search_summary.uniprot', this.database.raw('sequence_search_results.uniprot'))
             .andWhere('sequence_search_results.protein_id', this.database.raw('protein.id'));
 
@@ -425,16 +425,11 @@ export class TargetList extends DataModelList {
 
     private getListFromSeqSearch() {
         return this.database('result_cache.sequence_search_summary').select('*')
-            .where('query_hash', '=', this.database.raw(`"${this.structureQueryHash}"`));
+            .where('query_hash', '=', this.database.raw(`"${this.sequenceQueryHash}"`));
     }
 
     private getListFromPredictor() {
         return this.database('result_cache.predictor_results').distinct('protein_id')
-            .where('query_hash', '=', this.database.raw(`"${this.structureQueryHash}"`));
-    }
-
-    private getListFromSequenceSearch() {
-        return this.database('result_cache.sequence_search_summary').distinct('protein_id')
             .where('query_hash', '=', this.database.raw(`"${this.structureQueryHash}"`));
     }
 
@@ -523,7 +518,7 @@ export class TargetList extends DataModelList {
             if (modifiedFacet) {
                 modifiedFacet.typeModifier = this.querySequence.length > 30 ? this.querySequence.slice(0, 30) + '...' : this.querySequence;
             }
-            return `sequence_search_summary.query_hash = "${this.structureQueryHash}"`;
+            return `sequence_search_summary.query_hash = "${this.sequenceQueryHash}"`;
         }
         if (this.querySequence && (
             fieldInfo.table === 'sequence_search_results' ||
@@ -532,7 +527,7 @@ export class TargetList extends DataModelList {
             if (modifiedFacet) {
                 modifiedFacet.typeModifier = this.querySequence.length > 30 ? this.querySequence.slice(0, 30) + '...' : this.querySequence;
             }
-            return `sequence_search_results.query_hash = "${this.structureQueryHash}"`;
+            return `sequence_search_results.query_hash = "${this.sequenceQueryHash}"`;
         }
         return "";
     }
