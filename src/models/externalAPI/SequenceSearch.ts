@@ -41,10 +41,10 @@ export class SequenceSearch {
                         return this.updateProteinID();
                     }),
                     this.updateQueryStatus('success', '')
-                ])
+                ]);
             })
                 .catch((error: any) => {
-                    return this.updateQueryStatus('fail', JSON.stringify(error));
+                    return this.updateQueryStatus('fail', error.response.data + '\n\n' + JSON.stringify(error));
                 });
         }
     }
