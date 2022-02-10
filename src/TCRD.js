@@ -4,18 +4,6 @@ const {SQLDataSource} = require("datasource-sql");
 const CONSTANTS = require("./constants");
 const utils = require("./target_search_utils");
 
-const TARGET_SQL = `
-a.*,b.dtoid,b.uniprot,b.seq,b.sym,e.score as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
-b.description as name, f.string_value as description
-from target a, protein b, t2tc c
-left join tinx_novelty e use index(tinx_novelty_idx3)
-on e.protein_id = c.protein_id
-left join tdl_info f on f.protein_id = c.protein_id 
-and f.itype = '${CONSTANTS.DESCRIPTION_TYPE}'
-where a.id = c.target_id and b.id = c.protein_id
-`;
-
-
 function targetFacetMapping(facet) {
     switch (facet) {
         case 'Target Development Level':
@@ -457,26 +445,51 @@ and b.id = c.target_id`));
     }
 
     getTarget(args) {
-        //console.log('>>> getTarget: '+JSON.stringify(args));
-        if (args.uniprot || args.sym || args.stringid) {
-            var value = args.uniprot || args.sym || args.stringid;
-            return this.db.select(this.db.raw(TARGET_SQL + `
-and (match(b.uniprot,b.sym,b.stringid) against(? in boolean mode)
-OR b.id = (SELECT protein_id FROM xref where xtype = 'Ensembl' and value = ? limit 1))`, [value, value]));
+        const query = this.db({
+            target: 'target',
+            t2tc: 't2tc',
+            protein: 'protein'
+        })
+            .leftJoin('tinx_novelty', 'tinx_novelty.protein_id', 'protein.id')
+            .leftJoin('tdl_info',  q => {
+                q.on('tdl_info.protein_id', 'protein.id')
+                    .andOn('tdl_info.itype', this.db.raw(`"${CONSTANTS.DESCRIPTION_TYPE}"`))
+        })
+            .select(['target.tdl', 'target.fam', 'protein.dtoid', 'protein.uniprot', 'protein.seq', 'protein.sym'])
+            .select({
+                novelty: 'tinx_novelty.score',
+                tcrdid: 'target.id',
+                preferredSymbol: 'protein.preferred_symbol',
+                name: 'protein.description',
+                description: 'tdl_info.string_value',
+            })
+            .where('target.id', this.db.raw('t2tc.target_id'))
+            .andWhere('protein.id', this.db.raw('t2tc.protein_id'));
+
+        const matchValue = args.uniprot || args.sym || args.stringid;
+        if (matchValue) {
+            if (matchValue.length < 3 || matchValue.includes('-')) {
+                return query.andWhere(q => {
+                    q.where('uniprot', matchValue)
+                        .orWhere('sym', matchValue)
+                        .orWhere('stringid', matchValue);
+                })
+            }
+            return query.andWhere(q => {
+                q.whereRaw(this.db.raw(`match(uniprot,sym,stringid) against("${matchValue}" in boolean mode)`))
+                    .orWhere('protein.id', this.db.raw(`(SELECT protein_id FROM xref where xtype = 'Ensembl' and value = "${matchValue}" limit 1)`));
+            });
         }
 
         if (args.geneid) {
-            return this.db.select(this.db.raw(TARGET_SQL + `
-and b.geneid=?`, [args.geneid]));
+            return query.andWhere('protein.geneid', args.geneid);
         }
 
         if (args.protein_id) {
-            return this.db.select(this.db.raw(TARGET_SQL + `
-and b.id=?`, [args.protein_id]));
+            return query.andWhere('protein.id', args.protein_id);
         }
 
-        return this.db.select(this.db.raw(TARGET_SQL + `
-and a.id = ?`, [args.tcrdid]));
+        return query.andWhere('target.id', args.tcrdid);
     }
 
     getGOCountsForTarget(target) {
