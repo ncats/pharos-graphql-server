@@ -55,14 +55,16 @@ export class LigandList extends DataModelList {
 
     getAllTargetActivities(): any {
         const query = this.database({protein: 'protein', t2tc: 't2tc', ncats_ligand_activity: 'ncats_ligand_activity', ncats_ligands: 'ncats_ligands'})
-            .select([
-                'ncats_ligand_activity.ncats_ligand_id',
-                't2tc.target_id',
-                'ncats_ligands.identifier',
-                'ncats_ligands.smiles',
-                'ncats_ligands.name',
-                'protein.sym',
-                'protein.uniprot'])
+            .select({
+                ncats_ligand_id: 'ncats_ligand_activity.ncats_ligand_id',
+                target_id: 't2tc.target_id',
+                identifier: 'ncats_ligands.identifier',
+                smiles: 'ncats_ligands.smiles',
+                name: 'ncats_ligands.name',
+                sym: 'protein.sym',
+                uniprot: 'protein.uniprot',
+                preferredSymbol: 'protein.preferred_symbol'
+            })
             .avg({mean: 'act_value'})
             .select({
                 std: this.database.raw('std(act_value)'),

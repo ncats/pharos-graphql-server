@@ -152,14 +152,16 @@ export class TargetList extends DataModelList {
             t2tc: 't2tc',
             protein: 'protein'
         })
-            .select([
-                'ncats_ligand_id',
-                't2tc.target_id',
-                'ncats_ligands.identifier',
-                'ncats_ligands.smiles',
-                'ncats_ligands.name',
-                'protein.sym',
-                'protein.uniprot'])
+            .select({
+                ncats_ligand_id: 'ncats_ligand_id',
+                target_id: 't2tc.target_id',
+                identifier: 'ncats_ligands.identifier',
+                smiles: 'ncats_ligands.smiles',
+                name: 'ncats_ligands.name',
+                sym: 'protein.sym',
+                uniprot: 'protein.uniprot',
+                preferredSymbol: 'protein.preferred_symbol'
+            })
             .avg({mean: 'act_value'})
             .select({
                 std: this.database.raw('std(act_value)'),
@@ -229,7 +231,13 @@ export class TargetList extends DataModelList {
             disease: 'disease',
             protein: 'protein'
         })
-            .select(['ncats_disease.name', 'protein.sym', 'protein.description', 'protein.uniprot'])
+            .select({
+                name: 'ncats_disease.name',
+                sym: 'protein.sym',
+                description: 'protein.description',
+                uniprot: 'protein.uniprot',
+                preferredSymbol: 'protein.preferred_symbol'
+            })
             .select({count: this.database.raw('count(distinct disease.dtype)')})
             .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
             .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
@@ -287,6 +295,7 @@ export class TargetList extends DataModelList {
         }).select({
             uniprot: 'sequence_search_summary.uniprot',
             sym: 'protein.sym',
+            preferredSymbol: 'protein.preferred_symbol',
             summary_pident: 'sequence_search_summary.pident',
             summary_evalue: 'sequence_search_summary.evalue',
             summary_bitscore: 'sequence_search_summary.bitscore',
@@ -336,6 +345,7 @@ export class TargetList extends DataModelList {
                         uniprot: row.uniprot,
                         pident: row.summary_pident,
                         evalue: row.summary_evalue,
+                        preferredSymbol: row.preferredSymbol,
                         bitscore: row.summary_bitscore,
                         qcovs: row.summary_qcovs,
                         alignments: [row]
@@ -353,10 +363,12 @@ export class TargetList extends DataModelList {
                 sym: 'protein.sym',
                 uniprot: 'protein.uniprot',
                 name: 'protein.description',
+                preferredSymbol: 'protein.preferred_symbol',
                 score: this.database.raw('score / 1000'),
                 otherSym: 'other.sym',
                 otherUniprot: 'other.uniprot',
-                otherName: 'other.description'
+                otherName: 'other.description',
+                otherPreferredSymbol: 'other.preferred_symbol'
             })
             .where('protein.id', this.database.raw('ncats_ppi.protein_id'))
             .andWhere('other.id', this.database.raw('ncats_ppi.other_id'))

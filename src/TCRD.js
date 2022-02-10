@@ -5,7 +5,7 @@ const CONSTANTS = require("./constants");
 const utils = require("./target_search_utils");
 
 const TARGET_SQL = `
-a.*,b.dtoid,b.uniprot,b.seq,b.sym,e.score as novelty, a.id as tcrdid, 
+a.*,b.dtoid,b.uniprot,b.seq,b.sym,e.score as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
 b.description as name, f.string_value as description
 from target a, protein b, t2tc c
 left join tinx_novelty e use index(tinx_novelty_idx3)
@@ -765,7 +765,7 @@ and b.target_id = ?`, [target.tcrdid]));
     getTargetsForXref(xref) {
         //console.log('>>> getTargetForXref: '+JSON.stringify(xref));
         return this.db.select(this.db.raw(`
-a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid, 
+a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid,b.preferred_symbol as preferredSymbol,
 b.description as name, f.string_value as description
 from target a, protein b, t2tc c, xref d
 left join tdl_info f on f.protein_id = d.protein_id 
@@ -949,7 +949,7 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
     getTargetForPPINeighbor(neighbor) {
         //console.log('>>> getTargetForNeighbor: '+neighbor.nid);
         return this.db.select(this.db.raw(`
-a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid, e.score as novelty, 
+a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid,b.preferred_symbol as preferredSymbol, e.score as novelty, 
 b.description as name, f.string_value as description
 from target a, protein b, ncats_ppi d, t2tc c
 left join tinx_novelty e use index(tinx_novelty_idx3)
@@ -1075,7 +1075,7 @@ order by associationCount desc, zscore desc`, [ortho.ortholog_id]));
 
     getTargetsForDiseaseAssociation(disease, args) {
         const DISEASE_SQL = `
-a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
 b.description as name, g.string_value as description
 from target a, protein b, disease d, t2tc c
 left join tinx_novelty e use index(tinx_novelty_idx3)
@@ -1196,7 +1196,7 @@ order by value desc`, [pubmed.pmid]));
 
     getTargetsForPubMed(pubmed, args) {
         const PUBMED_SQL = `
-a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
 b.description as name, g.string_value as description
 from target a, protein b, protein2pubmed f, t2tc c
 left join tinx_novelty e use index(tinx_novelty_idx3)
@@ -1303,7 +1303,7 @@ limit ? offset ?`, [pubmed.pmid, args.top, args.skip]));
 
     getTargetsForPathway(pathway, args) {
         const PATHWAY_SQL = `
-a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,
+a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
 b.description as name, g.string_value as description
 from target a, protein b, pathway f, t2tc c
 left join tinx_novelty e use index(tinx_novelty_idx3)
@@ -1474,7 +1474,7 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
 
     getTargetForKeggNeighbor(neighbor) {
         return this.db.select(this.db.raw(`
-a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid, e.score as novelty,
+a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid,b.preferred_symbol as preferredSymbol, e.score as novelty,
 b.description as name, f.string_value as description
 from target a, protein b, kegg_distance d, t2tc c
 left join tinx_novelty e use index(tinx_novelty_idx3)

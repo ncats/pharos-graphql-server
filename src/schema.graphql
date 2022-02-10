@@ -549,6 +549,8 @@ type Target @cacheControl(maxAge: 604800){
      name: String!
      """Gene symbol"""
      sym: String
+     """Preferred Symbol - either uniprot, or gene symbol, depending on if gene symbol is null, or is not unique"""
+     preferredSymbol: String
      """Summary of gene/protein"""
      description: String
      """Target development leve"""
@@ -760,6 +762,7 @@ type LigandAssocDetails @cacheControl(maxAge: 604800){
 type SequenceSimilarityDetails @cacheControl(maxAge: 604800) {
     uniprot: String
     sym: String
+    preferredSymbol: String
     pident: Float
     evalue : Float
     bitscore: Int
