@@ -17,7 +17,7 @@ export abstract class DataModelList implements IBuildable {
     abstract tableJoinShouldFilterList(table: SqlTable): boolean;
 
     batch: string[] = [];
-    term: string = "";
+    term: string = '';
     fields: string[] = [];
     warnings: string[] = [];
     rootTable: string;
@@ -28,12 +28,14 @@ export abstract class DataModelList implements IBuildable {
     dataFields: FieldInfo[] = [];
 
     structureQueryHash: string = '';
-    associatedTarget: string = "";
-    associatedDisease: string = "";
-    associatedSmiles: string = "";
+    sequenceQueryHash: string = '';
+    associatedTarget: string = '';
+    associatedDisease: string = '';
+    associatedSmiles: string = '';
+    querySequence: string = '';
     associatedStructureMethod: string = 'sim';
-    associatedStructure: string = "";
-    associatedLigand: string = "";
+    associatedStructure: string = '';
+    associatedLigand: string = '';
     similarity: { match: string, facet: string } = {match: '', facet: ''};
     ppiConfidence: number = CONSTANTS.DEFAULT_PPI_CONFIDENCE;
     skip: number | undefined;
@@ -44,8 +46,8 @@ export abstract class DataModelList implements IBuildable {
     database: any;
     databaseConfig: DatabaseConfig;
 
-    sortField: string = "";
-    direction: string = "";
+    sortField: string = '';
+    direction: string = '';
 
     getAssociatedModel(): string {
         if (this.associatedTarget) {
@@ -98,7 +100,10 @@ export abstract class DataModelList implements IBuildable {
                 this.associatedDisease = json.filter.associatedDisease;
             }
             if (json.filter.associatedLigand) {
-                this.associatedLigand = json.filter.associatedLigand
+                this.associatedLigand = json.filter.associatedLigand;
+            }
+            if (json.filter.sequence) {
+                this.querySequence = json.filter.sequence;
             }
             if (json.filter.associatedStructure) {
                 const pieces = json.filter.associatedStructure.split('!');
@@ -332,6 +337,9 @@ export abstract class DataModelList implements IBuildable {
             return false;
         }
         if (this.filteringFacets.length > 0) {
+            return false;
+        }
+        if (this.querySequence.length > 0) {
             return false;
         }
         return true;

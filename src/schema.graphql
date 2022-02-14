@@ -171,6 +171,7 @@ input IFilter {
      associatedDisease: String
      associatedLigand: String
      associatedStructure: String
+     sequence: String
      similarity: String
      ppiConfidence: Int = 400
      noOptimization: Boolean = false
@@ -548,6 +549,8 @@ type Target @cacheControl(maxAge: 604800){
      name: String!
      """Gene symbol"""
      sym: String
+     """Preferred Symbol - either uniprot, or gene symbol, depending on if gene symbol is null, or is not unique"""
+     preferredSymbol: String
      """Summary of gene/protein"""
      description: String
      """Target development leve"""
@@ -644,6 +647,7 @@ type Target @cacheControl(maxAge: 604800){
      diseaseAssociationDetails: [AssociationDetails]
      ligandAssociationDetails: LigandAssocDetails
      targetPredictionDetails: TargetPredictionDetails
+     sequenceSimilarityDetails: SequenceSimilarityDetails
 
      interactingViruses: [VirusDetails]
 
@@ -755,6 +759,33 @@ type LigandAssocDetails @cacheControl(maxAge: 604800){
      modeOfAction: String
 }
 
+type SequenceSimilarityDetails @cacheControl(maxAge: 604800) {
+    uniprot: String
+    sym: String
+    preferredSymbol: String
+    pident: Float
+    evalue : Float
+    bitscore: Int
+    qcovs: Float
+    alignments: [SequenceAlignments]
+}
+
+type SequenceAlignments @cacheControl(maxAge: 604800) {
+    sseqid: String
+    pident: Float
+    length : Int
+    mismatch: Int
+    gapopen: Int
+    qstart: Int
+    qend: Int
+    sstart: Int
+    send: Int
+    evalue : Float
+    bitscore: Int
+    qseq: String
+    sseq: String
+}
+
 type TargetPredictionDetails @cacheControl(maxAge: 604800) {
      similarity: Float
      result: Float
@@ -844,7 +875,8 @@ type PharosConfiguration{
           similarityQuery: Boolean = false,
           associatedLigand: String = "",
           associatedSmiles: String = "",
-          associatedTarget: String = ""): [FieldList]
+          associatedTarget: String = ""
+          sequence: String = ""): [FieldList]
 }
 
 type FieldList{
@@ -930,4 +962,6 @@ collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral
      listCrossDetails(model: String!, crossModel: String!, filter: IFilter, batch: [String], modelID: String, crossModelID: String): JSON
 
      usageData(interval: SummaryInterval!): JSON
+
+     getSequenceAlignments(sequence: String!, filter: IFilter, batch: [String]): [SequenceSimilarityDetails]
 }

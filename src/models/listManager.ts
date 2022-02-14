@@ -24,7 +24,9 @@ export class ListManager {
         list.push(new FieldInfo(field));
     }
 
-    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false, associatedLigand: string = '', associatedSmiles: string = '', associatedTarget: string = '') {
+    getDownloadLists(model: string, associatedModel: string, similarityQuery: boolean = false,
+                     associatedLigand: string = '', associatedSmiles: string = '', associatedTarget: string = '',
+                     querySequence: string = '') {
         const lists: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
         this.listMap.forEach((fields, key) => {
             const listObj: ListContext = JSON.parse(key);
@@ -40,21 +42,13 @@ export class ListManager {
                     lists.set(listObj.listName, list);
                 }
                 list.push(...fields.filter(field => {
-                    if (!field.requirement) {
-                        return true;
-                    }
-                    if (field.requirement === 'associatedLigand') {
-                        return associatedLigand && associatedLigand.length > 0;
-                    }
-                    if (field.requirement === 'associatedSmiles') {
-                        return associatedSmiles && associatedSmiles.length > 0;
-                    }
-                    if (field.requirement === 'associatedTarget') {
-                        return associatedTarget && associatedTarget.length > 0;
-                    }
+                    return this.listHasRequirement(field.requirement, {associatedLigand, associatedSmiles, associatedTarget, querySequence});
                 }));
                 if(listObj.listName === 'Single Value Fields' && similarityQuery){
                     list.push(...ListManager.similarityFields());
+                }
+                if(listObj.listName === 'Single Value Fields' && querySequence) {
+                    list.push(...ListManager.sequenceSimilarityFields());
                 }
                 list = list.filter((item, pos) => {
                     return list.findIndex(e => e.name === item.name) === pos;
@@ -62,7 +56,20 @@ export class ListManager {
             }
         });
         return lists;
+    }
 
+    listHasRequirement(requirement: string, listObj: {associatedLigand: string, associatedSmiles: string, querySequence: string, associatedTarget: string}) {
+        switch (requirement) {
+            case 'associatedLigand':
+                return listObj.associatedLigand && listObj.associatedLigand.length > 0;
+            case 'associatedSmiles':
+                return listObj.associatedSmiles && listObj.associatedSmiles.length > 0;
+            case 'associatedTarget':
+                return listObj.associatedTarget && listObj.associatedTarget.length > 0;
+            case 'sequence':
+                return listObj.querySequence && listObj.querySequence.length > 0;
+        }
+        return true;
     }
 
     getTheseFields(listObj: DataModelList, type: string, fields: string[], name: string = '') {
@@ -72,7 +79,8 @@ export class ListManager {
                 table: listObj.modelInfo.table,
                 column: listObj.modelInfo.column,
                 alias: 'id',
-                parent: listObj
+                parent: listObj,
+                needsDistinct: true
             } as FieldInfo));
         }
         fields.forEach(field => {
@@ -94,6 +102,7 @@ export class ListManager {
         fields.forEach(ff => {
             const facet = list.find(field => field.name === ff.facet)?.copy();
             if (facet) {
+                if (!this.listHasRequirement(facet.requirement, listObj)) {return;}
                 facet.allowedValues = ff.values || [];
                 facet.upsetValues = ff.upSets || [];
                 facet.parent = listObj;
@@ -111,11 +120,8 @@ export class ListManager {
             list = this.listMap.get(context.toString()) || [];
         }
         const fields = list.filter(field => {
-            if (field.requirement.length > 0){
-                // @ts-ignore
-                if (listObj[field.requirement].length === 0) {
-                    return false;
-                }
+            if (!this.listHasRequirement(field.requirement, listObj)) {
+                return false;
             }
             return (field.order > 0);
         }).sort((a, b) => a.order - b.order)
@@ -129,10 +135,12 @@ export class ListManager {
         if (type === 'list' && listObj.similarity.match.length > 0) {
             fields.push(...ListManager.similarityFields(listObj));
         }
+        if (type === 'list' && listObj.querySequence.length > 0) {
+            fields.push(...ListManager.sequenceSimilarityFields(listObj));
+        }
         if (type === 'list' && listObj.term.length > 0 && listObj instanceof TargetList) {
             fields.push(...ListManager.searchFields(listObj));
         }
-
         return fields;
     }
 
@@ -204,6 +212,12 @@ export class ListManager {
                 return f;
             }
         }
+        if (listObj.querySequence.length > 0) {
+            f = this.findInList(ListManager.sequenceSimilarityFields(listObj), fieldName, listObj);
+            if (f) {
+                return f;
+            }
+        }
         return null;
     }
 
@@ -229,7 +243,6 @@ export class ListManager {
 
     static similarityFields(listObj?: DataModelList) : FieldInfo[]{
         const fields: FieldInfo[] = [];
-
         [   {description: 'Count of shared values between the base protein, and the test protein', name: 'Similarity: Common Count', column: 'overlap'},
             {description: 'Count of values for the base protein', name: 'Similarity: Base Count', column: 'baseSize'},
             {description: 'Count of values for the test protein', name: 'Similarity: Test Count', column: 'testSize'},
@@ -239,6 +252,22 @@ export class ListManager {
             fields.push(f);
         });
         return fields;
+    }
+
+    static sequenceSimilarityFields(listObj?: DataModelList) : FieldInfo[] {
+        const fields: FieldInfo[] = [];
+        [
+            {description: 'Percentage of identical matches between the query sequence and the best alignment to the subjecxt sequence', name: 'Sequence Similarity: Percent Identical', column: 'pident'},
+            {description: 'Expected number of chance matches in a random model', name: 'Sequence Similarity: E value', column: 'evalue'},
+            {description: 'Maximum bit score for alignments between the query seqeunce and the subject sequence', name: 'Sequence Similarity: Bit Score', column: 'bitscore'},
+            {description: 'Query coverage for all alignments between the query sequence and the subject sequence', name: 'Sequence Similarity: Coverage', column: 'qcovs'},
+        ]
+        .forEach(obj => {
+            const f = this.mapToDynamicField(obj, listObj);
+            fields.push(f);
+        });
+        return fields;
+
     }
 
     private static mapToDynamicField(obj: { name: string; column: string; description: string } | { name: string; column: string; description: string } | { name: string; column: string; description: string } | { name: string; column: string; description: string } | { name: string; column: string; description: string }, listObj: DataModelList | undefined) {
