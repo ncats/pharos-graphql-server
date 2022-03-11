@@ -95,7 +95,7 @@ export class LigandList extends DataModelList {
 
     defaultSortParameters(): { column: string; order: string }[] {
         if (this.fields.length > 0) {
-            return [{column: 'id', order: 'asc'}];
+            return [{column: 'ncats_ligands.id', order: 'asc'}];
         }
         if (this.associatedSmiles) {
             return [{column: 'similarity', order: 'desc'}];

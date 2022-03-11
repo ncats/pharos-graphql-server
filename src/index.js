@@ -16,6 +16,9 @@ const { parseResidueData } = require('./utils');
 
 const typeDefs = fs.readFileSync(__dirname + '/schema.graphql','utf8');
 const resolvers = require('./resolvers');
+const {TargetList} = require("./models/target/targetList");
+const {DiseaseList} = require("./models/disease/diseaseList");
+const {LigandList} = require("./models/ligand/ligandList");
 
 const schema = makeExecutableSchema({
     typeDefs,
@@ -90,6 +93,36 @@ app.get("/variants?*", async (req, res) => {
     const results = await targetDetails.getSequenceVariants();
     res.end(JSON.stringify(parseResidueData(results)));
 });
+
+app.get("/sitemap.xml", async (req, res) => {
+    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    const targetList = new TargetList(tcrd, {fields:["Preferred Symbol"]});
+    const diseaseList = new DiseaseList(tcrd, {fields:["Associated Disease"]});
+    const ligandList = new LigandList(tcrd, {fields: ["Ligand Name"], filter: {facets: [{facet: "Type", values: ["Drug"]}]}});
+
+    const targetQuery = targetList.getListQuery("list");
+    const diseaseQuery = diseaseList.getListQuery("list").andWhere("name", "not like", '%(%');
+    const ligandQuery = ligandList.getListQuery("list").andWhere("name", "not like", '%(%');
+
+    console.log(ligandQuery.toString());
+
+    const targetResults = await targetQuery;
+    const diseaseResults = await diseaseQuery;
+    const ligandResults = await ligandQuery;
+
+    const results = [
+        ...targetResults.map(r => "targets/" + r.preferredSymbol),
+        ...diseaseResults.map(r => "diseases/" + r.Name),
+        ...ligandResults.map(r => "ligands/" + r.name)
+    ];
+    const mappedElements = results.map(r => `<url><loc>https://pharos.nih.gov/${r}</loc><lastmod>${cred.LASTMOD}</lastmod></url>`).join('\n');
+    res.end(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  ${mappedElements}
+</urlset>`);
+})
 
 server.applyMiddleware({
     app,
