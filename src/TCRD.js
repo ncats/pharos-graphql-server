@@ -93,10 +93,10 @@ function diseaseOntologyTraversal(matches, node, args) {
 }
 
 class TCRD extends SQLDataSource {
-    constructor(config) {
+    constructor(config, settingsConfig) {
         super(config);
         const _this = this;
-        this.tableInfo = new DatabaseConfig(this.db, config.connection.database, config.connection.configDB);
+        this.tableInfo = new DatabaseConfig(this.db, config.connection.database, config.connection.configDB, settingsConfig);
 
         const root = {
             doid: 'DOID:4',

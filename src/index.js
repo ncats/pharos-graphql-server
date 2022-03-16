@@ -46,7 +46,15 @@ const tcrdConfig = {
     }
 };
 
-const tcrd = new TCRD(tcrdConfig);
+const settingsConfig = {
+    client: 'sqlite3', // or 'better-sqlite3'
+    connection: {
+        filename: "./src/pharos_config.sqlite"
+    },
+    useNullAsDefault: true
+};
+
+const tcrd = new TCRD(tcrdConfig, settingsConfig);
 const server = new ApolloServer({
     plugins: [responseCachePlugin()],
     schema: schema,
