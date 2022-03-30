@@ -103,7 +103,7 @@ export class TargetList extends DataModelList {
         return new Jaccard(
             {
                 ...this.similarity,
-                matchQuery: `match(protein.uniprot,protein.sym,protein.stringid) against('${this.similarity.match}' in boolean mode)`
+                matchQuery: this.tcrd.getProteinMatchQuery(this.similarity.match)
             },
             this.rootTable, this.database, this.databaseConfig).getListQuery(true);
     }
@@ -415,7 +415,7 @@ export class TargetList extends DataModelList {
             proteinListQuery = new Jaccard(
                 {
                     ...this.similarity,
-                    matchQuery: `match(protein.uniprot,protein.sym,protein.stringid) against('${this.similarity.match}' in boolean mode)`
+                    matchQuery: this.tcrd.getProteinMatchQuery(this.similarity.match)
                 },
                 this.rootTable, this.database, this.databaseConfig).getListQuery(false);
         } else if (this.associatedLigand.length > 0) {
@@ -499,7 +499,7 @@ export class TargetList extends DataModelList {
             if (modifiedFacet) {
                 modifiedFacet.typeModifier = this.associatedTarget;
             }
-            return `ncats_ppi.other_id = (select id from protein where match(uniprot,sym,stringid) against('${this.associatedTarget}' in boolean mode))
+            return `ncats_ppi.other_id = (select id from protein where ${this.tcrd.getProteinMatchQuery(this.associatedTarget)})
             and NOT (ncats_ppi.ppitypes = 'STRINGDB' AND ncats_ppi.score < ${this.ppiConfidence})`;
         }
         if (this.associatedDisease && (fieldInfo.table === 'disease' || rootTableOverride === 'disease')) {

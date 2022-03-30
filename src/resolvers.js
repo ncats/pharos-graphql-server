@@ -736,7 +736,7 @@ const resolvers = {
             WHERE
             t2tc.target_id = ?
             AND (ncats_ppi.protein_id = t2tc.protein_id
-            AND ncats_ppi.other_id = (select id from protein where match(uniprot,sym,stringid) against(? in boolean mode)))`,
+            AND ncats_ppi.other_id = (select id from protein where ${this.tcrd.getProteinMatchQuery(dataSources.associatedTarget)}))`,
                     [target.tcrdid, dataSources.associatedTarget]));
             return q.then(rows => {
                 return rows[0];
@@ -1867,7 +1867,7 @@ const resolvers = {
                 return resolvers.Query.target(null, {q: {uniprot: dataSources.similarity.match}}, {dataSources});
             }
             return null;
-        },
+        }
     },
 
     DiseaseResult: {

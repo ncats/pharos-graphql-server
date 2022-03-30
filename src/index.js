@@ -114,7 +114,7 @@ app.get("/sitemap.xml", async (req, res) => {
     const diseaseQuery = diseaseList.getListQuery("list").andWhere("name", "not like", '%(%');
     const ligandQuery = ligandList.getListQuery("list").andWhere("name", "not like", '%(%');
 
-    console.log(ligandQuery.toString());
+    // console.log(ligandQuery.toString());
 
     const targetResults = await targetQuery;
     const diseaseResults = await diseaseQuery;

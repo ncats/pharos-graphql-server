@@ -113,7 +113,7 @@ export class LigandList extends DataModelList {
                     protein: "protein"
                 })
                     .distinct("ncats_ligands.identifier")
-                    .whereRaw(this.database.raw(`match(uniprot,sym,stringid) against("${this.associatedTarget}" in boolean mode)`))
+                    .whereRaw(this.database.raw(this.tcrd.getProteinMatchQuery(this.associatedTarget)))
                     .andWhere(this.database.raw(`ncats_ligands.id = ncats_ligand_activity.ncats_ligand_id`))
                     .andWhere(this.database.raw(`ncats_ligand_activity.target_id = t2tc.target_id`))
                     .andWhere(this.database.raw(`t2tc.protein_id = protein.id`)).as('assocTarget');
@@ -175,8 +175,7 @@ export class LigandList extends DataModelList {
             return `ncats_ligand_activity.target_id = (
                 SELECT t2tc.target_id 
                 FROM protein, t2tc 
-                WHERE MATCH (uniprot , sym , stringid) 
-                AGAINST ('${this.associatedTarget}' IN BOOLEAN MODE) 
+                WHERE ${this.tcrd.getProteinMatchQuery(this.associatedTarget)}
                 AND t2tc.protein_id = protein.id)`;
         }
         if (this.associatedSmiles && (fieldInfo.table === 'structure_search_results' || rootTableOverride === 'structure_search_results')) {
