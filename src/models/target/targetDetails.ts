@@ -64,6 +64,83 @@ export class TargetDetails{
         return query;
     }
 
+    getNearestTclin() {
+        const query = this.knex({
+            nearest: 'kegg_nearest_tclin',
+            tclinTarget: 'target',
+            tclinT2TC: 't2tc',
+            tclinProtein: 'protein',
+            selfPathway: 'pathway',
+            tclinPathway: 'pathway'
+        }).select(['direction', 'distance'])
+            .select({
+                tdl: 'tclinTarget.tdl',
+                fam: this.knex.raw(`case fam when 'IC' then 'Ion Channel' when 'TF; Epigenetic' then 'TF-Epigenetic' when 'TF' then 'Transcription Factor' when 'NR' then 'Nuclear Receptor' else if(fam is null,'Other',fam) end`),
+                sym: 'tclinProtein.sym',
+                uniprot: 'tclinProtein.uniprot',
+                protein_id: 'tclinProtein.id',
+                tcrdid: 'tclinTarget.id',
+                preferredSymbol: 'tclinProtein.preferred_symbol',
+                name: 'tclinProtein.description',
+                pwid: 'tclinPathway.id',
+                type: 'tclinPathway.pwtype',
+                pwname: 'tclinPathway.name',
+                url: 'tclinPathway.url',
+                sourceID: 'tclinPathway.id_in_source'
+                }
+            )
+            .where('nearest.protein_id', this.target.protein_id)
+            .andWhere('nearest.tclin_id', this.knex.raw('tclinTarget.id'))
+            .andWhere('tclinT2TC.target_id', this.knex.raw('tclinTarget.id'))
+            .andWhere('tclinProtein.id', this.knex.raw('tclinT2TC.protein_id'))
+            .andWhere('nearest.protein_id', this.knex.raw('selfPathway.protein_id'))
+            .andWhere('tclinProtein.id', this.knex.raw('tclinPathway.protein_id'))
+            .andWhere('selfPathway.id_in_source', this.knex.raw('tclinPathway.id_in_source'))
+            .andWhere('selfPathway.pwtype', 'KEGG');
+        return query.then((rows: any[]) => {
+            const processOneRow = (row: any, map: Map<number, any>) => {
+                let obj = map.get(row.tcrdid);
+                if (!obj) {
+                    obj = {};
+                    obj.distance = row.distance;
+                    obj.tClinTarget = {
+                        tdl: row.tdl,
+                        fam: row.fam,
+                        sym: row.sym,
+                        uniprot: row.uniprot,
+                        tcrdid: row.tcrdid,
+                        preferredSymbol: row.preferredSymbol,
+                        name: row.name,
+                    };
+                    obj.sharedPathways = [];
+                    map.set(row.tcrdid, obj);
+                }
+                obj.sharedPathways.push({
+                    pwid: row.pwid,
+                    type: row.type,
+                    name: row.pwname,
+                    url: row.url,
+                    sourceID: row.sourceID
+                })
+            }
+
+            const upTargetMap: Map<number, any> = new Map<number, any>();
+            const downTargetMap: Map<number, any> = new Map<number, any>();
+            rows.forEach((row: any) => {
+               if (row.direction === 'upstream') {
+                   processOneRow(row, upTargetMap);
+               } else {
+                   processOneRow(row, downTargetMap);
+               }
+            });
+            return {
+                upstream: upTargetMap.values(),
+                downstream: downTargetMap.values()
+            };
+        });
+
+    }
+
     static LD2JSON(ldObject: any){
         const jsonObject: any = {};
         for (const prop in ldObject) {

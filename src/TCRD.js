@@ -457,6 +457,7 @@ and b.id = c.target_id`));
         })
             .select(['target.tdl', 'target.fam', 'protein.dtoid', 'protein.uniprot', 'protein.seq', 'protein.sym'])
             .select({
+                protein_id: 'protein.id',
                 novelty: 'tinx_novelty.score',
                 tcrdid: 'target.id',
                 preferredSymbol: 'protein.preferred_symbol',

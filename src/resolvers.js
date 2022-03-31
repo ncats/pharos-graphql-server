@@ -1267,6 +1267,10 @@ const resolvers = {
                     };
                 });
             });
+        },
+        nearestTclin: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getNearestTclin();
         }
     },
     SimilarityDetails: {

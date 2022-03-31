@@ -533,8 +533,20 @@ type LinkInfo @cacheControl(maxAge: 604800) {
      url: String
 }
 
+type SharedPathwayDetails @cacheControl(maxAge: 604800) {
+    tClinTarget: Target
+    distance: Int
+    sharedPathways: [Pathway]
+}
+
+type NearestTclinDetails @cacheControl(maxAge: 604800) {
+    upstream: [SharedPathwayDetails]
+    downstream: [SharedPathwayDetails]
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
+     nearestTclin: NearestTclinDetails
      similarity: SimilarityDetails
      sequence_variants: SeqVariantInfo
      sequence_annotations: [SeqAnnotationInfo]
