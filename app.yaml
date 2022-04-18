@@ -1,5 +1,5 @@
 instance_class: F4_1G
-runtime: nodejs10
+runtime: nodejs14
 automatic_scaling:
   min_instances: 1
 includes:
