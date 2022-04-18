@@ -12,6 +12,7 @@ const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 const {LigandDetails} = require("./models/ligand/ligandDetails");
 const { parseResidueData } = require('./utils');
+const {DynamicPredictions} = require("./models/externalAPI/DynamicPredictions");
 
 const resolvers = {
 
@@ -540,6 +541,9 @@ const resolvers = {
     },
 
     Target: {
+        predictions: async function (target, args, {dataSources}) {
+            return new DynamicPredictions().fetchTargetAPIs(target);
+        },
         affiliate_links: async function (target, args, {dataSources}) {
             let query = dataSources.tcrd.db({extlink: 'extlink', t2tc: 't2tc', affiliate: 'affiliate'})
                 .select(
@@ -1399,6 +1403,9 @@ const resolvers = {
     },
 
     Disease: {
+        predictions: async function (disease, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd.db).fetchDiseaseAPIs(disease);
+        },
         mondoEquivalents: async function (disease, args, {dataSources}) {
             if (disease.mondoID) {
                 const query = dataSources.tcrd.db('mondo_xref').select({
@@ -2024,6 +2031,9 @@ const resolvers = {
     },
 
     Ligand: {
+        predictions: async function (ligand, args, {dataSources}) {
+            return new DynamicPredictions().fetchLigandAPIs(ligand);
+        },
         activities: async function (ligand, args, {dataSources}) {
             let query = dataSources.tcrd.db({
                 ncats_ligand_activity: 'ncats_ligand_activity',
