@@ -71,20 +71,22 @@ export class DynamicPredictions {
     }
 
     findDiseases(obj: any) {
-        if (obj.hasOwnProperty('@type') && obj['@type'] === 'MedicalCondition') {
-            const mondoid = this.tcrd.tableInfo.id2mondo.get(obj.alternateName);
-            if (mondoid) {
-                obj.url = '/diseases/' + mondoid;
-            }
-        } else if (Array.isArray(obj)) {
-            obj.forEach(el => {
-                this.findDiseases(el);
-            });
-        } else if (typeof obj === 'string') {
+        if (obj) {
+            if (obj.hasOwnProperty('@type') && obj['@type'] === 'MedicalCondition') {
+                const mondoid = this.tcrd.tableInfo.id2mondo.get(obj.alternateName);
+                if (mondoid) {
+                    obj.url = '/diseases/' + mondoid;
+                }
+            } else if (Array.isArray(obj)) {
+                obj.forEach(el => {
+                    this.findDiseases(el);
+                });
+            } else if (typeof obj === 'string') {
 
-        } else {
-            for (let [key, value] of Object.entries(obj)) {
-                this.findDiseases(value);
+            } else {
+                for (let [key, value] of Object.entries(obj)) {
+                    this.findDiseases(value);
+                }
             }
         }
     }
