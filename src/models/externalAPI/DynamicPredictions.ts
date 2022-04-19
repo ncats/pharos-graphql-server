@@ -4,8 +4,10 @@ const axios = require('axios');
 
 export class DynamicPredictions {
     knex: Knex;
-    constructor(knex: any) {
-        this.knex = knex;
+    tcrd: any;
+    constructor(tcrd: any) {
+        this.knex = tcrd.db;
+        this.tcrd = tcrd;
     }
 
     kinaseCancerPredictionAPI = 'https://16z877ei3f.execute-api.us-east-1.amazonaws.com/default/pharos-kinase-cancer-prediction'
@@ -37,9 +39,11 @@ export class DynamicPredictions {
         return this.fetchAPIs(target, this.targetAPIs, this.processTargetAPI);
     }
     async fetchDiseaseAPIs(disease: any) {
-        const aliases = await this.knex('mondo_xref')
-            .select(['value', 'db']).where('mondoid', disease.mondoID);
-        return this.fetchAPIs(disease, this.diseaseAPIs, this.processDiseaseAPI, aliases);
+        if (disease.mondoid) {
+            const aliases = await this.knex('mondo_xref')
+                .select(['value', 'db']).where('mondoid', disease.mondoID);
+            return this.fetchAPIs(disease, this.diseaseAPIs, this.processDiseaseAPI, aliases);
+        }
     }
     async fetchLigandAPIs(ligand: any) {
         return this.fetchAPIs(ligand, this.ligandAPIs, this.processLigandAPI);
@@ -52,10 +56,36 @@ export class DynamicPredictions {
         });
         return Promise.all(queries)
             .then((responses: any[]) => {
+                responses.forEach(r => {
+                    if (r.data) {
+                        r.data.forEach((row: any) => {
+                            this.findDiseases(row);
+                        });
+                    }
+                })
                 return responses.map(r => r.data ? r.data : null);
             }, (rejected: any) => {
                 console.log(rejected);
                 throw new Error(rejected);
             });
+    }
+
+    findDiseases(obj: any) {
+        if (obj.hasOwnProperty('@type') && obj['@type'] === 'MedicalCondition') {
+            const mondoid = this.tcrd.tableInfo.id2mondo.get(obj.alternateName);
+            if (mondoid) {
+                obj.url = '/diseases/' + mondoid;
+            }
+        } else if (Array.isArray(obj)) {
+            obj.forEach(el => {
+                this.findDiseases(el);
+            });
+        } else if (typeof obj === 'string') {
+
+        } else {
+            for (let [key, value] of Object.entries(obj)) {
+                this.findDiseases(value);
+            }
+        }
     }
 }

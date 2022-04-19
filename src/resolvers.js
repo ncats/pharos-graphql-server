@@ -542,7 +542,7 @@ const resolvers = {
 
     Target: {
         predictions: async function (target, args, {dataSources}) {
-            return new DynamicPredictions().fetchTargetAPIs(target);
+            return new DynamicPredictions(dataSources.tcrd).fetchTargetAPIs(target);
         },
         affiliate_links: async function (target, args, {dataSources}) {
             let query = dataSources.tcrd.db({extlink: 'extlink', t2tc: 't2tc', affiliate: 'affiliate'})
@@ -1404,7 +1404,7 @@ const resolvers = {
 
     Disease: {
         predictions: async function (disease, args, {dataSources}) {
-            return new DynamicPredictions(dataSources.tcrd.db).fetchDiseaseAPIs(disease);
+            return new DynamicPredictions(dataSources.tcrd).fetchDiseaseAPIs(disease);
         },
         mondoEquivalents: async function (disease, args, {dataSources}) {
             if (disease.mondoID) {
@@ -2032,7 +2032,7 @@ const resolvers = {
 
     Ligand: {
         predictions: async function (ligand, args, {dataSources}) {
-            return new DynamicPredictions().fetchLigandAPIs(ligand);
+            return new DynamicPredictions(dataSources.tcrd).fetchLigandAPIs(ligand);
         },
         activities: async function (ligand, args, {dataSources}) {
             let query = dataSources.tcrd.db({

@@ -115,6 +115,8 @@ export class DatabaseConfig {
     dbName: string;
     configDB: string;
     settingsDB: any;
+    mondo2id: Map<string, string[]> = new Map<string, string[]>();
+    id2mondo: Map<string, string[]> = new Map<string, string[]>();
 
     get fieldTable(): { field: string } {
         return {field: 'field'};
@@ -143,7 +145,32 @@ export class DatabaseConfig {
         this.dbName = dbName;
         this.configDB = configDB;
         this.settingsDB = require('knex')(settingsConfig);
-        this.loadPromise = Promise.all([this.parseTables(), this.populateFieldLists(), this.loadModelMap(), this.loadProbMap(), this.loadCounts()]);
+        this.loadPromise = Promise.all([
+            this.parseTables(),
+            this.populateFieldLists(),
+            this.loadModelMap(),
+            this.loadProbMap(),
+            this.loadCounts(),
+            this.loadMondoMap()
+        ]);
+    }
+
+    loadMondoMap() {
+        const query = this.database('mondo_xref').distinct({
+            mondoid: 'mondoid',
+            otherid: this.database.raw('concat(db, \':\', value)')
+        });
+        return query.then((res: any[]) => {
+            res.forEach((row: any) => {
+                let list = this.mondo2id.get(row.mondoid) || [];
+                list.push(row.otherid);
+                this.mondo2id.set(row.mondoid, list);
+                list = this.id2mondo.get(row.otherid) || [];
+                list.push(row.mondoid);
+                this.id2mondo.set(row.otherid, list);
+            })
+            res;
+        })
     }
 
     loadCounts() {
