@@ -268,6 +268,7 @@ type Disease @cacheControl(maxAge: 604800) {
      tinx: [TINXTarget]
      gwasAnalytics: GwasDiseaseAnalytics
      mondoEquivalents: [MondoEquivalent]
+     predictions: [JSON]
 }
 
 type MondoEquivalent @cacheControl(maxAge: 604800) {
@@ -441,6 +442,7 @@ type Ligand @cacheControl(maxAge: 604800) {
      targetCount: Int
      activities (all: Boolean = true): [LigandActivity]
      similarity: Float
+     predictions: [JSON]
 }
 
 type LigandActivity @cacheControl(maxAge: 604800) {
@@ -533,8 +535,20 @@ type LinkInfo @cacheControl(maxAge: 604800) {
      url: String
 }
 
+type SharedPathwayDetails @cacheControl(maxAge: 604800) {
+    tClinTarget: Target
+    distance: Int
+    sharedPathways: [Pathway]
+}
+
+type NearestTclinDetails @cacheControl(maxAge: 604800) {
+    upstream: [SharedPathwayDetails]
+    downstream: [SharedPathwayDetails]
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
+     nearestTclin: NearestTclinDetails
      similarity: SimilarityDetails
      sequence_variants: SeqVariantInfo
      sequence_annotations: [SeqAnnotationInfo]
@@ -655,6 +669,8 @@ type Target @cacheControl(maxAge: 604800){
 
      facetValueCount(facetName: String!): Int
      facetValues(facetName: String!, skip: Int=0, top: Int=10): [String]
+
+     predictions: [JSON]
 }
 
 type GwasTargetAnalytics @cacheControl(maxAge: 604800) {

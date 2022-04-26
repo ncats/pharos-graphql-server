@@ -93,10 +93,10 @@ function diseaseOntologyTraversal(matches, node, args) {
 }
 
 class TCRD extends SQLDataSource {
-    constructor(config) {
+    constructor(config, settingsConfig) {
         super(config);
         const _this = this;
-        this.tableInfo = new DatabaseConfig(this.db, config.connection.database, config.connection.configDB);
+        this.tableInfo = new DatabaseConfig(this.db, config.connection.database, config.connection.configDB, settingsConfig);
 
         const root = {
             doid: 'DOID:4',
@@ -457,6 +457,7 @@ and b.id = c.target_id`));
         })
             .select(['target.tdl', 'target.fam', 'protein.dtoid', 'protein.uniprot', 'protein.seq', 'protein.sym'])
             .select({
+                protein_id: 'protein.id',
                 novelty: 'tinx_novelty.score',
                 tcrdid: 'target.id',
                 preferredSymbol: 'protein.preferred_symbol',
@@ -468,15 +469,8 @@ and b.id = c.target_id`));
 
         const matchValue = args.uniprot || args.sym || args.stringid;
         if (matchValue) {
-            if (matchValue.length < 3 || matchValue.includes('-')) {
-                return query.andWhere(q => {
-                    q.where('uniprot', matchValue)
-                        .orWhere('sym', matchValue)
-                        .orWhere('stringid', matchValue);
-                })
-            }
             return query.andWhere(q => {
-                q.whereRaw(this.db.raw(`match(uniprot,sym,stringid) against("${matchValue}" in boolean mode)`))
+                q.whereRaw(this.db.raw(this.getProteinMatchQuery(matchValue)))
                     .orWhere('protein.id', this.db.raw(`(SELECT protein_id FROM xref where xtype = 'Ensembl' and value = "${matchValue}" limit 1)`));
             });
         }

@@ -1,8 +1,15 @@
 // extension of TCRD class
 
+module.exports.getProteinMatchQuery = function(identifier) {
+    if (identifier.length < 3) {
+        return `(protein.uniprot = "${identifier}" OR protein.sym = "${identifier}" OR protein.stringid = "${identifier}")`;
+    }
+    return `match(protein.uniprot, protein.sym, protein.stringid) against('"${identifier}"' in boolean mode)`;
+};
+
 module.exports.getProteinListFromPPI = function(ppiTarget, confidence) {
     let proteinIDquery = this.db("protein")
-        .select("id").whereRaw(this.db.raw(`match(uniprot,sym,stringid) against("${ppiTarget}" in boolean mode)`));
+        .select("id").whereRaw(this.db.raw(this.getProteinMatchQuery(ppiTarget)));
     let ppiListQuery = this.db("ncats_ppi")
         .select(this.db.raw('distinct other_id as protein_id'))
         .whereIn('protein_id', proteinIDquery)

@@ -12,6 +12,7 @@ const {performance} = require('perf_hooks');
 const {find, filter, slice} = require('lodash');
 const {LigandDetails} = require("./models/ligand/ligandDetails");
 const { parseResidueData } = require('./utils');
+const {DynamicPredictions} = require("./models/externalAPI/DynamicPredictions");
 
 const resolvers = {
 
@@ -540,6 +541,9 @@ const resolvers = {
     },
 
     Target: {
+        predictions: async function (target, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd).fetchTargetAPIs(target);
+        },
         affiliate_links: async function (target, args, {dataSources}) {
             let query = dataSources.tcrd.db({extlink: 'extlink', t2tc: 't2tc', affiliate: 'affiliate'})
                 .select(
@@ -736,7 +740,7 @@ const resolvers = {
             WHERE
             t2tc.target_id = ?
             AND (ncats_ppi.protein_id = t2tc.protein_id
-            AND ncats_ppi.other_id = (select id from protein where match(uniprot,sym,stringid) against(? in boolean mode)))`,
+            AND ncats_ppi.other_id = (select id from protein where ${this.tcrd.getProteinMatchQuery(dataSources.associatedTarget)}))`,
                     [target.tcrdid, dataSources.associatedTarget]));
             return q.then(rows => {
                 return rows[0];
@@ -1267,6 +1271,10 @@ const resolvers = {
                     };
                 });
             });
+        },
+        nearestTclin: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getNearestTclin();
         }
     },
     SimilarityDetails: {
@@ -1395,6 +1403,9 @@ const resolvers = {
     },
 
     Disease: {
+        predictions: async function (disease, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd).fetchDiseaseAPIs(disease);
+        },
         mondoEquivalents: async function (disease, args, {dataSources}) {
             if (disease.mondoID) {
                 const query = dataSources.tcrd.db('mondo_xref').select({
@@ -1867,7 +1878,7 @@ const resolvers = {
                 return resolvers.Query.target(null, {q: {uniprot: dataSources.similarity.match}}, {dataSources});
             }
             return null;
-        },
+        }
     },
 
     DiseaseResult: {
@@ -2020,6 +2031,9 @@ const resolvers = {
     },
 
     Ligand: {
+        predictions: async function (ligand, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd).fetchLigandAPIs(ligand);
+        },
         activities: async function (ligand, args, {dataSources}) {
             let query = dataSources.tcrd.db({
                 ncats_ligand_activity: 'ncats_ligand_activity',

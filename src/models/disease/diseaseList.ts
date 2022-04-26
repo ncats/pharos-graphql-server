@@ -151,7 +151,7 @@ export class DiseaseList extends DataModelList {
     getAssociatedTargetQuery(): any {
         return this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease', protein: 'protein'})
             .distinct({name: this.keyString()}).count('* as associationCount')
-            .whereRaw(this.database.raw(`match(uniprot,sym,stringid) against("${this.associatedTarget}" in boolean mode)`))
+            .whereRaw(this.database.raw(this.tcrd.getProteinMatchQuery(this.associatedTarget)))
             .andWhere('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
             .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
             .andWhere('disease.protein_id', this.database.raw(`protein.id`))
@@ -175,7 +175,7 @@ export class DiseaseList extends DataModelList {
             if(modifiedFacet) {
                 modifiedFacet.typeModifier = this.associatedTarget;
             }
-            return `disease.protein_id = (select id from protein where MATCH (uniprot , sym , stringid) AGAINST ('${this.associatedTarget}' IN BOOLEAN MODE))`;
+            return `disease.protein_id = (select id from protein where ${this.tcrd.getProteinMatchQuery(this.associatedTarget)})`;
         }
         return "";
     }

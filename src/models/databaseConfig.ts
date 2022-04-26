@@ -63,7 +63,7 @@ export class DatabaseConfig {
     }
 
     populateFieldLists() {
-        const query = this.database({...this.modelTable, ...this.fieldListTable, ...this.fieldTable, ...this.contextTable}
+        const query = this.settingsDB({...this.modelTable, ...this.fieldListTable, ...this.fieldTable, ...this.contextTable}
         ).leftJoin({...this.assocModelTable}, 'associated_model.id', 'field_context.associated_model_id')
             .select(
                 {
@@ -78,7 +78,7 @@ export class DatabaseConfig {
                     alias: 'field_list.alias',
                     order: 'field_list.order',
                     default: 'field_list.default',
-                    description: this.database.raw('COALESCE(field_list.description, field.description)'),
+                    description: this.settingsDB.raw('COALESCE(field_list.description, field.description)'),
 
                     // where is the data
                     schema: 'field.schema',
@@ -95,17 +95,13 @@ export class DatabaseConfig {
                     single_response: 'field.single_response',
                     log: 'field.log'
                 })
-            .where('field_context.model_id', this.database.raw('model.id'))
-            .andWhere('field_context.id', this.database.raw('field_list.context_id'))
-            .andWhere('field_list.field_id', this.database.raw('field.id'))
+            .where('field_context.model_id', this.settingsDB.raw('model.id'))
+            .andWhere('field_context.id', this.settingsDB.raw('field_list.context_id'))
+            .andWhere('field_list.field_id', this.settingsDB.raw('field.id'))
             .orderBy(
                 [
                     'model.id', 'field_context.context', 'associated_model.id', 'field_context.name',
-                    {
-                        column: this.database.raw('-field_list.order'),
-                        order: 'desc'
-                    },
-                    'field.table'
+                    'field_list.order', 'field.table'
                 ]);
         return query.then((rows: any[]) => {
             rows.forEach(row => {
@@ -118,34 +114,63 @@ export class DatabaseConfig {
     database: any;
     dbName: string;
     configDB: string;
+    settingsDB: any;
+    mondo2id: Map<string, string[]> = new Map<string, string[]>();
+    id2mondo: Map<string, string[]> = new Map<string, string[]>();
 
     get fieldTable(): { field: string } {
-        return {field: this.configDB + '.field'};
+        return {field: 'field'};
     }
 
     get fieldListTable(): { field_list: string } {
-        return {field_list: this.configDB + '.field_list'};
+        return {field_list: 'field_list'};
     }
 
     get modelTable(): { model: string } {
-        return {model: this.configDB + '.model'};
+        return {model: 'model'};
     };
 
     get assocModelTable(): { associated_model: string } {
-        return {associated_model: this.configDB + '.model'};
+        return {associated_model: 'model'};
     };
 
     get contextTable(): { field_context: string } {
-        return {field_context: this.configDB + '.field_context'};
+        return {field_context: 'field_context'};
     }
 
     loadPromise: Promise<any>;
 
-    constructor(database: any, dbName: string, configDB: string) {
+    constructor(database: any, dbName: string, configDB: string, settingsConfig: any) {
         this.database = database;
         this.dbName = dbName;
         this.configDB = configDB;
-        this.loadPromise = Promise.all([this.parseTables(), this.populateFieldLists(), this.loadModelMap(), this.loadProbMap(), this.loadCounts()]);
+        this.settingsDB = require('knex')(settingsConfig);
+        this.loadPromise = Promise.all([
+            this.parseTables(),
+            this.populateFieldLists(),
+            this.loadModelMap(),
+            this.loadProbMap(),
+            this.loadCounts(),
+            this.loadMondoMap()
+        ]);
+    }
+
+    loadMondoMap() {
+        const query = this.database('mondo_xref').distinct({
+            mondoid: 'mondoid',
+            otherid: this.database.raw('concat(db, \':\', value)')
+        });
+        return query.then((res: any[]) => {
+            res.forEach((row: any) => {
+                let list = this.mondo2id.get(row.mondoid) || [];
+                list.push(row.otherid);
+                this.mondo2id.set(row.mondoid, list);
+                list = this.id2mondo.get(row.otherid) || [];
+                list.push(row.mondoid);
+                this.id2mondo.set(row.otherid, list);
+            })
+            res;
+        })
     }
 
     loadCounts() {
@@ -186,7 +211,7 @@ export class DatabaseConfig {
     }
 
     loadModelMap() {
-        return this.database({...this.modelTable}).select('*').then((rows: any[]) => {
+        return this.settingsDB({...this.modelTable}).select('*').then((rows: any[]) => {
             rows.forEach(row => {
                 this.modelList.set(row.name, new ModelInfo(row));
             });
