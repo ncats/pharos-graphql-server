@@ -19,6 +19,7 @@ const resolvers = require('./resolvers');
 const {TargetList} = require("./models/target/targetList");
 const {DiseaseList} = require("./models/disease/diseaseList");
 const {LigandList} = require("./models/ligand/ligandList");
+const {performance} = require("perf_hooks");
 
 const schema = makeExecutableSchema({
     typeDefs,
@@ -136,6 +137,16 @@ server.applyMiddleware({
     app,
     path: '/graphql'
 });
+
+const args = process.argv.slice(2);
+
+if (args && args.length > 0 && args[0] === 'perf') {
+    console.log('time, heapTotal, heapUsed, external');
+    setInterval(() => {
+        const mem = process.memoryUsage();
+        console.log(`${performance.now()}, ${mem.heapTotal / (1024 * 1024)}, ${mem.heapUsed / (1024 * 1024)}, ${mem.external / (1024 * 1024)}`);
+    }, 5000);
+}
 
 const PORT = process.env.PORT || 4000;
 tcrd.tableInfo.loadPromise.then(() => {
