@@ -388,13 +388,16 @@ const resolvers = {
         },
 
         disease: async function (_, args, {dataSources}) {
-            return dataSources.tcrd.getDisease(args.name)
+            var finder = '"';
+            var regExp = new RegExp(finder, 'g');
+            var cleanName = args.name.replace(regExp, '');
+            return dataSources.tcrd.getDisease(cleanName)
                 .then(rows => {
                     rows = filter(rows, r => r.name != null);
                     if (rows.length > 0) {
                         return rows[0];
                     }
-                    return {name: args.name, associationCount: 0, directAssociationCount: 0};
+                    return {name: cleanName, associationCount: 0, directAssociationCount: 0};
                 }).catch(function (error) {
                     console.error(error);
                 });
