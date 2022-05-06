@@ -108,7 +108,7 @@ export abstract class DataModelList implements IBuildable {
             if (json.filter.associatedStructure) {
                 const pieces = json.filter.associatedStructure.split('!');
                 pieces.forEach((p: string) => {
-                    const method = p.toLowerCase().substr(0, 3);
+                    const method = p.toLowerCase().substring(0, 3);
                     if (method === 'sim' || method === 'sub') {
                         this.associatedStructureMethod = method;
                     } else {

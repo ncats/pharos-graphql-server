@@ -170,7 +170,7 @@ export class SequenceSearch {
     }
 
     private getQueryHash() {
-        return crypto.createHash('sha1').update(this.querySequence).digest('base64').substr(0, 20);
+        return crypto.createHash('sha1').update(this.querySequence).digest('base64').substring(0, 20);
     }
 
     private url(): string {
