@@ -28,8 +28,8 @@ const tcrdConfig = {
         configDB: cred.CONFIGDB
     },
     pool: {
-        min: 5,
-        max: 30,
+        min: 2,
+        max: 10,
         createTimeoutMillis: 30000,
         acquireTimeoutMillis: 30000,
         idleTimeoutMillis: 30000,
