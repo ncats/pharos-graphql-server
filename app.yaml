@@ -3,6 +3,6 @@ runtime: nodejs14
 automatic_scaling:
   min_instances: 1
 vpc_access_connector:
-  name: projects/ncatsidg/locations/us-east4/connectors/pharos-redis-connector
+  name: projects/ncatsidg/locations/us-central/connectors/pharos-redis-connector
 includes:
   - env_variables.yaml
