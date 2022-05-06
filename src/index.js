@@ -63,7 +63,6 @@ getServer(schema, tcrd, app).then((servers) => {
             } else {
                 console.log(`⛔ No redis cache - using In-Memory Cache`);
             }
-            console.log('🏭 using configuration from: ' + cred.CONFIGDB);
             console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
         });
     });

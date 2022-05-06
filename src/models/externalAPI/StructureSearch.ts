@@ -11,7 +11,7 @@ export class StructureSearch {
     constructor(knex: any, smiles: string, method: string = "sim") {
         this.knex = knex;
         this.smiles = smiles;
-        this.method = method.toLowerCase().substr(0, 3);
+        this.method = method.toLowerCase().substring(0, 3);
         this.queryHash = this.getQueryHash();
     }
 
@@ -102,7 +102,7 @@ export class StructureSearch {
     }
 
     private getQueryHash() {
-        return crypto.createHash('sha1').update(this.url()).digest('base64').substr(0, 20);
+        return crypto.createHash('sha1').update(this.url()).digest('base64').substring(0, 20);
     }
 
     private url(): string {

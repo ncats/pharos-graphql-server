@@ -1,5 +1,13 @@
 const Redis = require("ioredis");
 const {cred} = require("../db_credentials");
+const crypto = require("crypto");
+package_info = require("../../package.json");
+
+getPrefix = () => {
+    return crypto.createHash('sha1')
+        .update(cred.CONFIGDB + package_info.version + cred.DBNAME)
+        .digest('base64').substring(0, 5);
+}
 
 module.exports.connectToRedis = () => {
     const REDISHOST = process.env.REDISHOST || 'localhost';// || '10.120.0.3';
@@ -8,7 +16,7 @@ module.exports.connectToRedis = () => {
     let redisClient = new Redis({
         host: REDISHOST,
         port: REDISPORT,
-        keyPrefix: cred.CONFIGDB,
+        keyPrefix: getPrefix(),
         lazyConnect: true
     });
     redisClient.on('error',(err) => {

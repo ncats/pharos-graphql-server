@@ -122,7 +122,7 @@ export class DrugTargetPrediction {
     }
 
     private getQueryHash() {
-        return crypto.createHash('sha1').update(this.url()).digest('base64').substr(0, 20);
+        return crypto.createHash('sha1').update(this.url()).digest('base64').substring(0, 20);
     }
 
     private url(): string {
