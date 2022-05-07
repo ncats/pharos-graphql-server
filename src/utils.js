@@ -25,7 +25,7 @@ module.exports.parseResidueData = (results) => {
   return residueData;
 };
 
-module.exports.applySpecialRoutes = (app) => {
+module.exports.applySpecialRoutes = (app, tcrd) => {
   app.get("/render", (req, res) => {
     const parsedUrl = url.parse(req.url);
     const pieces = parsedUrl.query.split('&');
