@@ -28,13 +28,13 @@ enum Gender {
 
 scalar JSON
 
-type NormalizableFilterSets {
+type NormalizableFilterSets @cacheControl(maxAge: 604800){
     targetFacets: [String]
     diseaseFacets: [String]
     ligandFacets: [String]
 }
 
-type DownloadResult {
+type DownloadResult @cacheControl(maxAge: 604800){
      result: Boolean
      data: JSON
      errorDetails: JSON
@@ -42,7 +42,7 @@ type DownloadResult {
      warnings: [String]
 }
 
-type UpsetResult {
+type UpsetResult @cacheControl(maxAge: 604800){
      values: [String]
      count: Int
 }
@@ -829,12 +829,12 @@ type TargetResult @cacheControl(maxAge: 604800){
      similarityTarget: Target
 }
 
-type SuggestionResults @cacheControl(maxAge: 60){
+type SuggestionResults @cacheControl(maxAge: 604800){
      value: String
      categories: [SuggestionCategory]
 }
 
-type SuggestionCategory @cacheControl(maxAge: 60){
+type SuggestionCategory @cacheControl(maxAge: 604800){
      category: String
      reference_id: String
 }
@@ -885,7 +885,7 @@ type DataSourceCount @cacheControl(maxAge: 604800){
      ligandCount: Int
 }
 
-type PharosConfiguration{
+type PharosConfiguration @cacheControl(maxAge: 604800){
      downloadLists (modelName: String,
           associatedModelName: String,
           similarityQuery: Boolean = false,
@@ -895,12 +895,12 @@ type PharosConfiguration{
           sequence: String = ""): [FieldList]
 }
 
-type FieldList{
+type FieldList @cacheControl(maxAge: 604800){
      listName: String
      field: [FieldDetails]
 }
 
-type FieldDetails{
+type FieldDetails @cacheControl(maxAge: 604800){
      order: Int
      name: String
      description: String
@@ -927,7 +927,7 @@ type Mutation{
     trackFeature(user: String!, feature: String!, detail1: String, detail2: String, detail3: String): MutationSuccess!
 }
 
-type Query{
+type Query @cacheControl(maxAge: 604800){
      configuration: PharosConfiguration
 
      download(model: String!, fields: [String!], sqlOnly: Boolean = true, skip: Int, top: Int, filter: IFilter, batch: [String]): DownloadResult

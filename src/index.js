@@ -51,7 +51,7 @@ const tcrd = new TCRD(tcrdConfig, settingsConfig);
 // Initialize the app
 const app = express();
 
-applySpecialRoutes(app);
+applySpecialRoutes(app, tcrd);
 monitorPerformance();
 
 const PORT = process.env.PORT || 4444;
