@@ -7,7 +7,7 @@ const {LigandList} = require("./models/ligand/ligandList");
 const {cred} = require("./db_credentials");
 const {performance} = require("perf_hooks");
 
-module.exports.parseResidueData = (results) => {
+const parseResidueData = (results) => {
   const residueData = [];
   let currentResidue = [];
   let lastResidueIndex = -1;
@@ -24,6 +24,7 @@ module.exports.parseResidueData = (results) => {
   });
   return residueData;
 };
+module.exports.parseResidueData = parseResidueData;
 
 module.exports.applySpecialRoutes = (app, tcrd) => {
   app.get("/render", (req, res) => {
