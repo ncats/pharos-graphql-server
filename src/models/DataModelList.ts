@@ -360,14 +360,16 @@ export abstract class DataModelList implements IBuildable {
     perfData: QueryPerformanceData[] = [];
 
     captureQueryPerformance(query: any, description: string) {
-        const qpd = new QueryPerformanceData(description);
-        this.perfData.push(qpd);
-        query.on('query', (data: any) => {
-            qpd.start()
-        })
-            .on('query-response', (data: any) => {
-                qpd.finished()
-            });
+        if (query) {
+            const qpd = new QueryPerformanceData(description);
+            this.perfData.push(qpd);
+            query.on('query', (data: any) => {
+                qpd.start()
+            })
+                .on('query-response', (data: any) => {
+                    qpd.finished()
+                });
+        }
     }
 
     getElapsedTime(description: string) {
