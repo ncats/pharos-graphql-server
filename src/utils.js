@@ -106,3 +106,19 @@ module.exports.monitorPerformance = () => {
     }, 5000);
   }
 }
+
+const getIP = (req) => {
+  return req.header('x-forwarded-for') || req.connection.remoteAddress;
+};
+const blacklist = ['a'];
+module.exports.addFriendlyFirewall = (app) => {
+  app.use((req, res, next) => {
+    console.log(getIP(req));
+    if (blacklist.includes(getIP(req))) {
+      res.send({message: 'This IP address has been blocked due to excessive server load. Please contact us to help ' +
+            'streamline your queries and restore access. 🤝 ➡️ 🚀'})
+    } else {
+      next();
+    }
+  });
+};
