@@ -11,7 +11,7 @@ require('typescript-require');
 const typeDefs = fs.readFileSync(__dirname + '/schema.graphql','utf8');
 const resolvers = require('./resolvers');
 const {getServer} = require("./servers/apollo");
-const {applySpecialRoutes, monitorPerformance} = require("./utils");
+const {applySpecialRoutes, monitorPerformance, addFriendlyFirewall} = require("./utils");
 
 const schema = makeExecutableSchema({
     typeDefs,
@@ -52,6 +52,7 @@ const tcrd = new TCRD(tcrdConfig, settingsConfig);
 const app = express();
 
 applySpecialRoutes(app, tcrd);
+addFriendlyFirewall(app);
 monitorPerformance();
 
 const PORT = process.env.PORT || 4444;

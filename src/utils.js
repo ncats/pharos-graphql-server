@@ -106,3 +106,30 @@ module.exports.monitorPerformance = () => {
     }, 5000);
   }
 }
+
+const getIP = (req) => {
+  const ips = (req.header('x-forwarded-for') || req.connection.remoteAddress);
+  if (ips) {
+    return ips.split(',').map(t => t.trim());
+  }
+  return [''];
+};
+const blacklist = [
+    '2a01:cb10:854e:7f00:59f7:96f5:920d:baf',
+    '2a01:cb10:854e:7f00:fd83:9bc2:f16a:f824',
+    '2a01:cb10:854e:7f00:1c90:5701:2d31:e5f9'
+];
+module.exports.addFriendlyFirewall = (app) => {
+  app.use((req, res, next) => {
+    const ips = getIP(req);
+    if (blacklist.includes(ips[0])) {
+      res.send(
+          {
+            message: 'This IP address has been blocked due to excessive server load. Please contact us to help ' +
+            'streamline your queries and restore access, or download a full TCRD from http://juniper.health.unm.edu/tcrd/download/. 🤝 ➡️ 🚀'
+          });
+    } else {
+      next();
+    }
+  });
+};
