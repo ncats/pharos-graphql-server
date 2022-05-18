@@ -2,15 +2,11 @@ const {BaseRedisCache} = require("apollo-server-cache-redis");
 const {ApolloServer} = require("apollo-server-express");
 const responseCachePlugin = require("apollo-server-plugin-response-cache");
 const {connectToRedis} = require("./redis");
-const gqlfiltering = require('graphql-introspection-filtering');
 
-module.exports.getServer = (schema, tcrd, app, schemaDirectives) => {
-    const filters = gqlfiltering.schemaDirectivesToFilters(schemaDirectives)
-    const filteredSchema = gqlfiltering.default(schema, filters)
-
+module.exports.getServer = (schema, tcrd, app) => {
     return connectToRedis().then(redisClient => {
         const serverOptions = {
-            schema: filteredSchema,
+            schema: schema,
             introspection: true,
             plugins: [responseCachePlugin()],
             playground: true,

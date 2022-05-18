@@ -3,15 +3,15 @@ const {cred} = require("../db_credentials");
 const crypto = require("crypto");
 package_info = require("../../package.json");
 
-const getPrefix = () => {
+getPrefix = () => {
     return crypto.createHash('sha1')
         .update(cred.CONFIGDB + package_info.version + cred.DBNAME)
         .digest('base64').substring(0, 5);
 }
-module.exports.getPrefix = getPrefix;
 
 module.exports.connectToRedis = () => {
     const REDISHOST = process.env.REDISHOST || 'localhost';// || '10.120.0.3';
+    console.log(REDISHOST);
     const REDISPORT = process.env.REDISPORT || 6379;
     let redisClient = new Redis({
         host: REDISHOST,

@@ -3,9 +3,6 @@ directive @cacheControl(
      maxAge: Int,
      scope: CacheControlScope
 ) on OBJECT | FIELD_DEFINITION
-
-directive @undocumented on OBJECT | FIELD_DEFINITION
-
 enum CacheControlScope {
      PUBLIC
      PRIVATE
@@ -921,18 +918,13 @@ type FieldDetails @cacheControl(maxAge: 604800){
      default: Boolean
 }
 
-type WashResult @undocumented {
-    result: JSON @undocumented
-}
-
-type MutationSuccess @undocumented{
+type MutationSuccess {
     success: Boolean!
     message: String
 }
 
-type Mutation @undocumented{
-    trackFeature(user: String!, feature: String!, detail1: String, detail2: String, detail3: String): MutationSuccess! @undocumented
-    washRedis(doDelete: Boolean = false) : WashResult @undocumented
+type Mutation{
+    trackFeature(user: String!, feature: String!, detail1: String, detail2: String, detail3: String): MutationSuccess!
 }
 
 type Query @cacheControl(maxAge: 604800){

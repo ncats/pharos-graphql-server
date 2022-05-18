@@ -12,17 +12,10 @@ const typeDefs = fs.readFileSync(__dirname + '/schema.graphql','utf8');
 const resolvers = require('./resolvers');
 const {getServer} = require("./servers/apollo");
 const {applySpecialRoutes, monitorPerformance, addFriendlyFirewall} = require("./utils");
-const {getPrefix} = require("./servers/redis");
-const {UndocumentedDirective} = require("./UndocumentedDirective");
-
-const schemaDirectives = {
-    undocumented: UndocumentedDirective
-}
 
 const schema = makeExecutableSchema({
     typeDefs,
-    resolvers,
-    schemaDirectives
+    resolvers
 });
 
 const tcrdConfig = {
@@ -63,7 +56,7 @@ addFriendlyFirewall(app);
 monitorPerformance();
 
 const PORT = process.env.PORT || 4444;
-getServer(schema, tcrd, app, schemaDirectives).then((servers) => {
+getServer(schema, tcrd, app).then((servers) => {
     tcrd.tableInfo.loadPromise.then(() => {
         app.listen({port: PORT}, () => {
             if (servers.redis) {

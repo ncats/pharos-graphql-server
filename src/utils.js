@@ -114,40 +114,20 @@ const getIP = (req) => {
   }
   return [''];
 };
-const denylist = [
+const blacklist = [
     '2a01:cb10:854e:7f00:59f7:96f5:920d:baf',
     '2a01:cb10:854e:7f00:fd83:9bc2:f16a:f824',
-    '2a01:cb10:854e:7f00:1c90:5701:2d31:e5f9',
-    '2a01:cb10:854e:7f00:2837:748b:adeb:c825'
+    '2a01:cb10:854e:7f00:1c90:5701:2d31:e5f9'
 ];
-const networkdenylist = [
-    '2a01:cb10:854e:7f00:'
-];
-
-const networkIsOnDenyList = (ipAddress) => {
-    for (let i = 0; i < networkdenylist.length; i++) {
-        if (ipAddress.startsWith(networkdenylist[i])) {
-            return true;
-        }
-    }
-    return false;
-};
-
 module.exports.addFriendlyFirewall = (app) => {
   app.use((req, res, next) => {
     const ips = getIP(req);
-    if (denylist.includes(ips[0])) {
+    if (blacklist.includes(ips[0])) {
       res.send(
           {
             message: 'This IP address has been blocked due to excessive server load. Please contact us to help ' +
             'streamline your queries and restore access, or download a full TCRD from http://juniper.health.unm.edu/tcrd/download/. 🤝 ➡️ 🚀'
           });
-    } else if (networkIsOnDenyList(ips[0])) {
-        res.send(
-            {
-                message: 'This network has been blocked due to excessive server load. Please contact us to help ' +
-                    'streamline your queries and restore access, or download a full TCRD from http://juniper.health.unm.edu/tcrd/download/. 🤝 ➡️ 🚀'
-            });
     } else {
       next();
     }
