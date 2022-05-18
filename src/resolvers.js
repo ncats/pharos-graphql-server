@@ -9,10 +9,11 @@ const {DiseaseList} = require("./models/disease/diseaseList");
 const {TargetList} = require("./models/target/targetList");
 const {Virus} = require("./models/virus/virusQuery");
 const {performance} = require('perf_hooks');
-const {find, filter, slice} = require('lodash');
+const {find, filter, slice, partition} = require('lodash');
 const {LigandDetails} = require("./models/ligand/ligandDetails");
 const { parseResidueData } = require('./utils');
 const {DynamicPredictions} = require("./models/externalAPI/DynamicPredictions");
+const {getPrefix} = require("./servers/redis");
 
 const resolvers = {
 
@@ -53,6 +54,52 @@ const resolvers = {
                 return {success: true};
             }).catch((e) => {
                 return {success: false, message: e.message};
+            });
+        },
+        washRedis: async function (_, args, {dataSources}) {
+            const currentPrefix = getPrefix();
+            const prefixLength = currentPrefix.length;
+            return dataSources.redis.keys('*').then((keys) => {
+                const [currentKeys, oldKeys] = partition(keys, (k) => k.startsWith(currentPrefix));
+                const deletes = [];
+                const retObj = {
+                    prefix: currentPrefix,
+                    wrongPrefixCount: oldKeys.length,
+                    nullCount: 0,
+                    goodKeyCount: 0,
+                    badTargetPageCount: 0,
+                    badTargetPages: []
+                };
+                const gets = currentKeys.map(key => {
+                    return dataSources.redis.get(key.substring(prefixLength));
+                });
+                return Promise.all(gets).then(results => {
+                    results.forEach((res, index) => {
+                        if (!res) {
+                            retObj.nullCount++;
+                        } else {
+                            const resObj = res.startsWith('{') ? JSON.parse(res) : res;
+                            if (resObj && resObj.data && resObj.data.hasOwnProperty('targets') &&
+                                (!resObj.data.targets || resObj.data.targets.length == 0)) {
+                                retObj.badTargetPageCount++;
+                                retObj.badTargetPages.push({
+                                    key: currentKeys[index],
+                                    value: res
+                                });
+                                if (args.doDelete) {
+                                    deletes.push(dataSources.redis.del(currentKeys[index].substring(prefixLength)));
+                                }
+                            } else {
+                                retObj.goodKeyCount++;
+                            }
+                        }
+                    })
+                    return Promise.all(deletes).then((deleteResult) => {
+                        retObj.deletionsMade = deleteResult.reduce(
+                            (partialSum, a) => partialSum + a, 0);
+                        return {result: retObj};
+                    })
+                });
             });
         }
     },
@@ -782,7 +829,7 @@ const resolvers = {
             if ((target.qcovs || target.bitscore) && dataSources.querySequence && dataSources.querySequence.length > 0) {
                 return {
                     pident: target.pident,
-                    evalue : target.evalue,
+                    evalue: target.evalue,
                     bitscore: target.bitscore,
                     qcovs: target.qcovs,
                     uniprot: target.uniprot,
@@ -1415,8 +1462,8 @@ const resolvers = {
                     id: 'xref',
                     name: dataSources.tcrd.db.raw('COALESCE(do.name, omim.title)')
                 }).leftJoin('do', 'mondo_xref.xref', 'do.doid')
-                    .leftJoin('omim', function() {
-                        this.on('mondo_xref.value', 'omim.mim').andOn('mondo_xref.db',dataSources.tcrd.db.raw(`"OMIM"`))
+                    .leftJoin('omim', function () {
+                        this.on('mondo_xref.value', 'omim.mim').andOn('mondo_xref.db', dataSources.tcrd.db.raw(`"OMIM"`))
                     })
                     .where('mondo_xref.mondoid', disease.mondoID).andWhere('equiv_to', true);
                 return query.then(rows => {
@@ -1495,15 +1542,15 @@ const resolvers = {
                 })
                 .leftJoin('ncats_disease', 'mondo_par.mondoid', 'ncats_disease.mondoid')
                 .select(
-                {
-                    name: 'mondo_par.name',
-                    associationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.target_count, 0)'),
-                    directAssociationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.direct_target_count, 0)'),
-                    mondoDescription: 'ncats_disease.mondo_description',
-                    mondoID: 'mondo_par.mondoid',
-                    doDescription: 'ncats_disease.do_description',
-                    uniprotDescription: 'ncats_disease.uniprot_description'
-                }).where('mondo_child.mondoid', disease.mondoID)
+                    {
+                        name: 'mondo_par.name',
+                        associationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.target_count, 0)'),
+                        directAssociationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.direct_target_count, 0)'),
+                        mondoDescription: 'ncats_disease.mondo_description',
+                        mondoID: 'mondo_par.mondoid',
+                        doDescription: 'ncats_disease.do_description',
+                        uniprotDescription: 'ncats_disease.uniprot_description'
+                    }).where('mondo_child.mondoid', disease.mondoID)
                 .andWhere('mondo_child.mondoid', dataSources.tcrd.db.raw('relationship.mondoid'))
                 .andWhere('relationship.parentid', dataSources.tcrd.db.raw('mondo_par.mondoid'));
             return query.then(rows => {
@@ -1524,15 +1571,15 @@ const resolvers = {
                 })
                 .leftJoin('ncats_disease', 'mondo_child.mondoid', 'ncats_disease.mondoid')
                 .select(
-                {
-                    name: 'mondo_child.name',
-                    associationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.target_count, 0)'),
-                    directAssociationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.direct_target_count, 0)'),
-                    mondoDescription: 'ncats_disease.mondo_description',
-                    mondoID: 'mondo_child.mondoid',
-                    doDescription: 'ncats_disease.do_description',
-                    uniprotDescription: 'ncats_disease.uniprot_description'
-                }).where('mondo_par.mondoid', disease.mondoID)
+                    {
+                        name: 'mondo_child.name',
+                        associationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.target_count, 0)'),
+                        directAssociationCount: dataSources.tcrd.db.raw('coalesce(ncats_disease.direct_target_count, 0)'),
+                        mondoDescription: 'ncats_disease.mondo_description',
+                        mondoID: 'mondo_child.mondoid',
+                        doDescription: 'ncats_disease.do_description',
+                        uniprotDescription: 'ncats_disease.uniprot_description'
+                    }).where('mondo_par.mondoid', disease.mondoID)
                 .andWhere('mondo_par.mondoid', dataSources.tcrd.db.raw('relationship.parentid'))
                 .andWhere('relationship.mondoid', dataSources.tcrd.db.raw('mondo_child.mondoid'));
             return query.then(rows => {
@@ -1770,7 +1817,7 @@ const resolvers = {
             let values = facet.values;
             if (facet.dataType == 'Category' && !facet.usedForFiltering && !facet.nullQuery && facet.enrichFacets) {
                 const tables = [];
-                for (let i = 0 ; i < values.length ; i++) {
+                for (let i = 0; i < values.length; i++) {
                     const v = values[i];
                     const data = dataSources.tcrd.tableInfo.findValueProbability(facet.model, facet.facet, v.name);
                     if (data) {
@@ -1797,7 +1844,7 @@ const resolvers = {
                             const oddsRatio = (val.table.inListHasValue * val.table.outListNoValue) /
                                 (val.table.inListNoValue * val.table.outListHasValue);
                             const stErr = Math.sqrt(1 / val.table.inListHasValue + 1 / val.table.inListNoValue +
-                                                    1 / val.table.outListHasValue + 1 / val.table.outListNoValue);
+                                1 / val.table.outListHasValue + 1 / val.table.outListNoValue);
                             const zHalfAlpha = 1.96; // for 95% confidence and alpha = 0.5
                             const upper95 = Math.exp(Math.log(oddsRatio) + zHalfAlpha * stErr);
                             const lower95 = Math.exp(Math.log(oddsRatio) - zHalfAlpha * stErr);
