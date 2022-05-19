@@ -55,52 +55,6 @@ const resolvers = {
             }).catch((e) => {
                 return {success: false, message: e.message};
             });
-        },
-        washRedis: async function (_, args, {dataSources}) {
-            const currentPrefix = getPrefix();
-            const prefixLength = currentPrefix.length;
-            return dataSources.redis.keys('*').then((keys) => {
-                const [currentKeys, oldKeys] = partition(keys, (k) => k.startsWith(currentPrefix));
-                const deletes = [];
-                const retObj = {
-                    prefix: currentPrefix,
-                    wrongPrefixCount: oldKeys.length,
-                    nullCount: 0,
-                    goodKeyCount: 0,
-                    badTargetPageCount: 0,
-                    badTargetPages: []
-                };
-                const gets = currentKeys.map(key => {
-                    return dataSources.redis.get(key.substring(prefixLength));
-                });
-                return Promise.all(gets).then(results => {
-                    results.forEach((res, index) => {
-                        if (!res) {
-                            retObj.nullCount++;
-                        } else {
-                            const resObj = res.startsWith('{') ? JSON.parse(res) : res;
-                            if (resObj && resObj.data && resObj.data.hasOwnProperty('targets') &&
-                                (!resObj.data.targets || resObj.data.targets.length == 0)) {
-                                retObj.badTargetPageCount++;
-                                retObj.badTargetPages.push({
-                                    key: currentKeys[index],
-                                    value: res
-                                });
-                                if (args.doDelete) {
-                                    deletes.push(dataSources.redis.del(currentKeys[index].substring(prefixLength)));
-                                }
-                            } else {
-                                retObj.goodKeyCount++;
-                            }
-                        }
-                    })
-                    return Promise.all(deletes).then((deleteResult) => {
-                        retObj.deletionsMade = deleteResult.reduce(
-                            (partialSum, a) => partialSum + a, 0);
-                        return {result: retObj};
-                    })
-                });
-            });
         }
     },
 

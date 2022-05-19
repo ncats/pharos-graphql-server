@@ -921,10 +921,6 @@ type FieldDetails @cacheControl(maxAge: 604800){
      default: Boolean
 }
 
-type WashResult @undocumented {
-    result: JSON @undocumented
-}
-
 type MutationSuccess @undocumented{
     success: Boolean!
     message: String
@@ -932,7 +928,6 @@ type MutationSuccess @undocumented{
 
 type Mutation @undocumented{
     trackFeature(user: String!, feature: String!, detail1: String, detail2: String, detail3: String): MutationSuccess! @undocumented
-    washRedis(doDelete: Boolean = false) : WashResult @undocumented
 }
 
 type Query @cacheControl(maxAge: 604800){
