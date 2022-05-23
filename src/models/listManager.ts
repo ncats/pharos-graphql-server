@@ -151,8 +151,14 @@ export class ListManager {
             const f2 = f.copy();
             f2.parent = listObj;
             return f2;
-        });
-        return fields || [];
+        }).filter(field => {
+            if (!this.listHasRequirement(field.requirement, listObj)) {
+                return false;
+            }
+            return true;
+        }) || [];
+
+        return fields;
     }
 
     getOneField(listObj: DataModelList, type: string, fieldName: string, listName: string = '', includeSVF: boolean = true) {
