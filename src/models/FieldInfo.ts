@@ -196,7 +196,7 @@ export class FieldInfo {
                 })
             ]);
         const query = queryDefinition.generateBaseQuery(true);
-        query.whereIn(this.table + '.' + this.column, [...upSet.inGroup, ...upSet.outGroup]);
+        query.whereIn(this.parent.database.raw(this.select), [...upSet.inGroup, ...upSet.outGroup]);
         query.groupBy(this.parent.keyString());
         if (this.where_clause.length > 0) {
             query.whereRaw(this.where_clause);
