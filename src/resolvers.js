@@ -990,29 +990,20 @@ const resolvers = {
         },
         expressions: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getExpressionsForTarget(target, args);
-            return q.then(rows => {
-                return rows.map(x => {
-                    if (x.number_value)
-                        x.value = x.number_value;
-                    else if (x.boolean_value)
-                        x.value = x.boolean_value;
-                    else if (x.string_value)
-                        x.value = x.string_value;
-                    return x;
-                });
-            }).catch(function (error) {
-                console.error(error);
-            });
+            return q;
+        },
+        expressionTree: async function(target, args, {dataSources}) {
+            targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getExpressionTree();
         },
         gtex: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.db({t2tc: 't2tc', gtex: 'gtex'})
                 .leftJoin('uberon', 'uberon_id', 'uberon.uid')
                 .select(['name', 'def', 'comment',
-                    `tissue`, `gender`, `tpm`, `tpm_rank`, `tpm_rank_bysex`, `tpm_level`,
-                    `tpm_level_bysex`, `tpm_f`, `tpm_m`, `log2foldchange`, `tau`, `tau_bysex`,
-                    `uberon_id`]).where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
+                    `tissue`, `tpm`, `tpm_rank`, `tpm_male`, `tpm_male_rank`, `tpm_female`, `tpm_female_rank`, `uberon_id`])
+                .where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
                 .andWhere('t2tc.target_id', target.tcrdid);
-            // console.log(q.toString());
+            console.log(q.toString());
             return q;
         },
         orthologCounts: async function (target, args, {dataSources}) {
@@ -1704,6 +1695,21 @@ const resolvers = {
             }
             return null;
         },
+        log2foldchange: async function (expr, args, {dataSources}) {
+            console.log(expr)
+        },
+        tau: async function (expr, args, {dataSources}) {
+            console.log(expr)
+
+        },
+        tau_male: async function (expr, args, {dataSources}) {
+            console.log(expr)
+
+        },
+        tau_female: async function (expr, args, {dataSources}) {
+            console.log(expr)
+
+        }
     },
     Expression: {
         uberon: async function (expr, args, {dataSources}) {

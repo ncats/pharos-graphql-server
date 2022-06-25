@@ -24,6 +24,134 @@ export class TargetDetails{
         this.facet = list.find(f => f.name === this.facetName) || new FieldInfo({});
     }
 
+    getExpressionTree() {
+        const expressionQuery = this.knex('expression').select(
+            {
+                id: 'id',
+                etype: 'etype',
+                tissue: 'tissue',
+                value: this.knex.raw('coalesce(source_rank, number_value / 5)'),
+                evidence: 'evidence',
+                uberon_id: 'uberon_id'
+            }
+            ).where('protein_id', this.target.protein_id)
+            .whereNotNull('uberon_id');
+        const gtexQuery = this.knex('gtex').select(
+            {
+                id: 'id',
+                etype: this.knex.raw('"GTEx"'),
+                tissue: 'tissue',
+                value: 'tpm_rank',
+                evidence: this.knex.raw('NULL'),
+                uberon_id: 'uberon_id'
+            }
+            ).where('protein_id', this.target.protein_id)
+            .whereNotNull('uberon_id');
+        const directUberonQuery = this.knex('expression').select(
+            {uberon_id: 'uberon_id'})
+            .where('protein_id', this.target.protein_id)
+        const ancestorUberonQuery = this.knex({expression: 'expression', uberon_ancestry: 'uberon_ancestry'})
+            .select({uberon_id: 'ancestor_uberon_id'})
+            .where('protein_id', this.target.protein_id)
+            .andWhere('expression.uberon_id', this.knex.raw('uberon_ancestry.uberon_id'))
+            .whereNotIn('ancestor_uberon_id', ['GO:0005623']);
+        const hierarchyQuery = this.knex({uberon_parent: 'uberon_parent', uberon: 'uberon'})
+            .join(directUberonQuery.union(ancestorUberonQuery).as('subq'), 'uberon.uid', 'subq.uberon_id')
+            .select(['uberon.uid', 'uberon_parent.parent_id', 'name'])
+            .where('uberon.uid', this.knex.raw('uberon_parent.uid'));
+        console.log(hierarchyQuery.toString());
+        return Promise.all([hierarchyQuery, expressionQuery.union(gtexQuery)]).then((rows: any) => {
+            const hierarchyRows = rows[0];
+            const expressionRows = rows[1];
+
+            const uberonDict = new Map<string, any>();
+            const parentDict = new Map<string, string[]>();
+            hierarchyRows.forEach((row: any) => {
+                const tissueObj = {uid: row.uid, name: row.name, childData: new Map<number, number>(), parents: [], children: [], data: []}
+                uberonDict.set(row.uid, tissueObj);
+                if (parentDict.has(row.uid)) {
+                    const list = parentDict.get(row.uid) || [];
+                    list.push(row.parent_id);
+                } else {
+                    parentDict.set(row.uid, [row.parent_id]);
+                }
+            });
+
+            const nonRoots: string[] = [];
+            uberonDict.forEach((v, k) => {
+                const parents = parentDict.get(k) || [];
+                v.parents = parents;
+                parents.forEach(uid => {
+                    const oneParent = uberonDict.get(uid);
+                    if (oneParent) {
+                        if (!nonRoots.includes(k)) {
+                            nonRoots.push(k);
+                        }
+                        oneParent.children.push(v);
+                    }
+                });
+            });
+            expressionRows.forEach((row: any) => {
+                const obj = uberonDict.get(row.uberon_id);
+                if (obj) {
+                    obj.data.push(row);
+                }
+            })
+            nonRoots.forEach(nonRoot => {
+                uberonDict.delete(nonRoot);
+            });
+            uberonDict.forEach((v,k) => {
+                this.calcChildData(v);
+            })
+            this.collapseDictionary(uberonDict)
+            return {
+                uberonDict: Array.from(uberonDict.values())
+            }
+        });
+    }
+    trimNode(node: any){
+        for (let i = node.children.length - 1 ; i >= 0 ; i--){
+            const child = node.children[i];
+            this.trimNode(child);
+            if (child.data.length === 0 && child.children.length === 1) {
+                node.children[i] = child.children[0];
+            }
+        }
+    }
+    collapseDictionary(dict: Map<string, any>) {
+        dict.forEach((v, k) => {
+            this.trimNode(v);
+        })
+
+    }
+    tryPushValue(map: Map<number, number>, id: number, val: number){
+        if (map.has(id)){
+            return;
+        }
+        map.set(id, val);
+    }
+    calcChildData(node: any) {
+        const map: Map<number, number> = node.childData;
+        if (map.size > 0) {
+            return map;
+        }
+        node.data.forEach((dp: any) => {
+            this.tryPushValue(map, dp.id, dp.value);
+        })
+        node.children.forEach((child: any) => {
+            child.data.forEach((dp: any) => {
+                this.tryPushValue(map, dp.id, dp.value);
+            })
+            this.calcChildData(child).forEach((v,k)=> {
+                this.tryPushValue(map, k, v);
+            })
+        })
+        node.childData = map;
+        node.size = map.size;
+        node.value = Array.from(map.values()).reduce((a,b) => a + b, 0) / map.size
+        return map;
+    }
+
     getFacetValueCount(){
         const query = this.databaseConfig.getBaseSetQuery('protein', this.facet,
             {value: this.knex.raw(`count(distinct ${this.facet.select})`)})

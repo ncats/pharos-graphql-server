@@ -358,17 +358,16 @@ type Expression @cacheControl(maxAge: 604800) {
 
 type GTEXExpression @cacheControl(maxAge: 604800) {
      tissue: String!
-     gender: Gender!
      tpm: Float!
      tpm_rank: Float!
-     tpm_rank_bysex: Float!
-     tpm_level: String
-     tpm_level_bysex: Float!
-     tpm_f: Float
-     tpm_m: Float
+     tpm_male: Float
+     tpm_male_rank: Float
+     tpm_female: Float
+     tpm_female_rank: Float
      log2foldchange: Float
      tau: Float!
-     tau_bysex: Float!
+     tau_male: Float!
+     tau_female: Float!
      uberon: Uberon
 }
 
@@ -628,6 +627,7 @@ type Target @cacheControl(maxAge: 604800){
      """Tissue expression"""
      expressionCounts: [IntProp]
      expressions(skip: Int=0, top: Int=10, filter: IFilter): [Expression]
+     expressionTree: JSON
      gtex: [GTEXExpression]
 
      """Ortholog protein"""
