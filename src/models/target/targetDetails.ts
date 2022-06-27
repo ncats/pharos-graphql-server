@@ -59,7 +59,7 @@ export class TargetDetails{
             .join(directUberonQuery.union(ancestorUberonQuery).as('subq'), 'uberon.uid', 'subq.uberon_id')
             .select(['uberon.uid', 'uberon_parent.parent_id', 'name'])
             .where('uberon.uid', this.knex.raw('uberon_parent.uid'));
-        console.log(hierarchyQuery.toString());
+
         return Promise.all([hierarchyQuery, expressionQuery.union(gtexQuery)]).then((rows: any) => {
             const hierarchyRows = rows[0];
             const expressionRows = rows[1];

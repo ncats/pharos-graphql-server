@@ -324,18 +324,22 @@ const resolvers = {
 
         dataSourceCounts: async function (_, args, {dataSources}) {
             const knex = dataSources.tcrd.db;
-            let query = knex("ncats_dataSource_map")
+            let query = knex(
+                {
+                    ncats_dataSource_map: 'ncats_dataSource_map',
+                    ncats_dataSource: 'ncats_dataSource'
+                })
                 .select({
-                    dataSource: "dataSource",
-                    url: knex.raw("max(url)"),
-                    license: knex.raw("max(license)"),
-                    licenseURL: knex.raw("max(licenseURL)"),
+                    dataSource: "ncats_dataSource.dataSource",
+                    url: knex.raw("url"),
+                    license: knex.raw("license"),
+                    licenseURL: knex.raw("licenseURL"),
                     targetCount: knex.raw("COUNT(protein_id)"),
                     diseaseCount: knex.raw("COUNT(disease_name)"),
                     ligandCount: knex.raw("COUNT(ncats_ligand_id)")
                 })
-                .groupBy("dataSource")
-                .orderBy("dataSource");
+                .where('ncats_dataSource.dataSource', knex.raw('ncats_dataSource_map.dataSource'))
+                .groupBy("dataSource").orderBy("dataSource");
             return query.then(rows => {
                 return rows;
             });
