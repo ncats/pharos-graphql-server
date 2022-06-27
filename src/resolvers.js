@@ -1007,7 +1007,6 @@ const resolvers = {
                     `tissue`, `tpm`, `tpm_rank`, `tpm_male`, `tpm_male_rank`, `tpm_female`, `tpm_female_rank`, `uberon_id`])
                 .where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
                 .andWhere('t2tc.target_id', target.tcrdid);
-            console.log(q.toString());
             return q;
         },
         orthologCounts: async function (target, args, {dataSources}) {
