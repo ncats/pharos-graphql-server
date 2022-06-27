@@ -7,6 +7,6 @@ const cred = {
     USER: 'tcrd',
     PWORD: '',
     CONFIGDB: 'pharos_config_prod',
-    LASTMOD: '2022-05-13'
+    LASTMOD: '2022-07-01'
 };
 module.exports.cred = cred;
