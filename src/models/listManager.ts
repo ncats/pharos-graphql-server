@@ -79,8 +79,7 @@ export class ListManager {
                 table: listObj.modelInfo.table,
                 column: listObj.modelInfo.column,
                 alias: 'id',
-                parent: listObj,
-                needsDistinct: true
+                parent: listObj
             } as FieldInfo));
         }
         fields.forEach(field => {
