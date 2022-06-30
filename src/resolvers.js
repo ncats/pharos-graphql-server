@@ -13,7 +13,7 @@ const {find, filter, slice, partition} = require('lodash');
 const {LigandDetails} = require("./models/ligand/ligandDetails");
 const { parseResidueData } = require('./utils');
 const {DynamicPredictions} = require("./models/externalAPI/DynamicPredictions");
-const {getPrefix} = require("./servers/redis");
+const {VersionInfo} = require('./models/versionInfo/versionInfo');
 
 const resolvers = {
 
@@ -549,6 +549,10 @@ const resolvers = {
     },
 
     Target: {
+        dataVersions: async function (_, args, {dataSources}) {
+            versionInfo = new VersionInfo(dataSources.tcrd.db);
+            return versionInfo.getVersion(args.keys);
+        },
         predictions: async function (target, args, {dataSources}) {
             return new DynamicPredictions(dataSources.tcrd).fetchTargetAPIs(target);
         },

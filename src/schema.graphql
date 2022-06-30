@@ -550,6 +550,7 @@ type NearestTclinDetails @cacheControl(maxAge: 604800) {
 
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
+     dataVersions(keys: [String!]): [DataVersionResponse]
      nearestTclin: NearestTclinDetails
      similarity: SimilarityDetails
      sequence_variants: SeqVariantInfo
@@ -930,9 +931,31 @@ type Mutation @undocumented{
     trackFeature(user: String!, feature: String!, detail1: String, detail2: String, detail3: String): MutationSuccess! @undocumented
 }
 
+type DataFileDetails @cacheControl(maxAge: 604800) {
+    key: String!
+    file: String!
+    version: String
+    releaseDate: String
+    downloadDate: String
+}
+
+type DataSourceInfo @cacheControl(maxAge: 604800) {
+    name: String!
+    description: String
+    url: String
+    license: String
+    licenseURL: String
+    citation: String
+    files: [DataFileDetails!]
+}
+
+type DataVersionResponse @cacheControl(maxAge: 604800) {
+    key: String!
+    dataSources: [DataSourceInfo!]
+}
+
 type Query @cacheControl(maxAge: 604800){
      configuration: PharosConfiguration
-
      download(model: String!, fields: [String!], sqlOnly: Boolean = true, skip: Int, top: Int, filter: IFilter, batch: [String]): DownloadResult
 
      upset(model: String!, facetName: String!, values: [String!], filter: IFilter, batch: [String]): [UpsetResult]
