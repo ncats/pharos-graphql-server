@@ -1,10 +1,11 @@
 // extension of TCRD class
 
 module.exports.getProteinMatchQuery = function(identifier) {
+    const directMatch = `(protein.uniprot = "${identifier}" OR protein.sym = "${identifier}" OR protein.stringid = "${identifier}")`;
     if (identifier.length < 3) {
-        return `(protein.uniprot = "${identifier}" OR protein.sym = "${identifier}" OR protein.stringid = "${identifier}")`;
+        return directMatch;
     }
-    return `match(protein.uniprot, protein.sym, protein.stringid) against('"${identifier}"' in boolean mode)`;
+    return `match(protein.uniprot, protein.sym, protein.stringid) against('"${identifier}"' in boolean mode) and ${directMatch}`;
 };
 
 module.exports.getProteinListFromPPI = function(ppiTarget, confidence) {
