@@ -2282,6 +2282,7 @@ async function getLigandResult(args, dataSources) {
     const facetQueries = ligandList.getFacetQueries();
     facetQueries.unshift(countQuery);
     return Promise.all(facetQueries).then(rows => {
+        facetQueries.shift();
         let count = rows.shift()[0].count;
         let facets = [];
         for (var i in rows) {
