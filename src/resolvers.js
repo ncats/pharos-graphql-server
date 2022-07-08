@@ -763,7 +763,6 @@ const resolvers = {
                 return null;
             }
             const q = DiseaseList.getAssociationDetails(dataSources.tcrd.db, dataSources.associatedDisease, target.tcrdid);
-            // console.log(q.toString());
             return q.then(rows => {
                 return rows;
             });
@@ -1003,6 +1002,10 @@ const resolvers = {
         expressionTree: async function(target, args, {dataSources}) {
             targetDetails = new TargetDetails(args, target, dataSources.tcrd);
             return targetDetails.getExpressionTree();
+        },
+        tissueSpecificity: async function(target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getTaus();
         },
         gtex: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.db({t2tc: 't2tc', gtex: 'gtex'})
@@ -1703,19 +1706,10 @@ const resolvers = {
             return null;
         },
         log2foldchange: async function (expr, args, {dataSources}) {
-            console.log(expr)
-        },
-        tau: async function (expr, args, {dataSources}) {
-            console.log(expr)
-
-        },
-        tau_male: async function (expr, args, {dataSources}) {
-            console.log(expr)
-
-        },
-        tau_female: async function (expr, args, {dataSources}) {
-            console.log(expr)
-
+            if (!expr.tpm_male || !expr.tpm_female) {
+                return null;
+            }
+            return Math.log2(expr.tpm_female / expr.tpm_male)
         }
     },
     Expression: {
@@ -1882,7 +1876,6 @@ const resolvers = {
             dataSources.sequenceQueryHash = listObj.sequenceQueryHash;
             dataSources.associatedLigand = listObj.associatedLigand;
             const q = listObj.getListQuery('list');
-            //console.log(q.toString());
             return q.then(targets => {
                 dataSources.listResults = targets;
                 return targets;

@@ -23,7 +23,18 @@ export class TargetDetails{
         const list = this.databaseConfig.listManager.listMap.get(context.toString()) || [];
         this.facet = list.find(f => f.name === this.facetName) || new FieldInfo({});
     }
-
+    getTaus() {
+        const itypes = [
+            'HPA Protein Tissue Specificity Index',
+            'HPM Protein Tissue Specificity Index',
+            'HPA RNA Tissue Specificity Index',
+            'GTEx Tissue Specificity Index',
+            'GTEx Tissue Specificity Index - Male',
+            'GTEx Tissue Specificity Index - Female'
+        ];
+        return this.knex('tdl_info').select({name: 'itype', value: 'number_value'}).whereIn('itype', itypes)
+            .andWhere('protein_id', this.target.protein_id);
+    }
     getExpressionTree() {
         const expressionQuery = this.knex('expression').select(
             {

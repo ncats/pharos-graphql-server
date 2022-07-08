@@ -67,6 +67,11 @@ type IntProp @cacheControl(maxAge: 604800) {
      value: Int!
 }
 
+type FloatProp @cacheControl(maxAge: 604800) {
+     name: String!
+     value: Float!
+}
+
 type FisherStats @cacheControl(maxAge: 604800) {
     rejected: Boolean
     qValue: Float
@@ -366,9 +371,6 @@ type GTEXExpression @cacheControl(maxAge: 604800) {
      tpm_female: Float
      tpm_female_rank: Float
      log2foldchange: Float
-     tau: Float!
-     tau_male: Float!
-     tau_female: Float!
      uberon: Uberon
 
      gender: Gender @deprecated (reason: "gender is deprecated. Now all data for a tissue is in one result, not in separate results for male and female")
@@ -377,7 +379,8 @@ type GTEXExpression @cacheControl(maxAge: 604800) {
      tpm_level_bysex: Float @deprecated (reason: "tpm_level is deprecated. You can categorize the TPM levels yourself based on tpm_male_rank and tpm_female_rank (i.e. tpm_male_rank < 0.25 => Low)")
      tpm_f: Float @deprecated (reason: "tpm_f is deprecated. Use tpm_female instead")
      tpm_m: Float @deprecated (reason: "tpm_m is deprecated. Use tpm_male instead")
-     tau_bysex: Float @deprecated (reason: "tau_bysex is deprecated. Use tau_male and tau_female instead")
+     tau: Float @deprecated (reason: "tau_bysex is deprecated. Use target.tissueSpecificity instead")
+     tau_bysex: Float @deprecated (reason: "tau_bysex is deprecated. Use target.tissueSpecificity instead")
 }
 
 type GO @cacheControl(maxAge: 604800) {
@@ -639,6 +642,7 @@ type Target @cacheControl(maxAge: 604800){
      expressions(skip: Int=0, top: Int=10, filter: IFilter): [Expression]
      expressionTree: JSON
      gtex: [GTEXExpression]
+     tissueSpecificity: [FloatProp]
 
      """Ortholog protein"""
      orthologCounts: [IntProp]
