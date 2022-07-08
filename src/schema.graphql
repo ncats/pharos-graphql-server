@@ -349,11 +349,12 @@ type Expression @cacheControl(maxAge: 604800) {
      conf: Float
      """BrendaTissue ontology"""
      btoid: String
-     cellid: String
      uberon: Uberon
      pub: PubMed
      url: String
      source_rank: Float
+
+     cellid: String @deprecated (reason: "No data sources return this field anymore.")
 }
 
 type GTEXExpression @cacheControl(maxAge: 604800) {
@@ -369,6 +370,14 @@ type GTEXExpression @cacheControl(maxAge: 604800) {
      tau_male: Float!
      tau_female: Float!
      uberon: Uberon
+
+     gender: Gender @deprecated (reason: "gender is deprecated. Now all data for a tissue is in one result, not in separate results for male and female")
+     tpm_rank_bysex: Float @deprecated (reason: "tpm_rank_by_sex is deprecated. Use tpm_male_rank and tpm_female_rank instead")
+     tpm_level: String @deprecated (reason: "tpm_level is deprecated. You can categorize the TPM level yourself based on tpm_rank (i.e. tpm_rank < 0.25 => Low)")
+     tpm_level_bysex: Float @deprecated (reason: "tpm_level is deprecated. You can categorize the TPM levels yourself based on tpm_male_rank and tpm_female_rank (i.e. tpm_male_rank < 0.25 => Low)")
+     tpm_f: Float @deprecated (reason: "tpm_f is deprecated. Use tpm_female instead")
+     tpm_m: Float @deprecated (reason: "tpm_m is deprecated. Use tpm_male instead")
+     tau_bysex: Float @deprecated (reason: "tau_bysex is deprecated. Use tau_male and tau_female instead")
 }
 
 type GO @cacheControl(maxAge: 604800) {
