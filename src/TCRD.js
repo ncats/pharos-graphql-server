@@ -1080,65 +1080,6 @@ order by associationCount desc, zscore desc`, [ortho.ortholog_id]));
         return query;
     }
 
-    getTargetsForDiseaseAssociation(disease, args) {
-        const DISEASE_SQL = `
-a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
-b.description as name, g.string_value as description
-from target a, protein b, disease d, t2tc c
-left join tinx_novelty e use index(tinx_novelty_idx3)
-on e.protein_id = c.protein_id
-left join tdl_info g on g.protein_id = c.protein_id and
-g.itype = '${CONSTANTS.DESCRIPTION_TYPE}'`;
-        let q;
-        if (args.filter) {
-            let filter = utils.parseFilterOrder(args.filter);
-            if (filter.order) {
-                q = this.db.select(this.db.raw(DISEASE_SQL + `
-left join tdl_info f on f.protein_id = c.protein_id
-and f.itype = ?`, [filter.order]));
-            } else {
-                q = this.db.select(this.db.raw(DISEASE_SQL));
-            }
-
-            let sub = this.getTargetFacetSubQueries(args.filter.facets);
-            sub.forEach(subq => {
-                q = q.whereIn('b.id', subq);
-            });
-
-            let sort = true;
-            if (args.filter.term != undefined && args.filter.term !== '') {
-                q = q.andWhere(this.db.raw(`
-(match(b.uniprot,b.sym,b.stringid) against(? in boolean mode) or 
-match(b.name,b.description) against(? in boolean mode))`, [args.filter.term,
-                    args.filter.term]));
-                sort = false;
-            }
-
-            q = q.andWhere(this.db.raw(`
-a.id = c.target_id and b.id = c.protein_id
-and d.protein_id = c.protein_id
-and d.ncats_name = "${disease.name}"`));
-            if (sort) {
-                q = q.orderBy(filter.sortColumn, filter.dir);
-            }
-
-            if (args.top) {
-                q.limit(args.top);
-            }
-            if (args.skip) {
-                q.offset(args.skip);
-            }
-        } else {
-            q = this.db.select(this.db.raw(DISEASE_SQL + `
-where a.id = c.target_id and b.id = c.protein_id
-and d.protein_id = c.protein_id
-and d.ncats_name = "${disease.name}" order by e.score desc
-limit ? offset ?`, [args.top, args.skip]));
-        }
-        //console.log('>>> getTargetsForDisease: '+q);
-        return q;
-    }
-
     getPatentCounts(target, args) {
         return this.db.select(this.db.raw(`
 * from patent_count a, t2tc b
@@ -1504,8 +1445,8 @@ group by etype order by value desc`, [target.tcrdid]));
     getExpressionsForTarget(target, args) {
         const EXPRESSION_SQL = `
 d.*,f.*, d.id as expid, d.etype as type, 
-d.cell_id as cellid, d.oid as btoid, d.qual_value as qual, e.source_rank
-from t2tc c, ncats_expression e, expression d 
+d.oid as btoid, d.number_value as value, d.qual_value as qual, d.source_rank
+from t2tc c, expression d 
 left join uberon f on f.uid = d.uberon_id`;
         let q = this.db.select(this.db.raw(EXPRESSION_SQL));
         if (args.filter) {
@@ -1524,7 +1465,6 @@ match(d.tissue) against(? in boolean mode)`, [args.filter.term]));
 
         q = q.andWhere(this.db.raw(`            
 d.protein_id = c.protein_id
-and e.id = d.id
 and c.target_id = ?`, [target.tcrdid]));
         if (args.top) {
             q.limit(args.top);

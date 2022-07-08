@@ -79,8 +79,7 @@ export class ListManager {
                 table: listObj.modelInfo.table,
                 column: listObj.modelInfo.column,
                 alias: 'id',
-                parent: listObj,
-                needsDistinct: true
+                parent: listObj
             } as FieldInfo));
         }
         fields.forEach(field => {
@@ -151,8 +150,14 @@ export class ListManager {
             const f2 = f.copy();
             f2.parent = listObj;
             return f2;
-        });
-        return fields || [];
+        }).filter(field => {
+            if (!this.listHasRequirement(field.requirement, listObj)) {
+                return false;
+            }
+            return true;
+        }) || [];
+
+        return fields;
     }
 
     getOneField(listObj: DataModelList, type: string, fieldName: string, listName: string = '', includeSVF: boolean = true) {
