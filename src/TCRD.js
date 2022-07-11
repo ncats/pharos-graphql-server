@@ -273,11 +273,11 @@ protein_id from target a, t2tc b`))
                 }
                     break;
 
-                case 'IDG Target Lists': {
-                    let q = this.db({list: 'ncats_idg_list', type: 'ncats_idg_list_type'})
+                case 'NIH Target Lists': {
+                    let q = this.db({list: 'nih_list', type: 'nih_list_type'})
                         .select('list.protein_id')
                         .whereIn('type.list_type', f.values)
-                        .andWhere(this.db.raw(`list.idg_list = type.id`));
+                        .andWhere(this.db.raw(`list.nih_list = type.id`));
                     subqueries.push(q);
                 }
                     break;
