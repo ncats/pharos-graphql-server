@@ -29,7 +29,7 @@ describe('all facets should work', function () {
 
     [
         "Target Development Level",
-        "IDG Target Lists",
+        "NIH Target Lists",
         "UniProt Keyword",
         "Family",
         "Indication",
