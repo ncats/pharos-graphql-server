@@ -58,16 +58,16 @@ export class TargetDetails{
             }
             ).where('protein_id', this.target.protein_id)
             .whereNotNull('uberon_id');
-        const directUberonQuery = this.knex('expression').select(
+        const exprUberonIDs = this.knex('expression').select(
             {uberon_id: 'uberon_id'})
-            .where('protein_id', this.target.protein_id)
+            .where('protein_id', this.target.protein_id);
         const ancestorUberonQuery = this.knex({expression: 'expression', uberon_ancestry: 'uberon_ancestry'})
             .select({uberon_id: 'ancestor_uberon_id'})
             .where('protein_id', this.target.protein_id)
             .andWhere('expression.uberon_id', this.knex.raw('uberon_ancestry.uberon_id'))
             .whereNotIn('ancestor_uberon_id', ['GO:0005623']);
         const hierarchyQuery = this.knex({uberon_parent: 'uberon_parent', uberon: 'uberon'})
-            .join(directUberonQuery.union(ancestorUberonQuery).as('subq'), 'uberon.uid', 'subq.uberon_id')
+            .join(exprUberonIDs.union(ancestorUberonQuery).as('subq'), 'uberon.uid', 'subq.uberon_id')
             .select(['uberon.uid', 'uberon_parent.parent_id', 'name'])
             .where('uberon.uid', this.knex.raw('uberon_parent.uid'));
 
@@ -148,18 +148,26 @@ export class TargetDetails{
         }
         node.data.forEach((dp: any) => {
             this.tryPushValue(map, dp.id, dp.value);
-        })
+        });
         node.children.forEach((child: any) => {
-            child.data.forEach((dp: any) => {
-                this.tryPushValue(map, dp.id, dp.value);
-            })
-            this.calcChildData(child).forEach((v,k)=> {
-                this.tryPushValue(map, k, v);
-            })
-        })
+            this.calcChildData(child);
+        });
+        if (node.data.length > 0 && node.children.length > 0) {
+            const directNode = {
+                uid: node.data[0].uberon_id,
+                name: node.name + ' (direct)',
+                childData: null,
+                parents: [],
+                children: [],
+                data: [],
+                size: 1,
+                value: Math.max(...node.data.map((r: any) => r.value))
+            };
+            node.children.push(directNode);
+        }
         node.childData = map;
         node.size = map.size;
-        node.value = Array.from(map.values()).reduce((a,b) => a + b, 0) / map.size
+        node.value = Math.max(...Array.from(map.values()));
         return map;
     }
 
