@@ -1,9 +1,9 @@
 import {DatabaseConfig} from "../databaseConfig";
 import {FieldInfo} from "../FieldInfo";
 import {ListContext} from "../listManager";
+import {HierarchicalQuery} from "../hierarchicalQuery";
 
-
-export class TargetDetails{
+export class TargetDetails {
     facetName: string;
     knex: any;
     databaseConfig: DatabaseConfig;
@@ -11,6 +11,7 @@ export class TargetDetails{
     target: any;
     top: number;
     skip: number;
+
     constructor(args: any, target: any, tcrd: any) {
         this.facetName = args.facetName;
         this.knex = tcrd.db;
@@ -23,6 +24,7 @@ export class TargetDetails{
         const list = this.databaseConfig.listManager.listMap.get(context.toString()) || [];
         this.facet = list.find(f => f.name === this.facetName) || new FieldInfo({});
     }
+
     getTaus() {
         const itypes = [
             'HPA Protein Tissue Specificity Index',
@@ -35,150 +37,20 @@ export class TargetDetails{
         return this.knex('tdl_info').select({name: 'itype', value: 'number_value'}).whereIn('itype', itypes)
             .andWhere('protein_id', this.target.protein_id);
     }
+
     getExpressionTree() {
-        const expressionQuery = this.knex('expression').select(
-            {
-                id: 'id',
-                etype: 'etype',
-                tissue: 'tissue',
-                value: this.knex.raw('coalesce(source_rank, number_value / 5)'),
-                evidence: 'evidence',
-                uberon_id: 'uberon_id'
-            }
-            ).where('protein_id', this.target.protein_id)
-            .whereNotNull('uberon_id');
-        const gtexQuery = this.knex('gtex').select(
-            {
-                id: 'id',
-                etype: this.knex.raw('"GTEx"'),
-                tissue: 'tissue',
-                value: 'tpm_rank',
-                evidence: this.knex.raw('NULL'),
-                uberon_id: 'uberon_id'
-            }
-            ).where('protein_id', this.target.protein_id)
-            .whereNotNull('uberon_id');
-        const exprUberonIDs = this.knex('expression').select(
-            {uberon_id: 'uberon_id'})
-            .where('protein_id', this.target.protein_id);
-        const ancestorUberonQuery = this.knex({expression: 'expression', uberon_ancestry: 'uberon_ancestry'})
-            .select({uberon_id: 'ancestor_uberon_id'})
-            .where('protein_id', this.target.protein_id)
-            .andWhere('expression.uberon_id', this.knex.raw('uberon_ancestry.uberon_id'))
-            .whereNotIn('ancestor_uberon_id', ['GO:0005623']);
-        const hierarchyQuery = this.knex({uberon_parent: 'uberon_parent', uberon: 'uberon'})
-            .join(exprUberonIDs.union(ancestorUberonQuery).as('subq'), 'uberon.uid', 'subq.uberon_id')
-            .select(['uberon.uid', 'uberon_parent.parent_id', 'name'])
-            .where('uberon.uid', this.knex.raw('uberon_parent.uid'));
-
-        return Promise.all([hierarchyQuery, expressionQuery.union(gtexQuery)]).then((rows: any) => {
-            const hierarchyRows = rows[0];
-            const expressionRows = rows[1];
-
-            const uberonDict = new Map<string, any>();
-            const parentDict = new Map<string, string[]>();
-            hierarchyRows.forEach((row: any) => {
-                const tissueObj = {uid: row.uid, name: row.name, childData: new Map<number, number>(), parents: [], children: [], data: []}
-                uberonDict.set(row.uid, tissueObj);
-                if (parentDict.has(row.uid)) {
-                    const list = parentDict.get(row.uid) || [];
-                    list.push(row.parent_id);
-                } else {
-                    parentDict.set(row.uid, [row.parent_id]);
-                }
-            });
-
-            const nonRoots: string[] = [];
-            uberonDict.forEach((v, k) => {
-                const parents = parentDict.get(k) || [];
-                v.parents = parents;
-                parents.forEach(uid => {
-                    const oneParent = uberonDict.get(uid);
-                    if (oneParent) {
-                        if (!nonRoots.includes(k)) {
-                            nonRoots.push(k);
-                        }
-                        oneParent.children.push(v);
-                    }
-                });
-            });
-            expressionRows.forEach((row: any) => {
-                const obj = uberonDict.get(row.uberon_id);
-                if (obj) {
-                    obj.data.push(row);
-                }
-            })
-            nonRoots.forEach(nonRoot => {
-                uberonDict.delete(nonRoot);
-            });
-            uberonDict.forEach((v,k) => {
-                this.calcChildData(v);
-            })
-            this.collapseDictionary(uberonDict)
-            return {
-                uberonDict: Array.from(uberonDict.values())
-            }
-        });
-    }
-    trimNode(node: any){
-        for (let i = node.children.length - 1 ; i >= 0 ; i--){
-            const child = node.children[i];
-            this.trimNode(child);
-            if (child.data.length === 0 && child.children.length === 1) {
-                node.children[i] = child.children[0];
-            }
-        }
-    }
-    collapseDictionary(dict: Map<string, any>) {
-        dict.forEach((v, k) => {
-            this.trimNode(v);
-        })
-
-    }
-    tryPushValue(map: Map<number, number>, id: number, val: number){
-        if (map.has(id)){
-            return;
-        }
-        map.set(id, val);
-    }
-    calcChildData(node: any) {
-        const map: Map<number, number> = node.childData;
-        if (map.size > 0) {
-            return map;
-        }
-        node.data.forEach((dp: any) => {
-            this.tryPushValue(map, dp.id, dp.value);
-        });
-        node.children.forEach((child: any) => {
-            this.calcChildData(child);
-        });
-        if (node.data.length > 0 && node.children.length > 0) {
-            const directNode = {
-                uid: node.data[0].uberon_id,
-                name: node.name + ' (direct)',
-                childData: null,
-                parents: [],
-                children: [],
-                data: [],
-                size: 1,
-                value: Math.max(...node.data.map((r: any) => r.value))
-            };
-            node.children.push(directNode);
-        }
-        node.childData = map;
-        node.size = map.size;
-        node.value = Math.max(...Array.from(map.values()));
-        return map;
+        const hQ = new HierarchicalQuery(this.knex);
+        return hQ.getExpressionHierarchy(this.target.protein_id);
     }
 
-    getFacetValueCount(){
+    getFacetValueCount() {
         const query = this.databaseConfig.getBaseSetQuery('protein', this.facet,
             {value: this.knex.raw(`count(distinct ${this.facet.select})`)})
             .where('protein.uniprot', this.target.uniprot);
         return query;
     }
 
-    getAllFacetValues(){
+    getAllFacetValues() {
         const query = this.databaseConfig.getBaseSetQuery('protein', this.facet)
             .where('protein.uniprot', this.target.uniprot)
             .orderBy('value')
@@ -187,7 +59,7 @@ export class TargetDetails{
         return query;
     }
 
-    getSequenceVariants(){
+    getSequenceVariants() {
         const query = this.knex({sequence_variant: 'sequence_variant', protein: 'protein'}).select({
             residue: 'residue', aa: 'variant', bits: 'bits'
         }).where('dataSource', 'ProKinO')
@@ -202,7 +74,8 @@ export class TargetDetails{
             startResidue: `residue_start`,
             endResidue: `residue_end`,
             type: `sequence_annotation.type`,
-            name: `sequence_annotation.name`})
+            name: `sequence_annotation.name`
+        })
             .where('dataSource', 'ProKinO')
             .andWhere('protein.uniprot', this.target.uniprot)
             .andWhere('protein.id', this.knex.raw('sequence_annotation.protein_id'))
@@ -274,11 +147,11 @@ export class TargetDetails{
             const upTargetMap: Map<number, any> = new Map<number, any>();
             const downTargetMap: Map<number, any> = new Map<number, any>();
             rows.forEach((row: any) => {
-               if (row.direction === 'upstream') {
-                   processOneRow(row, upTargetMap);
-               } else {
-                   processOneRow(row, downTargetMap);
-               }
+                if (row.direction === 'upstream') {
+                    processOneRow(row, upTargetMap);
+                } else {
+                    processOneRow(row, downTargetMap);
+                }
             });
             return {
                 upstream: upTargetMap.values(),
@@ -288,13 +161,12 @@ export class TargetDetails{
 
     }
 
-    static LD2JSON(ldObject: any){
+    static LD2JSON(ldObject: any) {
         const jsonObject: any = {};
         for (const prop in ldObject) {
             if (ldObject[prop]['@value']) {
                 jsonObject[prop] = ldObject[prop]['@value'];
-            }
-            else if (ldObject[prop]['rdfs:label']) {
+            } else if (ldObject[prop]['rdfs:label']) {
                 jsonObject[prop] = ldObject[prop]['rdfs:label'];
             }
         }
