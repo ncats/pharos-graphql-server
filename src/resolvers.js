@@ -240,17 +240,22 @@ const resolvers = {
                 ligandFacets: ligandFilters.filter(f => f.dataType === 'category').map(f => f.name)
             };
         },
+        hierarchicalFilters: async function (_, args, {dataSources}) {
+            return {
+                targetFacets: ['DTO Class', 'PANTHER Class'],
+                diseaseFacets: [],
+                ligandFacets: []
+            }
+        },
+        filterHierarchy: async function(_, args, {dataSources}) {
+            console.log(args);
+            const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
+            await loadRequiredExternalData(listObj);
+            return listObj.getHierarchyQuery(args.facetName);
+        },
         upset: async function (_, args, {dataSources}) {
             const listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
-            if (listObj instanceof LigandList) {
-                await listObj.getSimilarLigands();
-            }
-            if (listObj instanceof TargetList) {
-                await Promise.all([
-                    listObj.getDrugTargetPredictions(),
-                    listObj.getSimilarSequences()
-                ]);
-            }
+            await loadRequiredExternalData(listObj);
             return listObj.getUpsetQuery(args.facetName, args.values).then(res => {
                 // console.log(res);
                 return res.map(r => {
@@ -271,15 +276,7 @@ const resolvers = {
                     args.top = 250000;
                 }
                 listObj = DataModelListFactory.getListObject(args.model, dataSources.tcrd, args);
-                if (listObj instanceof LigandList) {
-                    await listObj.getSimilarLigands();
-                }
-                if (listObj instanceof TargetList) {
-                    await Promise.all([
-                        listObj.getDrugTargetPredictions(),
-                        listObj.getSimilarSequences()
-                    ]);
-                }
+                await loadRequiredExternalData(listObj);
                 listQuery = listObj.getListQuery('download');
             } catch (e) {
                 return {
@@ -1000,8 +997,16 @@ const resolvers = {
             return q;
         },
         expressionTree: async function(target, args, {dataSources}) {
-            targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
             return targetDetails.getExpressionTree();
+        },
+        diseaseTree: async function(target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getDiseaseTree();
+        },
+        tinxTree: async function(target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getTinxTree();
         },
         tissueSpecificity: async function(target, args, {dataSources}) {
             const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
@@ -2401,6 +2406,18 @@ function filterResultFacets(result, args) {
     }
     facets.forEach(f => f.enrichFacets = args.enrichFacets);
     return facets;
+}
+
+async function loadRequiredExternalData(listObj) {
+    if (listObj instanceof LigandList) {
+        await listObj.getSimilarLigands();
+    }
+    if (listObj instanceof TargetList) {
+        await Promise.all([
+            listObj.getDrugTargetPredictions(),
+            listObj.getSimilarSequences()
+        ]);
+    }
 }
 
 module.exports = resolvers;

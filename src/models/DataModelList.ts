@@ -237,6 +237,15 @@ export abstract class DataModelList implements IBuildable {
         return query;
     }
 
+    getHierarchyQuery(facetName: string) {
+        const facetQuery: FieldInfo | undefined = this.facetsToFetch.find(f => f.name === facetName);
+        if (facetQuery) {
+            const query = facetQuery.getFacetQuery();
+            query.select('dto.dtoid').where('generation', '>', 0);
+        }
+        return {todo: 'not yet implemented'};
+    }
+
     getUpsetSubQuery(facetName: string, values: string[]) {
         const facetInfo = this.databaseConfig.listManager.getOneField(this, 'facet', facetName);
         if (!facetInfo) {

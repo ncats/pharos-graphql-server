@@ -43,6 +43,16 @@ export class TargetDetails {
         return hQ.getExpressionHierarchy(this.target.protein_id);
     }
 
+    getDiseaseTree() {
+        const hQ = new HierarchicalQuery(this.knex);
+        return hQ.getDiseaseHierarchy(this.target.protein_id);
+    }
+
+    getTinxTree() {
+        const hQ = new HierarchicalQuery(this.knex);
+        return hQ.getTinxHierarchy(this.target.protein_id);
+    }
+
     getFacetValueCount() {
         const query = this.databaseConfig.getBaseSetQuery('protein', this.facet,
             {value: this.knex.raw(`count(distinct ${this.facet.select})`)})
