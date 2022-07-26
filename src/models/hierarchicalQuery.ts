@@ -27,7 +27,8 @@ export class HierarchicalQuery {
     parseHierarchyResponse(res: any[], summaryFunction: (list: number[]) => number, manualRoots?: any[], normalize = false) {
         const ontologyDict = new Map<string, any>();
         const parentDict = new Map<string, string[]>();
-        let min = 0; let max = 0;
+        let min: number;
+        let max: number;
         if (manualRoots && manualRoots.length > 0) {
             manualRoots.forEach(obj => {
                 this.tryAddSingleElement(ontologyDict, obj.oid, {
@@ -48,8 +49,8 @@ export class HierarchicalQuery {
                 children: []
             });
             if (row.ancestor_oid === row.oid) {
-                min = Math.min(min, row.value);
-                max = Math.max(max, row.value);
+                min = Math.min(min, row.value) || row.value;
+                max = Math.max(max, row.value) || row.value;
                 this.tryAddSingleElement(dictElement.data, row.id, row.value);
             }
             this.tryAddListElement(parentDict, row.ancestor_oid, row.ancestor_parent);
@@ -89,7 +90,7 @@ export class HierarchicalQuery {
             {dataTable: 'tinx_importance', ancestryTable: 'ancestry_do', detailTable: 'do', parentTable: 'do_parent'},
             {id: this.knex.raw("concat(dataTable.doid, '-', dataTable.protein_id)"), link_oid: 'doid',
                 value: this.knex.raw('log(dataTable.score)'), type: this.knex.raw('"Tin-X"'), oid: 'doid'});
-        // console.log(query.toString());
+        console.log(query.toString());
         return query.then((res: any[]) => this.parseHierarchyResponse(res, (list) => Math.max(...list), manualRoots, true));
     }
     getDiseaseHierarchy(protein_id: number) {
@@ -236,6 +237,9 @@ export class HierarchicalQuery {
 
     calcData(node: any, summaryFunction: (list: number[]) => number, idname = 'uid', normalizeRange: number[]|null) {
         const normalize = (val: number, min: number, max: number) => {
+            if (max === min) {
+                return 1;
+            }
             return (val - min) / (max - min);
         };
         node.children.forEach((child: any) => {
