@@ -36,7 +36,7 @@ const tcrdConfig = {
     },
     pool: {
         min: 2,
-        max: 10,
+        max: 12,
         createTimeoutMillis: 30000,
         acquireTimeoutMillis: 30000,
         idleTimeoutMillis: 30000,
