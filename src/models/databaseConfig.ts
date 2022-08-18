@@ -160,7 +160,11 @@ export class DatabaseConfig {
             mondoid: 'mondoid',
             otherid: this.database.raw('concat(db, \':\', value)')
         });
-        return query.then((res: any[]) => {
+        const noMondoQuery = this.database('disease').distinct({
+            mondoid: 'ncats_name',
+            otherid: 'did'
+        }).whereNotNull('did').whereNull('mondoid');
+        return query.union(noMondoQuery).then((res: any[]) => {
             res.forEach((row: any) => {
                 let list = this.mondo2id.get(row.mondoid) || [];
                 list.push(row.otherid);

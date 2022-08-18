@@ -1414,7 +1414,13 @@ const resolvers = {
 
     Disease: {
         predictions: async function (disease, args, {dataSources}) {
-            return new DynamicPredictions(dataSources.tcrd).fetchDiseaseAPIs(disease);
+            const dids = await resolvers.Disease.dids(disease, args, {dataSources});
+            return new DynamicPredictions(dataSources.tcrd).fetchDiseaseAPIs(disease, dids.map(r => {
+                const pieces = r.id.split(':');
+                if (pieces.length > 0) {
+                    return {value: pieces[1], db: pieces[0]};
+                }
+            }));
         },
         mondoEquivalents: async function (disease, args, {dataSources}) {
             if (disease.mondoID) {

@@ -90,7 +90,7 @@ export class HierarchicalQuery {
             {dataTable: 'tinx_importance', ancestryTable: 'ancestry_do', detailTable: 'do', parentTable: 'do_parent'},
             {id: this.knex.raw("concat(dataTable.doid, '-', dataTable.protein_id)"), link_oid: 'doid',
                 value: this.knex.raw('log(dataTable.score)'), type: this.knex.raw('"Tin-X"'), oid: 'doid'});
-        console.log(query.toString());
+        // console.log(query.toString());
         return query.then((res: any[]) => this.parseHierarchyResponse(res, (list) => Math.max(...list), manualRoots, true));
     }
     getDiseaseHierarchy(protein_id: number) {
