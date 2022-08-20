@@ -56,11 +56,6 @@ export class DynamicPredictions {
         });
         return Promise.all(queries)
             .then((responses: any[]) => {
-                responses.forEach(resp => {
-                    resp.data.forEach((d: any) => {
-                        console.log(d);
-                    });
-                });
                 const nonNullResponsees = responses.filter(r => r.data && r.data.length > 0 && r.data[0]);
                 nonNullResponsees.forEach(r => {
                     if (r.data) {
