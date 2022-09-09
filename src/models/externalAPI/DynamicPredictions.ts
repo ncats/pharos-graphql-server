@@ -38,11 +38,18 @@ export class DynamicPredictions {
     async fetchTargetAPIs(target: any) {
         return this.fetchAPIs(target, this.targetAPIs, this.processTargetAPI);
     }
-    async fetchDiseaseAPIs(disease: any, aliases: string[] = []) {
+    async fetchDiseaseAPIs(disease: any, aliases: { db:string, value: string }[] = []) {
+        const allAliases = aliases.slice();
         if (disease.mondoID || aliases.length > 0) {
             const mondoAliases = await this.knex('mondo_xref')
                 .select(['value', 'db']).where('mondoid', disease.mondoID);
-            return this.fetchAPIs(disease, this.diseaseAPIs, this.processDiseaseAPI, [...aliases, ...mondoAliases]);
+            mondoAliases.forEach(newAlias => {
+               const found = allAliases.find(a => a.db === newAlias.db && a.value === newAlias.value);
+               if (!found) {
+                   allAliases.push(newAlias);
+               }
+            });
+            return this.fetchAPIs(disease, this.diseaseAPIs, this.processDiseaseAPI, allAliases);
         }
     }
     async fetchLigandAPIs(ligand: any) {
