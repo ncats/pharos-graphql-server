@@ -1,6 +1,6 @@
 {
   "name": "pharos-graphql-server",
-  "version": "3.13.10",
+  "version": "3.14.0",
   "description": "",
   "main": "src/index.js",
   "scripts": {

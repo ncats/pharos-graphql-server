@@ -393,6 +393,7 @@ const resolvers = {
             var finder = '"';
             var regExp = new RegExp(finder, 'g');
             var cleanName = args.name.replace(regExp, '');
+            console.log(dataSources.tcrd.getDisease(cleanName).toString());
             return dataSources.tcrd.getDisease(cleanName)
                 .then(rows => {
                     rows = filter(rows, r => r.name != null);
