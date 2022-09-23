@@ -31,7 +31,7 @@ enum Gender {
 
 scalar JSON
 
-type NormalizableFilterSets @cacheControl(maxAge: 604800){
+type FilterSets @cacheControl(maxAge: 604800){
     targetFacets: [String]
     diseaseFacets: [String]
     ligandFacets: [String]
@@ -641,6 +641,8 @@ type Target @cacheControl(maxAge: 604800){
      expressionCounts: [IntProp]
      expressions(skip: Int=0, top: Int=10, filter: IFilter): [Expression]
      expressionTree: JSON
+     diseaseTree: JSON
+     tinxTree: JSON
      gtex: [GTEXExpression]
      tissueSpecificity: [FloatProp]
 
@@ -1009,7 +1011,7 @@ collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral
           diseases:[String], filter: IFilter): Result
      xref(source: String!, value: String!): Xref
 
-     normalizableFilters: NormalizableFilterSets
+     normalizableFilters: FilterSets
 
      filterSearch(term: String) : [Facet]
 
@@ -1019,4 +1021,7 @@ collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral
      usageData(interval: SummaryInterval!): JSON
 
      getSequenceAlignments(sequence: String!, filter: IFilter, batch: [String]): [SequenceSimilarityDetails]
+
+     hierarchicalFilters: FilterSets
+     filterHierarchy(model: String!, facetName: String!, filter: IFilter, batch: [String]): JSON
 }

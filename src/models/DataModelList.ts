@@ -176,6 +176,16 @@ export abstract class DataModelList implements IBuildable {
         return facetQueries;
     }
 
+    logit(tag: string, data: any, raw = false) {
+        console.log(`vvvvvv ${tag} vvvvvv`);
+        if (raw) {
+            console.log(data);
+        } else {
+            console.log(data.toString());
+        }
+        console.log(`^^^^^^ ${tag} ^^^^^^\n`);
+    }
+
     getCountQuery(): any {
         let queryDefinition = QueryDefinition.GenerateQueryDefinition(this,
             [{table: this.rootTable, column: this.keyColumn, group_method: 'count', alias: 'count'} as FieldInfo]);
@@ -183,7 +193,7 @@ export abstract class DataModelList implements IBuildable {
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query, false);
         this.captureQueryPerformance(query, "list count");
-        // console.log(query.toString());
+        // this.logit('count', query);
         return query;
     };
 
@@ -222,7 +232,7 @@ export abstract class DataModelList implements IBuildable {
             query.limit(this.top);
         }
         this.doSafetyCheck(query);
-        // console.log(query.toString());
+        // this.logit('list', query);
         return query;
     }
 
@@ -234,7 +244,37 @@ export abstract class DataModelList implements IBuildable {
             }).groupBy('values')
             .orderBy('count', 'desc');
         // console.log(query.toString());
-        return query;
+        return query.then((res: any[]) => {
+            const facetInfo = this.databaseConfig.listManager.getOneField(this, 'facet', facetName);
+            if (facetInfo?.valuesDelimited) {
+                res.forEach(row => {
+                   row.values = row.values.split('|').filter((val: string) => values.includes(val)).join('|');
+                });
+                const map = new Map<string, number>();
+                res.forEach(row => {
+                    if (map.has(row.values)) {
+                        map.set(row.values, map.get(row.values) + row.count);
+                    } else {
+                        map.set(row.values, row.count);
+                    }
+                });
+                const returnResult = Array.from(map.keys()).map(k => {
+                    return {values: k, count: map.get(k)};
+                });
+                return returnResult;
+            } else {
+                return res;
+            }
+        });
+    }
+
+    getHierarchyQuery(facetName: string) {
+        const facetQuery: FieldInfo | undefined = this.facetsToFetch.find(f => f.name === facetName);
+        if (facetQuery) {
+            const query = facetQuery.getFacetQuery();
+            query.select('dto.dtoid').where('generation', '>', 0);
+        }
+        return {todo: 'not yet implemented'};
     }
 
     getUpsetSubQuery(facetName: string, values: string[]) {
@@ -242,26 +282,43 @@ export abstract class DataModelList implements IBuildable {
         if (!facetInfo) {
             return null;
         }
-
+        const fields = [new FieldInfo({
+            table: this.rootTable,
+            column: this.keyColumn,
+            alias: 'name'
+        } as FieldInfo)];
+        if (facetInfo.valuesDelimited) {
+            fields.push(new FieldInfo({
+                ...facetInfo,
+                select: this.database.raw(`replace(${facetInfo.select},',','|')`),
+                isForUpsetPlot: true,
+                alias: 'values'
+            }));
+        }else {
+            fields.push(new FieldInfo({
+                ...facetInfo,
+                group_method: 'group_concat',
+                isForUpsetPlot: true,
+                alias: 'values'
+            }));
+        }
         let queryDefinition = QueryDefinition.GenerateQueryDefinition(this,
-            [
-                new FieldInfo({
-                    table: this.rootTable,
-                    column: this.keyColumn,
-                    alias: 'name'
-                } as FieldInfo),
-                new FieldInfo({
-                    ...facetInfo,
-                    group_method: 'group_concat',
-                    isForUpsetPlot: true,
-                    alias: 'values'
-                })
-            ]);
+            fields);
 
         let query = queryDefinition.generateBaseQuery(true);
         this.addFacetConstraints(query, this.filteringFacets, facetInfo.name);
         this.addModelSpecificFiltering(query, false);
-        query.whereIn(this.database.raw(facetInfo.select), values);
+        if (facetInfo.valuesDelimited) {
+            query.where((q:any) => {
+                values.forEach(val => {
+                    val.split(',').forEach(subVal => {
+                        q.orWhere(this.database.raw(facetInfo.select), 'like', `%${subVal}%`);
+                    });
+                });
+            });
+        } else {
+            query.whereIn(this.database.raw(facetInfo.select), values);
+        }
         query.groupBy(1);
         return query;
     }

@@ -38,11 +38,18 @@ export class DynamicPredictions {
     async fetchTargetAPIs(target: any) {
         return this.fetchAPIs(target, this.targetAPIs, this.processTargetAPI);
     }
-    async fetchDiseaseAPIs(disease: any) {
-        if (disease.mondoid) {
-            const aliases = await this.knex('mondo_xref')
+    async fetchDiseaseAPIs(disease: any, aliases: { db:string, value: string }[] = []) {
+        const allAliases = aliases.slice();
+        if (disease.mondoID || aliases.length > 0) {
+            const mondoAliases = await this.knex('mondo_xref')
                 .select(['value', 'db']).where('mondoid', disease.mondoID);
-            return this.fetchAPIs(disease, this.diseaseAPIs, this.processDiseaseAPI, aliases);
+            mondoAliases.forEach(newAlias => {
+               const found = allAliases.find(a => a.db === newAlias.db && a.value === newAlias.value);
+               if (!found) {
+                   allAliases.push(newAlias);
+               }
+            });
+            return this.fetchAPIs(disease, this.diseaseAPIs, this.processDiseaseAPI, allAliases);
         }
     }
     async fetchLigandAPIs(ligand: any) {
@@ -56,25 +63,44 @@ export class DynamicPredictions {
         });
         return Promise.all(queries)
             .then((responses: any[]) => {
-                responses.forEach(r => {
+                const nonNullResponsees = responses.filter(r => r.data && r.data.length > 0 && r.data[0]);
+                nonNullResponsees.forEach(r => {
                     if (r.data) {
                         r.data.forEach((row: any) => {
                             this.findDiseases(row);
+                            this.findTargets(row);
                         });
                     }
-                })
-                return responses.map(r => r.data ? r.data : null);
+                });
+                return nonNullResponsees.map(r => r.data ? r.data : null);
             }, (rejected: any) => {
                 console.log(rejected);
                 throw new Error(rejected);
             });
     }
+    findTargets(obj: any) {
+        if (obj) {
+            if (obj.hasOwnProperty('@type') && obj['@type'] === 'Protein') {
+                obj.url = '/targets/' + obj.name;
+            } else if (Array.isArray(obj)) {
+                obj.forEach(el => {
+                    this.findTargets(el);
+                });
+            } else if (typeof obj === 'string') {
 
+            } else {
+                for (let [key, value] of Object.entries(obj)) {
+                    this.findTargets(value);
+                }
+            }
+        }
+    }
     findDiseases(obj: any) {
         if (obj) {
             if (obj.hasOwnProperty('@type') && obj['@type'] === 'MedicalCondition') {
                 const mondoid = this.tcrd.tableInfo.id2mondo.get(obj.alternateName);
                 if (mondoid) {
+                    obj.mondoid = mondoid;
                     obj.url = '/diseases/' + mondoid;
                 }
             } else if (Array.isArray(obj)) {
