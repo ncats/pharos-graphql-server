@@ -235,15 +235,15 @@ export class FieldInfo {
     private getStandardFacetQuery() {
         let queryDefinition = QueryDefinition.GenerateQueryDefinition(this.parent,
             [
-                {...this, alias: 'name'},
-                (this.getCountColumnInfo())
+                (this.getCountColumnInfo()),
+                {...this, alias: 'name'}
             ]);
 
         let query = queryDefinition.generateBaseQuery(true);
 
         this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
         this.parent.addModelSpecificFiltering(query, false);
-        query.groupBy(1).orderBy('value', 'desc');
+        query.groupBy(2).orderBy('value', 'desc');
         // console.log(query.toString());
         return query;
     }

@@ -170,7 +170,6 @@ export class QueryDefinition {
         let query = buildableObj.database(rootTableName)
             .select(this.getColumnList(buildableObj.database));
 
-
         const tablesInQuery: string[] = [];
         joinTables.forEach(dataTable => {
             if(dataTable.columns[0].isFromListQuery) {
@@ -206,7 +205,7 @@ export class QueryDefinition {
                 }
                 // @ts-ignore
                 query[joinFunction]({[dataTable.alias]: tableNameToUse}, function (this: any) {
-                    if(leftTable.tableName !== dataTable.tableName || !dataTable.joinConstraint) {
+                    if(leftTable.alias !== dataTable.alias || !dataTable.joinConstraint) {
                         this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${dataTable.alias}.${linkInfo.toCol}`);
                     }
                     if (dataTable.joinConstraint) {
