@@ -618,7 +618,8 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
             mondoDescription: 'ncats_disease.mondo_description',
             mondoID: 'ncats_disease.mondoid',
             doDescription: 'ncats_disease.do_description',
-            uniprotDescription: 'ncats_disease.uniprot_description'
+            uniprotDescription: 'ncats_disease.uniprot_description',
+            gard_rare: 'ncats_disease.gard_rare'
         };
 
         const tableQuery = this.db('ncats_disease').select(columns)
@@ -637,7 +638,8 @@ and c.target_id = ?`, ['MIM', target.tcrdid]));
             mondoDescription: 'def',
             mondoID: 'mondoid',
             doDescription: this.db.raw('null'),
-            uniprotDescription: this.db.raw('null')
+            uniprotDescription: this.db.raw('null'),
+            gard_rare: this.db.raw('null')
         }).where('name', name).orWhere('mondoid', name);
         return idQuery.union(tableQuery).union(mondoNavQuery);
     }
