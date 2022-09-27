@@ -261,6 +261,7 @@ type OrthologDisease @cacheControl(maxAge: 604800) {
 type Disease @cacheControl(maxAge: 604800) {
      name: String!
      associationCount: Int!
+     gard_rare: Boolean
      directAssociationCount: Int
      mondoID: String
      datasource_count: Int

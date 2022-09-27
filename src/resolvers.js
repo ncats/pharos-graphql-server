@@ -1850,6 +1850,7 @@ const resolvers = {
                         last = val.stats.qValue;
                     });
                 }
+                values.splice(1000);
             }
             if (args.name) {
                 values = filter(values, x => {
