@@ -1693,14 +1693,15 @@ const resolvers = {
     },
     Uberon: {
         ancestors: async function (expr, args, {dataSources}) {
-            const query = dataSources.tcrd.db({uberon: 'uberon', uberon_ancestry: 'uberon_ancestry'})
+            const query = dataSources.tcrd.db({uberon: 'uberon', ancestry_uberon: 'ancestry_uberon'})
                 .select({
                     uid: 'uid',
                     name: 'name',
                     def: 'def',
                     comment: 'comment'
-                }).where('uberon.uid', dataSources.tcrd.db.raw('uberon_ancestry.ancestor_uberon_id'))
-                .andWhere('uberon_id', expr.uid);
+                }).where('uberon.uid', dataSources.tcrd.db.raw('ancestry_uberon.ancestor_id'))
+                .andWhere('oid', expr.uid)
+                .andWhere('oid', '!=', dataSources.tcrd.db.raw('ancestor_id'));
             return query;
         }
     },
