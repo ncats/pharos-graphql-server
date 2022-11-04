@@ -3,7 +3,7 @@
 //
 const cred = {
     DBHOST: 'tcrd-cluster.cluster-ceyknq0yekb3.us-east-1.rds.amazonaws.com',
-    DBNAME: 'tcrd6134pharos',
+    DBNAME: 'pharos315',
     USER: 'tcrd',
     PWORD: '',
     CONFIGDB: 'pharos_config_prod',

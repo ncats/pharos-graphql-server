@@ -63,7 +63,8 @@ export class DatabaseTable {
             ["sequence_search_summary-protein", "protein_id-id"],
             ["protein-sequence_search_summary", 'id-protein_id'],
             ["sequence_search_results-protein", "protein_id-id"],
-            ["protein-sequence_search_results", 'id-protein_id']
+            ["protein-sequence_search_results", 'id-protein_id'],
+            ["protein2pubmed-pubmed","pubmed_id-id"]
         ]
     );
 
@@ -96,7 +97,8 @@ export class DatabaseTable {
             ["ncats_ligands-dto", ["p2dto", "protein", "t2tc", "target", "ncats_ligand_activity"]],
             ["ncats_ligands-pathway", ["protein", "t2tc", "target", "ncats_ligand_activity"]],
             ["ncats_ligands-goa", ["protein", "t2tc", "target", "ncats_ligand_activity"]],
-            ["protein-tissue", ["expression"]]
+            ["protein-tissue", ["expression"]],
+            ["protein-generif2pubmed", ["generif"]]
         ]);
 
     static getRequiredLinks(table1: string, table2: string): string[] | undefined {

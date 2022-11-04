@@ -25,6 +25,53 @@ export class TargetDetails {
         this.facet = list.find(f => f.name === this.facetName) || new FieldInfo({});
     }
 
+    getPublicationCount() {
+        const query = this.knex('protein2pubmed')
+            .count({count: 'pubmed_id'})
+            .where('protein_id', this.target.protein_id)
+            .andWhere('source', 'NCBI');
+        return query.then((res: any[]) => {
+            if (res && res.length > 0) {
+                return res[0].count;
+            }
+            return 0;
+        })
+    }
+
+    getPublications() {
+        const that = this;
+        const query = this.knex({pubmed: 'ncats_pubmed.pubmed', pp: 'protein2pubmed'})
+            .select({
+                pmid: 'pubmed.id',
+                title: `title`,
+                journal: `journal`,
+                date: `date`,
+                authors: `authors`,
+                abstract: `abstract`,
+                fetch_date:`fetch_date`
+            })
+            .where('pp.pubmed_id', this.knex.raw('pubmed.id'))
+            .andWhere('pp.protein_id', this.target.protein_id)
+            .andWhere('pp.source', 'NCBI')
+            .orderBy('pubmed.date', 'desc')
+            .limit(this.top).offset(this.skip);
+        return query;
+    }
+
+    getGenerifsForTargetPub(pubObj: any) {
+        const query = this.knex({generif: 'generif', generif2pubmed: 'generif2pubmed'})
+            .select({
+                rifid: 'generif.id',
+                gene_id: 'generif.gene_id',
+                text: 'generif.text',
+                date: 'generif.date'
+            })
+            .where('generif.id', this.knex.raw('generif2pubmed.generif_id'))
+            .andWhere('protein_id', this.target.protein_id)
+            .andWhere('pubmed_id', pubObj.pmid)
+        return query;
+    }
+
     getTaus() {
         const itypes = [
             'HPA Protein Tissue Specificity Index',

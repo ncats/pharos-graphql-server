@@ -657,6 +657,21 @@ const resolvers = {
             });
         },
 
+        publicationCount: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getPublicationCount();
+        },
+
+        publications: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getPublications().then(res => {
+                res.forEach(row => {
+                    row.target = target;
+                });
+                return res;
+            });
+        },
+
         pubCount: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPubCountForTarget(target);
             return q.then(rows => {
@@ -2135,6 +2150,13 @@ const resolvers = {
             }
             // console.error('No doid in TINX ' + JSON.stringify(tinx));
             return null;
+        }
+    },
+
+    PublicationObject: {
+        generifs: async function(pub, _, {dataSources}) {
+            const targetDetails = new TargetDetails({}, pub.target, dataSources.tcrd);
+            return targetDetails.getGenerifsForTargetPub(pub);
         }
     }
 };

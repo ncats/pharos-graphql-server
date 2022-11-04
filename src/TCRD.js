@@ -694,23 +694,23 @@ and b.target_id = ?`, [disease.parent.tcrdid]));
     getPub(pmid) {
         return this.db.select(this.db.raw(`
 id as pmid, title, journal, date, abstract
-from pubmed where id = ?`, [pmid]));
+from ncats_pubmed.pubmed where id = ?`, [pmid]));
     }
 
     getPubCount(args) {
         if (args.term !== '') {
             return this.db.select(this.db.raw(`
-count(*) as cnt from pubmed 
+count(*) as cnt from ncats_pubmed.pubmed 
 where match(title,abstract) against(? in boolean mode)`, [args.term]));
         }
         return this.db.select(this.db.raw(`
-count(*) as cnt from pubmed`));
+count(*) as cnt from ncats_pubmed.pubmed`));
     }
 
     getPubTDLCounts(args) {
         let q = this.db.select(this.db.raw(`
 a.tdl as name, count(*) as value
-from target a, protein b, protein2pubmed c, pubmed d, t2tc e`));
+from target a, protein b, protein2pubmed c, ncats_pubmed.pubmed d, t2tc e`));
 
         if (args.filter) {
             for (var i in args.filter.facets) {
@@ -739,13 +739,13 @@ and c.pubmed_id = d.id`))
         if (args.term !== '') {
             return this.db.select(this.db.raw(`
 id as pmid, title, journal, date, abstract
-from pubmed where match(title,abstract) against(? in boolean mode) 
+from ncats_pubmed.pubmed where match(title,abstract) against(? in boolean mode) 
 order by date desc, pmid desc
 limit ? offset ?`, [args.term, args.top, args.skip]));
         }
         return this.db.select(this.db.raw(`
 id as pmid, title, journal, date, abstract
-from pubmed order by date desc, pmid desc 
+from ncats_pubmed.pubmed order by date desc, pmid desc 
 limit ? offset ?`, [args.top, args.skip]));
     }
 
@@ -795,8 +795,8 @@ from xref where xtype = ? and value = ?`, [args.source, args.value]));
         //console.log('>>> getPubCount: '+target.tcrdid);
         return this.db.select(this.db.raw(`
 count(distinct a.id) as cnt
-from pubmed a, protein2pubmed b, t2tc c 
-where a.id = b.pubmed_id and b.protein_id = c.protein_id 
+from ncats_pubmed.pubmed a, protein2pubmed b, t2tc c 
+where a.id = b.pubmed_id and b.protein_id = c.protein_id and b.source = 'NCBI'
 and c.target_id = ?`, [target.tcrdid]));
     }
 
@@ -805,9 +805,9 @@ and c.target_id = ?`, [target.tcrdid]));
         if (args.term !== '') {
             return this.db.select(this.db.raw(`
 a.id as pmid, title, journal, date, abstract, substring(date,1,4) as 'year'
-from pubmed a, protein2pubmed b, t2tc c 
+from ncats_pubmed.pubmed a, protein2pubmed b, t2tc c 
 where match(a.title,a.abstract) against(? in boolean mode) 
-and a.id = b.pubmed_id and b.protein_id = c.protein_id 
+and a.id = b.pubmed_id and b.protein_id = c.protein_id and b.source = 'NCBI'
 and c.target_id = ? 
 order by date desc, pmid desc
 limit ? offset ?`, [args.term, target.tcrdid, args.top, args.skip]));
@@ -815,8 +815,8 @@ limit ? offset ?`, [args.term, target.tcrdid, args.top, args.skip]));
 
         return this.db.select(this.db.raw(`
 a.id as pmid, title, journal, date, abstract, substring(date,1,4) as 'year'
-from pubmed a, protein2pubmed b, t2tc c 
-where a.id = b.pubmed_id and b.protein_id = c.protein_id 
+from ncats_pubmed.pubmed a, protein2pubmed b, t2tc c 
+where a.id = b.pubmed_id and b.protein_id = c.protein_id and b.source = 'NCBI'
 and c.target_id = ? order by date desc, pmid desc limit ? offset ?`,
             [target.tcrdid,
                 args.top, args.skip]));
@@ -834,7 +834,7 @@ and b.target_id = ?`, [target.tcrdid]));
         //console.log('>>> getGeneRIFs: '+target.tcrdid+' '+args);
         if (args.term !== '') {
             return this.db.select(this.db.raw(`
-a.id as rifid, a.text
+a.id as rifid, a.text, a.date
 from generif a, t2tc b
 where match(a.text) against(? in boolean mode) 
 and a.protein_id = b.protein_id 
@@ -843,10 +843,11 @@ and b.target_id = ? limit ? offset ?`, [args.term, target.tcrdid,
         }
 
         return this.db.select(this.db.raw(`
-a.id as rifid, a.text from generif a, t2tc b
+a.id as rifid, a.text, a.date
+from generif a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ? 
-order by years desc, pubmed_ids desc limit ? offset ?`,
+order by date desc limit ? offset ?`,
             [target.tcrdid,
                 args.top, args.skip]));
     }
@@ -854,10 +855,10 @@ order by years desc, pubmed_ids desc limit ? offset ?`,
     getPubsForGeneRIF(generif) {
         //console.log('>>> getPubsForGeneRIF: '+generif.rifid);
 
-        let q = this.db({pubmed: 'pubmed', ncats_generif_pubmed_map: 'ncats_generif_pubmed_map'})
+        let q = this.db({pubmed: 'ncats_pubmed.pubmed', generif2pubmed: 'generif2pubmed'})
             .select({pmid: 'id', title: 'title', journal: 'journal', date: 'date', abstract: 'abstract'})
-            .where('ncats_generif_pubmed_map.generif_id', generif.rifid)
-            .andWhere(this.db.raw('pubmed.id = ncats_generif_pubmed_map.pubmed_id'));
+            .where('generif2pubmed.generif_id', generif.rifid)
+            .andWhere(this.db.raw('pubmed.id = generif2pubmed.pubmed_id'));
         return q;
 
     }
@@ -1044,7 +1045,7 @@ from gene_attribute_type order by resource_group`));
         if (gat.pubmed_ids) {
             q = this.db.select(this.db.raw(`
 id as pmid, title, journal, date, abstract
-from pubmed`)).whereIn('id', gat.pubmed_ids.split('|'));
+from ncats_pubmed.pubmed`)).whereIn('id', gat.pubmed_ids.split('|'));
         } else {
             q = this.db.select(this.db.raw(`
 pubmed_ids from gene_attribute_type where id = ?`, [gat.id]))
@@ -1058,7 +1059,7 @@ pubmed_ids from gene_attribute_type where id = ?`, [gat.id]))
                     }
                     return this.db.select(this.db.raw(`
 id as pmid, title, journal, date, abstract
-from pubmed`)).whereIn('id', pubs);
+from ncats_pubmed.pubmed`)).whereIn('id', pubs);
                 });
         }
         return q;
@@ -1333,7 +1334,7 @@ pmids from locsig where id = ?`, [locsig.locid]))
                 }
                 return this.db.select(this.db.raw(`
 id as pmid, title, journal, date, abstract
-from pubmed`)).whereIn('id', pubs);
+from ncats_pubmed.pubmed`)).whereIn('id', pubs);
             });
     }
 

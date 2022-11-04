@@ -235,7 +235,26 @@ type GeneRIF @cacheControl(maxAge: 604800) {
      rifid: Int!
      text: String
      target: Target!
+     date: String
      pubs: [PubMed]
+}
+
+type GeneRIFObject @cacheControl(maxAge: 604800) {
+     rifid: Int!
+     gene_id: Int
+     text: String
+     date: String
+}
+
+type PublicationObject @cacheControl(maxAge: 604800) {
+     pmid: Int!
+     title: String!
+     journal: String
+     date: String
+     authors: String
+     abstract: String
+     fetch_date: String
+     generifs: [GeneRIFObject]
 }
 
 """Ortholog"""
@@ -600,12 +619,16 @@ type Target @cacheControl(maxAge: 604800){
      xrefs(source: String = ""): [Xref]
 
      """Publications associated with this protein"""
-     pubCount: Int
-     pubs(skip: Int = 0, top: Int = 10, term: String = ""): [PubMed]
+     pubCount: Int @deprecated(reason: "pubCount is deprecated. use publicationCount instead.")
+     pubs(skip: Int = 0, top: Int = 10, term: String = ""): [PubMed] @deprecated(reason: "pubs is deprecated. use publications instead.")
 
      """GeneRIF information"""
+     generifs(skip: Int = 0, top: Int = 10, term: String=""): [GeneRIF] @deprecated(reason: "Target.generifs is deprecated. use publications.generifs instead.")
+
+     """Combined publications and generifs information"""
      generifCount: Int
-     generifs(skip: Int = 0, top: Int = 10, term: String=""): [GeneRIF]
+     publicationCount: Int
+     publications(skip: Int=0, top: Int=10): [PublicationObject]!
 
      """Protein-protein interaction"""
      ppiCounts(filter: IFilter) : [IntProp]
