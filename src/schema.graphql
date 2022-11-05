@@ -628,7 +628,7 @@ type Target @cacheControl(maxAge: 604800){
      """Combined publications and generifs information"""
      generifCount: Int
      publicationCount: Int
-     publications(skip: Int=0, top: Int=10): [PublicationObject]!
+     publications(skip: Int=0, top: Int=5): [PublicationObject]!
 
      """Protein-protein interaction"""
      ppiCounts(filter: IFilter) : [IntProp]

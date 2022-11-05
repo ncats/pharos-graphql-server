@@ -10,6 +10,10 @@ export class VersionInfo{
             return this.knex('input_version').leftJoin('ncats_dataSource', 'data_source', 'dataSource')
                 .select('*').whereIn('source_key', keys)
                 .then((res: any[]) => this.parseVersionObjects(res));
+        } else {
+            return this.knex('input_version').leftJoin('ncats_dataSource', 'data_source', 'dataSource')
+                .select('*')
+                .then((res: any[]) => this.parseVersionObjects(res));
         }
         return null;
     }
