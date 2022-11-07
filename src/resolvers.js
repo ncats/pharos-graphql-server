@@ -546,6 +546,10 @@ const resolvers = {
     },
 
     Target: {
+        abstractWordCounts: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getAbstractWordCounts();
+        },
         dataVersions: async function (_, args, {dataSources}) {
             versionInfo = new VersionInfo(dataSources.tcrd.db);
             return versionInfo.getVersion(args.keys);

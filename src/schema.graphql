@@ -241,13 +241,14 @@ type GeneRIF @cacheControl(maxAge: 604800) {
 
 type GeneRIFObject @cacheControl(maxAge: 604800) {
      rifid: Int!
-     gene_id: Int
+     gene_id: [Int]
      text: String
      date: String
 }
 
 type PublicationObject @cacheControl(maxAge: 604800) {
      pmid: Int!
+     gene_id: [Int]
      title: String!
      journal: String
      date: String
@@ -582,6 +583,7 @@ type NearestTclinDetails @cacheControl(maxAge: 604800) {
 
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
+     abstractWordCounts(top: Int = 150): [IntProp]
      dataVersions(keys: [String!]): [DataVersionResponse]
      nearestTclin: NearestTclinDetails
      similarity: SimilarityDetails
