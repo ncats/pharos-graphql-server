@@ -581,9 +581,16 @@ type NearestTclinDetails @cacheControl(maxAge: 604800) {
     downstream: [SharedPathwayDetails]
 }
 
+type WordCountProp @cacheControl(maxAge: 604800) {
+     name: String!
+     count: Int!
+     oddsRatio: Float!
+     pValue: Float!
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
-     abstractWordCounts(top: Int = 150): [IntProp]
+     abstractWordCounts(top: Int = 150): [WordCountProp]
      dataVersions(keys: [String!]): [DataVersionResponse]
      nearestTclin: NearestTclinDetails
      similarity: SimilarityDetails

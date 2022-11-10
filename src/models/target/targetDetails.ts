@@ -2,6 +2,9 @@ import {DatabaseConfig} from "../databaseConfig";
 import {FieldInfo} from "../FieldInfo";
 import {ListContext} from "../listManager";
 import {HierarchicalQuery} from "../hierarchicalQuery";
+import {PythonCalculation} from "../externalAPI/PythonCalculation";
+
+const abstractCountString = '__ABSTRACT_COUNT__';
 
 export class TargetDetails {
     facetName: string;
@@ -90,50 +93,92 @@ export class TargetDetails {
     }
 
     getAbstractWordCounts() {
-        const query = this.knex({pubmed: 'ncats_pubmed.pubmed', pp: 'protein2pubmed'})
+        const wordPattern = /\b[A-Za-z]+[A-Za-z0-9\-\./\+]{1,}\b|\b[0-9]+[A-Za-z]+[0-9]+\b/;
+        const re = new RegExp(wordPattern, 'gm');
+
+        const abstractQuery = this.knex({pubmed: 'ncats_pubmed.pubmed', pp: 'protein2pubmed'})
             .distinct(['pubmed_id', 'abstract'])
             .where('pp.pubmed_id', this.knex.raw('pubmed.id'))
             .andWhere('pp.protein_id', this.target.protein_id)
             .andWhere('source', 'NCBI')
             .whereNotNull('abstract')
             .orderBy('pubmed_id', 'desc')
-            .limit(50);
-        return query.then((res: any[]) => {
-            const wordDict = new Map<string, any >();
-            const wordPattern = /\b[A-Za-z]+[A-Za-z0-9\-\./]{1,}\b|\b[0-9]+[A-Za-z]+[0-9]+\b/
-            const re = new RegExp(wordPattern, 'gm');
-            res.forEach((articleObj: any) => {
-                const matches = articleObj.abstract.match(re);
-                matches.forEach((word: string) => {
-                    const keyWord = word.toUpperCase();
-                    if (!this.stopWords.includes(keyWord)) {
-                        const countObject = wordDict.get(keyWord) || {count: 0, matches: []};
-                        wordDict.set(keyWord, countObject);
-                        countObject.count++;
+            .limit(100);
+        return abstractQuery.then((abstractRows: any[]) => {
+            const articleSetWordCount = new Map<string, number>();
+            const wordFormDictionary = new Map<string, {text: string, count: number}[]>();
 
-                        const existingMatch = countObject.matches.find((m: any) => m.text === word);
-                        if (existingMatch) {
-                            existingMatch.count ++;
-                        } else {
-                            countObject.matches.push({text: word, count: 1});
-                        }
+            abstractRows.forEach((articleRow: any) => {
+                const wordMatches = articleRow.abstract.match(re);
+                const articleWordList = new Map<string, number>();
+                wordMatches.forEach((actualWord: string) => {
+                    const lowercaseWord = actualWord.toLowerCase();
+                    articleWordList.set(lowercaseWord, 1);
+                    const wordFormList = wordFormDictionary.get(lowercaseWord) || [];
+                    wordFormDictionary.set(lowercaseWord, wordFormList);
+
+                    const existingMatch = wordFormList.find((m: any) => m.text === actualWord);
+                    if (existingMatch) {
+                        existingMatch.count ++;
+                    } else {
+                        wordFormList.push({text: actualWord, count: 1});
                     }
+                });
+                articleWordList.forEach((v,k) => {
+                    const count = articleSetWordCount.get(k) || 0;
+                    articleSetWordCount.set(k, count + 1);
                 });
             });
 
-            var items = Array.from(wordDict.values()).sort((a, b) => b.count - a.count );
-            const wordCounts: {name: string, value: number}[] = [];
-
-            let count = 0;
-            items.every(item => {
-                const value = item.count;
-                const name = item.matches.sort((a: any, b: any) => b.count - a.count)[0].text;
-                wordCounts.push({name: name, value: value});
-                count ++;
-                if (count >= this.top) {return false;}
-                return true;
+            var items = Array.from(articleSetWordCount.keys()).map(word => {
+                return {name: word, count: articleSetWordCount.get(word) || 0};
             });
-            return wordCounts;
+
+            if (abstractRows.length > 20) {
+                items = items.filter(r => r.count >= 2);
+            }
+
+            const wordQuery = this.knex('word_count').select('*')
+                .whereIn('word', [abstractCountString, ...items.map(a => a.name)]);
+
+            return wordQuery.then((fullCounts: { word: string, count: number }[]) => {
+                const fullCountDict = new Map<string, number>();
+                fullCounts.forEach(row => {
+                    fullCountDict.set(row.word, row.count);
+                });
+
+                const totalAbstractCount = fullCountDict.get(abstractCountString);
+                const contingencyTables: any[] = [];
+                const wordCounts: {name: string, count: number, oddsRatio: number, pValue: number}[] = [];
+                let count = 0;
+                items.forEach(wordCountPair => {
+                    const wordFormList = wordFormDictionary.get(wordCountPair.name) || [];
+                    const name = wordFormList.sort((a: any, b: any) => b.count - a.count)[0].text;
+
+                    const inListHasValue = wordCountPair.count;
+                    const inListNoValue = abstractRows.length - inListHasValue;
+                    const fullListHasValue = fullCountDict.get(wordCountPair.name);
+                    // @ts-ignore
+                    const fullListNoValue = totalAbstractCount - fullListHasValue;
+                    // @ts-ignore
+                    const outListHasValue = fullListHasValue - inListHasValue;
+                    const outListNoValue = fullListNoValue - inListNoValue;
+                    let oddsRatio = (inListHasValue * outListNoValue) / (inListNoValue * outListHasValue);
+                    if (isFinite(oddsRatio) && oddsRatio > 0) {
+                        count += 1;
+                        wordCounts.push({name: name, count: inListHasValue, oddsRatio: oddsRatio, pValue: 0});
+                        contingencyTables.push([[inListHasValue, outListHasValue], [inListNoValue, outListNoValue]]);
+                    }
+                });
+
+                const pyCalc = new PythonCalculation();
+                return pyCalc.calculateFisherTest(contingencyTables).then((fisherResults: any[]) => {
+                    wordCounts.forEach((wc, index) => {
+                       wc.pValue = -Math.log(fisherResults[index][1]);
+                    });
+                    return wordCounts.sort((a,b) => b.pValue - a.pValue).slice(0, this.top);
+                });
+            });
         });
     }
 
@@ -294,149 +339,4 @@ export class TargetDetails {
         }
         return jsonObject;
     }
-
-    stopWords = [
-        "HOWEVER",
-        "ABOUT",
-        "ABOVE",
-        "AFTER",
-        "AGAIN",
-        "AGAINST",
-        "ALL",
-        "AM",
-        "AN",
-        "AND",
-        "ANY",
-        "ARE",
-        "AREN",
-        "AS",
-        "AT",
-        "BE",
-        "BECAUSE",
-        "BEEN",
-        "BEFORE",
-        "BEING",
-        "BELOW",
-        "BETWEEN",
-        "BOTH",
-        "BUT",
-        "BY",
-        "CAN",
-        "CANNOT",
-        "COULD",
-        "COULDN",
-        "DID",
-        "DIDN",
-        "DO",
-        "DOES",
-        "DOESN",
-        "DOING",
-        "DON",
-        "DOWN",
-        "DURING",
-        "EACH",
-        "FEW",
-        "FOR",
-        "FROM",
-        "FURTHER",
-        "HAD",
-        "HADN",
-        "HAS",
-        "HASN",
-        "HAVE",
-        "HAVEN",
-        "HAVING",
-        "HE",
-        "LL",
-        "HER",
-        "HERE",
-        "HERS",
-        "HERSELF",
-        "HIM",
-        "HIMSELF",
-        "HIS",
-        "HOW",
-        "VE",
-        "IF",
-        "IN",
-        "INTO",
-        "IS",
-        "ISN",
-        "IT",
-        "ITS",
-        "ITSELF",
-        "LET",
-        "ME",
-        "MORE",
-        "MOST",
-        "MUSTN",
-        "MY",
-        "MYSELF",
-        "NO",
-        "NOR",
-        "NOT",
-        "OF",
-        "OFF",
-        "ON",
-        "ONCE",
-        "ONLY",
-        "OR",
-        "OTHER",
-        "OUGHT",
-        "OUR",
-        "OURS",
-        "OURSELVES",
-        "OUT",
-        "OVER",
-        "OWN",
-        "SAME",
-        "SHAN",
-        "SHE",
-        "SHOULD",
-        "SHOULDN",
-        "SO",
-        "SOME",
-        "SUCH",
-        "THAN",
-        "THAT",
-        "THE",
-        "THEIR",
-        "THEIRS",
-        "THEM",
-        "THEMSELVES",
-        "THEN",
-        "THERE",
-        "THESE",
-        "THEY",
-        "THIS",
-        "THOSE",
-        "THROUGH",
-        "TO",
-        "TOO",
-        "UNDER",
-        "UNTIL",
-        "UP",
-        "VERY",
-        "WAS",
-        "WASN",
-        "WE",
-        "WERE",
-        "WEREN",
-        "WHAT",
-        "WHEN",
-        "WHERE",
-        "WHICH",
-        "WHILE",
-        "WHO",
-        "WHOM",
-        "WHY",
-        "WITH",
-        "WON",
-        "WOULD",
-        "WOULDN",
-        "YOU",
-        "YOUR",
-        "YOURS",
-        "YOURSELF",
-        "YOURSELVES"];
 }
