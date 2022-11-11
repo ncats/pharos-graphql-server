@@ -590,7 +590,7 @@ type WordCountProp @cacheControl(maxAge: 604800) {
 
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
-     abstractWordCounts(top: Int = 150): [WordCountProp]
+     abstractWordCounts(top: Int = 100): [WordCountProp]
      dataVersions(keys: [String!]): [DataVersionResponse]
      nearestTclin: NearestTclinDetails
      similarity: SimilarityDetails

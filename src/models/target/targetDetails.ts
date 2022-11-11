@@ -52,7 +52,7 @@ export class TargetDetails {
                 date: `date`,
                 authors: `authors`,
                 abstract: `abstract`,
-                fetch_date:`fetch_date`
+                fetch_date: `fetch_date`
             })
             .where('pp.pubmed_id', this.knex.raw('pubmed.id'))
             .andWhere('pp.protein_id', this.target.protein_id)
@@ -92,21 +92,31 @@ export class TargetDetails {
         });
     }
 
-    getAbstractWordCounts() {
+    private getWordRegex() {
         const wordPattern = /\b[A-Za-z]+[A-Za-z0-9\-\./\+]{1,}\b|\b[0-9]+[A-Za-z]+[0-9]+\b/;
-        const re = new RegExp(wordPattern, 'gm');
+        return new RegExp(wordPattern, 'gm');
+    };
 
+    private getAbstractQuery(columns: string[] | any, limit: number | null = null) {
         const abstractQuery = this.knex({pubmed: 'ncats_pubmed.pubmed', pp: 'protein2pubmed'})
-            .distinct(['pubmed_id', 'abstract'])
+            .distinct(columns)
             .where('pp.pubmed_id', this.knex.raw('pubmed.id'))
             .andWhere('pp.protein_id', this.target.protein_id)
             .andWhere('source', 'NCBI')
-            .whereNotNull('abstract')
-            .orderBy('pubmed_id', 'desc')
-            .limit(100);
+            .whereNotNull('abstract');
+        if (limit) {
+            abstractQuery.orderBy('pubmed_id', 'desc').limit(limit);
+        }
+        return abstractQuery;
+    }
+
+    getAbstractWordCounts() {
+        const re = this.getWordRegex();
+        const abstractQuery = this.getAbstractQuery(['pubmed_id', 'abstract'], 100);
+
         return abstractQuery.then((abstractRows: any[]) => {
             const articleSetWordCount = new Map<string, number>();
-            const wordFormDictionary = new Map<string, {text: string, count: number}[]>();
+            const wordFormDictionary = new Map<string, { text: string, count: number }[]>();
 
             abstractRows.forEach((articleRow: any) => {
                 const wordMatches = articleRow.abstract.match(re);
@@ -119,12 +129,12 @@ export class TargetDetails {
 
                     const existingMatch = wordFormList.find((m: any) => m.text === actualWord);
                     if (existingMatch) {
-                        existingMatch.count ++;
+                        existingMatch.count++;
                     } else {
                         wordFormList.push({text: actualWord, count: 1});
                     }
                 });
-                articleWordList.forEach((v,k) => {
+                articleWordList.forEach((v, k) => {
                     const count = articleSetWordCount.get(k) || 0;
                     articleSetWordCount.set(k, count + 1);
                 });
@@ -149,7 +159,7 @@ export class TargetDetails {
 
                 const totalAbstractCount = fullCountDict.get(abstractCountString);
                 const contingencyTables: any[] = [];
-                const wordCounts: {name: string, count: number, oddsRatio: number, pValue: number}[] = [];
+                const wordCounts: { name: string, count: number, oddsRatio: number, pValue: number }[] = [];
                 let count = 0;
                 items.forEach(wordCountPair => {
                     const wordFormList = wordFormDictionary.get(wordCountPair.name) || [];
@@ -174,9 +184,9 @@ export class TargetDetails {
                 const pyCalc = new PythonCalculation();
                 return pyCalc.calculateFisherTest(contingencyTables).then((fisherResults: any[]) => {
                     wordCounts.forEach((wc, index) => {
-                       wc.pValue = -Math.log(fisherResults[index][1]);
+                        wc.pValue = -Math.log(fisherResults[index][1]);
                     });
-                    return wordCounts.sort((a,b) => b.pValue - a.pValue).slice(0, this.top);
+                    return wordCounts.sort((a, b) => b.pValue - a.pValue).slice(0, this.top);
                 });
             });
         });
