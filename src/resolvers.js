@@ -542,6 +542,24 @@ const resolvers = {
         },
         dtoNode: async function (_, args, {dataSources}) {
             return dataSources.tcrd.getDTO(args);
+        },
+        getAPIMetadata: async function(_, args, {dataSources}) {
+            const externalDataFetcher = new DynamicPredictions(dataSources.tcrd);
+            const detailsObj = await externalDataFetcher.getDetails(args.pageInfo);
+            if (detailsObj) {
+                const url = externalDataFetcher.getFetchUrl(args.url, args.pageInfo, detailsObj);
+                return {
+                    url: url,
+                    details: detailsObj
+                };
+            }
+        },
+        getAPIResults: async function(_, args, {dataSources}) {
+            const externalDataFetcher = new DynamicPredictions(dataSources.tcrd);
+            const detailsObj = await externalDataFetcher.getDetails(args.pageInfo);
+            if (detailsObj) {
+                return externalDataFetcher.getResults(args.url, args.pageInfo, detailsObj);
+            }
         }
     },
 
