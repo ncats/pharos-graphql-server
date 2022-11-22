@@ -1058,6 +1058,6 @@ collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral
      hierarchicalFilters: FilterSets
      filterHierarchy(model: String!, facetName: String!, filter: IFilter, batch: [String]): JSON
 
-     getAPIMetadata(url: String!, pageInfo: JSON!): JSON
-     getAPIResults(url: String!, pageInfo: JSON!): JSON
+     getAPIMetadata(url: String!, pageInfo: JSON!): JSON @cacheControl(maxAge: 0)
+     getAPIResults(url: String!, pageInfo: JSON!): JSON @cacheControl(maxAge: 0)
 }
