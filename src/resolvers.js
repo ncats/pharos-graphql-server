@@ -560,6 +560,10 @@ const resolvers = {
             if (detailsObj) {
                 return externalDataFetcher.getResults(args.url, args.pageInfo, detailsObj);
             }
+        },
+        parseAPIResults: async function(_, args, {dataSources}) {
+            const externalDataFetcher = new DynamicPredictions(dataSources.tcrd);
+            return externalDataFetcher.parseResults(args.results);
         }
     },
 

@@ -89,6 +89,14 @@ export class DynamicPredictions {
         return
     }
 
+    parseResults(results: any[]) {
+        results.forEach((row: any) => {
+            this.findDiseases(row);
+            this.findTargets(row);
+        });
+        return [results];
+    }
+
     processTargetAPI(url: string, target: any, extras: any[]) {
         [...this.targetDetailsFields, ...this.targetValidAliasFields].forEach(field => {
             const re = new RegExp(`{${field}}`, 'g')
