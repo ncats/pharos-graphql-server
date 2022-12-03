@@ -111,6 +111,7 @@ export class DatabaseConfig {
     }
 
     modelList: Map<string, ModelInfo> = new Map<string, { name: string, table: string, column: string }>();
+    communityDataList: Map<string, any[]> = new Map<string, any[]>();
     database: any;
     dbName: string;
     configDB: string;
@@ -129,6 +130,10 @@ export class DatabaseConfig {
     get modelTable(): { model: string } {
         return {model: 'model'};
     };
+
+    get communityDataTable(): {community_data: string} {
+        return {community_data: 'community_data'};
+    }
 
     get assocModelTable(): { associated_model: string } {
         return {associated_model: 'model'};
@@ -151,10 +156,20 @@ export class DatabaseConfig {
             this.loadModelMap(),
             this.loadProbMap(),
             this.loadCounts(),
-            this.loadMondoMap()
+            this.loadMondoMap(),
+            this.loadCommunityAPIs()
         ]);
     }
-
+    loadCommunityAPIs() {
+        const query = this.settingsDB({...this.communityDataTable}).select('*').then((rows: any[]) => {
+            rows.forEach(row => {
+                const key = row.model + '-' + row.data;
+                const list = this.communityDataList.get(key) || [];
+                this.communityDataList.set(key, list);
+                list.push(row);
+            });
+        });
+    }
     loadMondoMap() {
         const query = this.database('mondo_xref').distinct({
             mondoid: 'mondoid',

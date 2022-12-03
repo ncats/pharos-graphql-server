@@ -568,6 +568,15 @@ const resolvers = {
     },
 
     Target: {
+        communityAPIs: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.tableInfo.communityDataList.get('target-details');
+        },
+        communityData: async function (target, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd).fetchCommunityData(args.apiCode, target, 'target')
+                .then(res => {
+                return res;
+            });
+        },
         abstractWordCounts: async function (target, args, {dataSources}) {
             const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
             return targetDetails.getAbstractWordCounts();
@@ -1454,6 +1463,15 @@ const resolvers = {
     },
 
     Disease: {
+        communityAPIs: async function (disease, args, {dataSources}) {
+            return dataSources.tcrd.tableInfo.communityDataList.get('disease-details');
+        },
+        communityData: async function (disease, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd).fetchCommunityData(args.apiCode, disease, 'disease')
+                .then(res => {
+                    return res;
+                });
+        },
         predictions: async function (disease, args, {dataSources}) {
             const dids = await resolvers.Disease.dids(disease, args, {dataSources});
             return new DynamicPredictions(dataSources.tcrd).fetchDiseaseAPIs(disease, dids.map(r => {
@@ -2095,6 +2113,9 @@ const resolvers = {
     },
 
     Ligand: {
+        communityAPIs: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.tableInfo.communityDataList.get('ligand-details');
+        },
         predictions: async function (ligand, args, {dataSources}) {
             return new DynamicPredictions(dataSources.tcrd).fetchLigandAPIs(ligand);
         },
