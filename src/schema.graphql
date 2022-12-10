@@ -600,6 +600,8 @@ type APIDetails @cacheControl(maxAge: 604800) {
      data: String!
      related_section: String!
      section: String!
+     description: String
+     link: String
 }
 
 """Target entity"""
@@ -1077,4 +1079,5 @@ collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral
      getAPIMetadata(url: String!, pageInfo: JSON!): JSON @cacheControl(maxAge: 0)
      getAPIResults(url: String!, pageInfo: JSON!): JSON @cacheControl(maxAge: 0)
      parseAPIResults(results: JSON!): JSON @cacheControl(maxAge: 0)
+     communityAPIs: [APIDetails] @cacheControl(maxAge: 0)
 }

@@ -69,6 +69,13 @@ const resolvers = {
         }
     },
     Query: {
+        communityAPIs: async function (_, args, {dataSources}) {
+            const apis = [];
+            for (let group of dataSources.tcrd.tableInfo.communityDataList.keys()) {
+                apis.push(...dataSources.tcrd.tableInfo.communityDataList.get(group));
+            }
+            return apis;
+        },
         usageData: async function (_, args, {dataSources}) {
             const interval = args.interval;
             let summaryColumn;
@@ -558,7 +565,8 @@ const resolvers = {
             const externalDataFetcher = new DynamicPredictions(dataSources.tcrd);
             const detailsObj = await externalDataFetcher.getDetails(args.pageInfo);
             if (detailsObj) {
-                return externalDataFetcher.getResults(args.url, args.pageInfo, detailsObj);
+                const url = externalDataFetcher.getFetchUrl(args.url, args.pageInfo, detailsObj);
+                return externalDataFetcher.getResults(url);
             }
         },
         parseAPIResults: async function(_, args, {dataSources}) {
@@ -2113,8 +2121,15 @@ const resolvers = {
     },
 
     Ligand: {
-        communityAPIs: async function (target, args, {dataSources}) {
+        communityAPIs: async function (ligand, args, {dataSources}) {
             return dataSources.tcrd.tableInfo.communityDataList.get('ligand-details');
+        },
+        communityData: async function (ligand, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd)
+                .fetchCommunityData(args.apiCode, ligand, "ligand")
+                .then(res => {
+                    return res;
+                });
         },
         predictions: async function (ligand, args, {dataSources}) {
             return new DynamicPredictions(dataSources.tcrd).fetchLigandAPIs(ligand);

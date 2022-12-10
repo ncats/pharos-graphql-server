@@ -1,4 +1,5 @@
 import {Knex} from "knex";
+import {LigandDetails} from "../ligand/ligandDetails";
 
 const axios = require('axios');
 
@@ -75,6 +76,9 @@ export class DynamicPredictions {
                 return this.fetchAPIs(details, urls, this.processDiseaseAPI.bind(this), aliases);
             });
         }
+        else if (model === 'ligand') {
+            return this.fetchAPIs(details, urls, this.processLigandAPI.bind(this), []);
+        }
     }
 
     kinaseCancerPredictionAPI = 'https://16z877ei3f.execute-api.us-east-1.amazonaws.com/default/pharos-kinase-cancer-prediction'
@@ -150,7 +154,13 @@ export class DynamicPredictions {
 
         }
         if (pageInfo.path === 'ligands') {
-
+            const ligandDetails = new LigandDetails(this.knex);
+            return ligandDetails.getDetailsQuery(pageInfo.id, true).then((rows: any[]) => {
+                if (rows && rows.length > 0) {
+                    return rows[0];
+                }
+                return null;
+            });
         }
     }
 
@@ -159,26 +169,19 @@ export class DynamicPredictions {
             return this.processTargetAPI(url, detailsObj, []);
         }
         if (pageInfo.path === 'diseases') {
-            return this.processDiseaseAPI(url, detailsObj, []);
+            return this.processDiseaseAPI(url, detailsObj, detailsObj);
         }
         if (pageInfo.path === 'ligands') {
-
+            return this.processLigandAPI(url, detailsObj, []);
         }
         return
     }
 
-    getResults(url: string, pageInfo: any, detailsObj: any) {
-        if (pageInfo.path === 'targets') {
-            return this.fetchAPIs(detailsObj, [url], this.processTargetAPI.bind(this));
+    getResults(url: string) {
+        if (url) {
+            return this.fetchUrlAndProcessResults([axios.get(url)]);
         }
-        if (pageInfo.path === 'diseases') {
-            return this.fetchAPIs(detailsObj, [url], this.processDiseaseAPI.bind(this));
-        }
-        if (pageInfo.path === 'ligands') {
-
-        }
-
-        return
+        return;
     }
 
     async parseResults(results: any[]) {
@@ -201,13 +204,19 @@ export class DynamicPredictions {
     processDiseaseAPI(url: string, disease: any, aliasMap: any) {
         let pUrl = url;
         for (let field in aliasMap) {
-            const re = new RegExp(`{${field}}`, 'g')
+            const re = new RegExp(`{${field}}`, 'g');
             pUrl = pUrl.replace(re, aliasMap[field]);
         }
         return pUrl;
     }
+
     processLigandAPI(url: string, ligand: any, extras: any[]) {
-        return url.replace('{name}', ligand.name);
+        let pUrl = url;
+        for (let field in ligand) {
+            const re = new RegExp(`{${field}}`, 'g');
+            pUrl = pUrl.replace(re, encodeURIComponent(ligand[field]));
+        }
+        return pUrl;
     }
 
     fetchTargetAPIs(target: any) {
@@ -237,11 +246,14 @@ export class DynamicPredictions {
         apiList.forEach(api => {
             queries.push(axios.get(processFunction(api, detailsObject, extras)));
         });
+        return this.fetchUrlAndProcessResults(queries);
+    }
+
+    private fetchUrlAndProcessResults(queries: any[]) {
         return Promise.all(queries)
             .then(async (responses: any[]) => {
-                const nonNullResponsees = responses.filter(r => r.data && r.data.length > 0 && r.data[0]);
-                for (let j = 0 ; j < nonNullResponsees.length ; j++) {
-                    const r = nonNullResponsees[j]
+                for (let j = 0; j < responses.length; j++) {
+                    const r = responses[j]
                     if (r.data) {
                         for (let i = 0; i < r.data.length; i++) {
                             this.findDiseases(r.data[i]);
@@ -250,12 +262,13 @@ export class DynamicPredictions {
                         }
                     }
                 }
-                return nonNullResponsees.map(r => r.data ? r.data : null);
+                return responses.map(r => r.data ? r.data : null);
             }, (rejected: any) => {
                 console.log(rejected);
                 throw new Error(rejected);
             });
     }
+
     findTargets(obj: any) {
         if (obj) {
             if (obj.hasOwnProperty('@type') && obj['@type'] === 'Protein') {

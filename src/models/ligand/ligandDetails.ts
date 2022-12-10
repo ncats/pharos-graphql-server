@@ -45,17 +45,13 @@ export class LigandDetails {
         return null;
     }
 
-    getDetailsQuery(name: string) {
+    getDetailsQuery(name: string, onlyIDs = false) {
         const input = this.parseInput(name);
         const query = this.knex('ncats_ligands').select(
             {
                 ligid: 'identifier',
                 name: 'name',
-                description: 'description',
-                isdrug: 'isDrug',
                 smiles: 'smiles',
-                actcnt: 'actCnt',
-                targetCount: 'targetCount',
                 unii: 'unii',
                 PubChem: 'PubChem',
                 'Guide to Pharmacology': 'Guide to Pharmacology',
@@ -64,6 +60,14 @@ export class LigandDetails {
                 pt: 'pt'
             }
         );
+        if (!onlyIDs) {
+            query.select({
+                description: 'description',
+                isdrug: 'isDrug',
+                actcnt: 'actCnt',
+                targetCount: 'targetCount',
+            });
+        }
         if (!input.column) {
             query.where((q: any) => {
                 q.whereRaw(`match(name, ChEMBL, PubChem, \`Guide to Pharmacology\`, DrugCentral) against('"${name}"' in boolean mode)`)
