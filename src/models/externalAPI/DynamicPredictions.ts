@@ -65,9 +65,14 @@ export class DynamicPredictions {
                         idMap.set('mondo', res[i].mondoid);
                     }
                     const chunks = res[i].alias.split(':');
-                    const key = chunks[0].toLowerCase();
+                    let key = chunks[0].toLowerCase();
                     if (idMap.has(key)) {
-                        idMap.set(key, idMap.get(key) + '|' + res[i].alias);
+                        // @ts-ignore
+                        const existingKeys = idMap.get(key).split('|');
+                        if (!existingKeys.includes(res[i].alias)) {
+                            existingKeys.push(res[i].alias);
+                            idMap.set(key, existingKeys.join('|'));
+                        }
                     } else {
                         idMap.set(key, res[i].alias);
                     }
