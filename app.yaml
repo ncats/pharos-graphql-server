@@ -1,5 +1,5 @@
 instance_class: F4_1G
-runtime: nodejs14
+runtime: custom
 automatic_scaling:
   min_instances: 1
 vpc_access_connector:
