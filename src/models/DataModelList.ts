@@ -434,7 +434,7 @@ export abstract class DataModelList implements IBuildable {
         if (qpd) {
             return qpd.elapsedTime();
         }
-        return -1;
+        return 0;
     }
 }
 

@@ -8,8 +8,7 @@ const tcrdConfig = {
         host: cred.DBHOST,
         user: cred.USER,
         password: cred.PWORD,
-        database: cred.DBNAME,
-        configDB: cred.CONFIGDB
+        database: cred.DBNAME
     },
     pool: {
         min: 2,

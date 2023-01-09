@@ -211,25 +211,26 @@ export class FieldInfo {
         let query;
         if (this.dataType === FacetDataType.numeric) {
             query = this.getNumericFacetQuery();
+            this.parent.captureQueryPerformance(query, this.name);
         } else if (this.parent.isNull() && !this.parent.noOptimization) {
             query = this.getPrecalculatedFacetQuery();
         } else {
             query = this.getStandardFacetQuery();
+            this.parent.captureQueryPerformance(query, this.name);
         }
-        this.parent.captureQueryPerformance(query, this.name);
         // console.log(query.toString());
         return query;
     }
 
     private getPrecalculatedFacetQuery() {
-        let query = this.parent.database('ncats_unfiltered_counts').select({
-            name: 'value',
-            value: 'count'
-        }).where('schema', this.parent.databaseConfig.configDB)
-            .andWhere('model', this.parent.modelInfo.name)
-            .andWhere('filter', this.name)
-            .orderBy('value', 'desc');
-        return query;
+        const counts = this.parent.databaseConfig.
+            getUnfilteredCounts(this.parent.modelInfo.name, this.name)?.map(dbVal => {
+            return {
+                name: dbVal.value,
+                value: dbVal.count
+            }
+        });
+        return Promise.resolve(counts);
     }
 
     private getStandardFacetQuery() {

@@ -1,4 +1,3 @@
-const {DiseaseList} = require("./models/disease/diseaseList");
 const {DatabaseConfig} = require("./models/databaseConfig");
 const {SQLDataSource} = require("datasource-sql");
 const CONSTANTS = require("./constants");
@@ -96,7 +95,7 @@ class TCRD extends SQLDataSource {
     constructor(config, settingsConfig) {
         super(config);
         const _this = this;
-        this.tableInfo = new DatabaseConfig(this.db, config.connection.database, config.connection.configDB, settingsConfig);
+        this.tableInfo = new DatabaseConfig(this.db, config.connection.database, settingsConfig);
 
         const root = {
             doid: 'DOID:4',

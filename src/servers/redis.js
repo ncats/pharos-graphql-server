@@ -3,12 +3,16 @@ const {cred} = require("../db_credentials");
 const crypto = require("crypto");
 package_info = require("../../package.json");
 
+const getReadablePrefix = () => {
+    return package_info.version + '-' + cred.DBNAME;
+}
+
 const getPrefix = () => {
     return crypto.createHash('sha1')
-        .update(cred.CONFIGDB + package_info.version + cred.DBNAME)
+        .update(getReadablePrefix())
         .digest('base64').substring(0, 5);
 }
-module.exports.getPrefix = getPrefix;
+module.exports.getReadablePrefix = getReadablePrefix;
 
 module.exports.connectToRedis = () => {
     const REDISHOST = process.env.REDISHOST || 'localhost';// || '10.120.0.3';

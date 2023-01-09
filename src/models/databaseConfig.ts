@@ -58,6 +58,15 @@ export class DatabaseConfig {
         return `${model}-${filter}-${value}`.replace(/[^a-zA-Z0-9\-\s\.]/g, " ");
     }
 
+    unfilteredCounts: Map<string, { value: string, count: number, p: number }[]>
+        = new Map<string, { value: string, count: number, p: number }[]>()
+    unfilteredCountKey(model: string, filter: string) {
+        return `${model}-${filter}`.replace(/[^a-zA-Z0-9\-\s\.]/g, " ");
+    }
+    getUnfilteredCounts(model: string, filter: string) {
+        return this.unfilteredCounts.get(this.unfilteredCountKey(model, filter));
+    }
+
     findValueProbability(model: string, filter: string, value: string) {
         return this.probMap.get(this.probKey(model, filter, value));
     }
@@ -114,7 +123,6 @@ export class DatabaseConfig {
     communityDataList: Map<string, any[]> = new Map<string, any[]>();
     database: any;
     dbName: string;
-    configDB: string;
     settingsDB: any;
     mondo2id: Map<string, string[]> = new Map<string, string[]>();
     id2mondo: Map<string, string[]> = new Map<string, string[]>();
@@ -145,16 +153,14 @@ export class DatabaseConfig {
 
     loadPromise: Promise<any>;
 
-    constructor(database: any, dbName: string, configDB: string, settingsConfig: any) {
+    constructor(database: any, dbName: string, settingsConfig: any) {
         this.database = database;
         this.dbName = dbName;
-        this.configDB = configDB;
         this.settingsDB = require('knex')(settingsConfig);
         this.loadPromise = Promise.all([
             this.parseTables(),
             this.populateFieldLists(),
             this.loadModelMap(),
-            this.loadProbMap(),
             this.loadCounts(),
             this.loadMondoMap(),
             this.loadCommunityAPIs()
@@ -191,6 +197,24 @@ export class DatabaseConfig {
             res;
         })
     }
+    setUnfilteredCounts(db: any) {
+        return db('unfiltered_counts').select(['model','filter','value','count','p'])
+            .then((res: any[]) => {
+                res.forEach(row => {
+                    const pmKey = this.probKey(row.model, row.filter, row.value);
+                    this.probMap.set(pmKey, {count: row.count, p: row.p});
+
+                    const ucKey = this.unfilteredCountKey(row.model, row.filter);
+                    let list: { value: string, count: number, p: number }[] = [];
+                    if (this.unfilteredCounts.has(ucKey)) {
+                        list = this.unfilteredCounts.get(ucKey) || [];
+                    } else {
+                        this.unfilteredCounts.set(ucKey, list);
+                    }
+                    list.push({value: row.value, count: row.count, p: row.p});
+                });
+            });
+    }
 
     loadCounts() {
         const targetCount = this.database('protein').count({count: 'id'});
@@ -201,22 +225,6 @@ export class DatabaseConfig {
             this.diseaseCount = rows[1][0].count;
             this.ligandCount = rows[2][0].count;
         })
-    }
-
-    loadProbMap() {
-        let query = this.database('ncats_unfiltered_counts').select({
-            model: 'model',
-            filter: 'filter',
-            value: 'value',
-            count: 'count',
-            p: 'p'
-        }).where('schema', this.configDB);
-        return query.then((rows: any[]) => {
-            rows.forEach(row => {
-                const key = this.probKey(row.model, row.filter, row.value);
-                this.probMap.set(key, {count: row.count, p: row.p});
-            });
-        });
     }
 
     parseTables() {

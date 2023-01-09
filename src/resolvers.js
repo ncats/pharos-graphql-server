@@ -47,7 +47,7 @@ const resolvers = {
                 detail1: args.detail1,
                 detail2: args.detail2,
                 detail3: args.detail3,
-                schema: dataSources.tcrd.tableInfo.configDB,
+                schema: 'pharos_config_prod',
                 time_stamp: new Date().toISOString()
             };
             return dataSources.tcrd.db('result_cache.feature_tracking').insert(insert).then(res => {
