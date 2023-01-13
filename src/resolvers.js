@@ -335,9 +335,9 @@ const resolvers = {
                 })
                 .select({
                     dataSource: "ncats_dataSource.dataSource",
-                    url: knex.raw("url"),
-                    license: knex.raw("license"),
-                    licenseURL: knex.raw("licenseURL"),
+                    url: knex.raw("ncats_dataSource_map.url"),
+                    license: knex.raw("ncats_dataSource_map.license"),
+                    licenseURL: knex.raw("ncats_dataSource_map.licenseURL"),
                     targetCount: knex.raw("COUNT(protein_id)"),
                     diseaseCount: knex.raw("COUNT(disease_name)"),
                     ligandCount: knex.raw("COUNT(ncats_ligand_id)")
