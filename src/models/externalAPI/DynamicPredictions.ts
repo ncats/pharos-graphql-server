@@ -64,7 +64,7 @@ export class DynamicPredictions {
                         idMap.set('name', res[i].name);
                         idMap.set('mondo', res[i].mondoid);
                     }
-                    const chunks = res[i].alias.split(':');
+                    const chunks = res[i].alias?.split(':') || [res[i].name];
                     let key = chunks[0].toLowerCase();
                     if (idMap.has(key)) {
                         // @ts-ignore
