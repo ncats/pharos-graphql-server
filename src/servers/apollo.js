@@ -2,17 +2,13 @@ const {BaseRedisCache} = require("apollo-server-cache-redis");
 const {ApolloServer} = require("apollo-server-express");
 const responseCachePlugin = require("apollo-server-plugin-response-cache");
 const {connectToRedis} = require("./redis");
-const gqlfiltering = require('graphql-introspection-filtering');
 
 module.exports.getServer = (schema, tcrd, app, schemaDirectives) => {
-    const filters = gqlfiltering.schemaDirectivesToFilters(schemaDirectives)
-    const filteredSchema = gqlfiltering.default(schema, filters)
-
-    return connectToRedis().then(redisClient => {
+    return connectToRedis().then(async redisClient => {
         const serverOptions = {
-            schema: filteredSchema,
+            schema: schema,
             introspection: true,
-            plugins: [responseCachePlugin()],
+            plugins: [responseCachePlugin.default()],
             playground: true,
             dataSources: () => ({
                 tcrd: tcrd
@@ -26,6 +22,7 @@ module.exports.getServer = (schema, tcrd, app, schemaDirectives) => {
             });
         }
         const server = new ApolloServer(serverOptions);
+        await server.start();
         server.applyMiddleware({
             app,
             path: '/graphql'
