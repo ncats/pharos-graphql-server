@@ -235,7 +235,27 @@ type GeneRIF @cacheControl(maxAge: 604800) {
      rifid: Int!
      text: String
      target: Target!
+     date: String
      pubs: [PubMed]
+}
+
+type GeneRIFObject @cacheControl(maxAge: 604800) {
+     rifid: Int!
+     gene_id: [Int]
+     text: String
+     date: String
+}
+
+type PublicationObject @cacheControl(maxAge: 604800) {
+     pmid: Int!
+     gene_id: [Int]
+     title: String!
+     journal: String
+     date: String
+     authors: String
+     abstract: String
+     fetch_date: String
+     generifs: [GeneRIFObject]
 }
 
 """Ortholog"""
@@ -259,6 +279,8 @@ type OrthologDisease @cacheControl(maxAge: 604800) {
 
 """Disease entity"""
 type Disease @cacheControl(maxAge: 604800) {
+     communityAPIs: [APIDetails] @cacheControl(maxAge: 0)
+     communityData(apiCode: [String]): [JSON] @cacheControl(maxAge: 0)
      name: String!
      associationCount: Int!
      gard_rare: Boolean
@@ -277,7 +299,7 @@ type Disease @cacheControl(maxAge: 604800) {
      tinx: [TINXTarget]
      gwasAnalytics: GwasDiseaseAnalytics
      mondoEquivalents: [MondoEquivalent]
-     predictions: [JSON]
+     predictions: [JSON] @deprecated(reason: "predictions is deprecated. Use communityData instead.")
 }
 
 type MondoEquivalent @cacheControl(maxAge: 604800) {
@@ -441,6 +463,8 @@ type GeneAttributeType @cacheControl(maxAge: 604800) {
 
 """Ligand"""
 type Ligand @cacheControl(maxAge: 604800) {
+     communityAPIs: [APIDetails] @cacheControl(maxAge: 0)
+     communityData(apiCode: [String]): [JSON] @cacheControl(maxAge: 0)
      """identify associated with this ligand; for small molecule it's the lychi hash"""
      ligid: String
      """recognized name for the ligand"""
@@ -457,7 +481,7 @@ type Ligand @cacheControl(maxAge: 604800) {
      targetCount: Int
      activities (all: Boolean = true): [LigandActivity]
      similarity: Float
-     predictions: [JSON]
+     predictions: [JSON] @deprecated(reason: "predictions is deprecated. Use communityData instead.")
 }
 
 type LigandActivity @cacheControl(maxAge: 604800) {
@@ -561,8 +585,30 @@ type NearestTclinDetails @cacheControl(maxAge: 604800) {
     downstream: [SharedPathwayDetails]
 }
 
+type WordCountProp @cacheControl(maxAge: 604800) {
+     name: String!
+     count: Int!
+     oddsRatio: Float!
+     pValue: Float!
+}
+
+type APIDetails @cacheControl(maxAge: 604800) {
+     code: String!
+     model: String!
+     url: String!
+     default: Boolean!
+     data: String!
+     related_section: String!
+     section: String!
+     description: String
+     link: String
+}
+
 """Target entity"""
 type Target @cacheControl(maxAge: 604800){
+     communityAPIs: [APIDetails] @cacheControl(maxAge: 0)
+     communityData(apiCode: [String]): [JSON] @cacheControl(maxAge: 0)
+     abstractWordCounts(top: Int = 100): [WordCountProp]
      dataVersions(keys: [String!]): [DataVersionResponse]
      nearestTclin: NearestTclinDetails
      similarity: SimilarityDetails
@@ -600,12 +646,16 @@ type Target @cacheControl(maxAge: 604800){
      xrefs(source: String = ""): [Xref]
 
      """Publications associated with this protein"""
-     pubCount: Int
-     pubs(skip: Int = 0, top: Int = 10, term: String = ""): [PubMed]
+     pubCount: Int @deprecated(reason: "pubCount is deprecated. use publicationCount instead.")
+     pubs(skip: Int = 0, top: Int = 10, term: String = ""): [PubMed] @deprecated(reason: "pubs is deprecated. use publications instead.")
 
      """GeneRIF information"""
+     generifs(skip: Int = 0, top: Int = 10, term: String=""): [GeneRIF] @deprecated(reason: "Target.generifs is deprecated. use publications.generifs instead.")
+
+     """Combined publications and generifs information"""
      generifCount: Int
-     generifs(skip: Int = 0, top: Int = 10, term: String=""): [GeneRIF]
+     publicationCount: Int
+     publications(skip: Int=0, top: Int=5): [PublicationObject]!
 
      """Protein-protein interaction"""
      ppiCounts(filter: IFilter) : [IntProp]
@@ -690,7 +740,7 @@ type Target @cacheControl(maxAge: 604800){
      facetValueCount(facetName: String!): Int
      facetValues(facetName: String!, skip: Int=0, top: Int=10): [String]
 
-     predictions: [JSON]
+     predictions: [JSON] @deprecated(reason: "predictions is deprecated. Use communityData instead.")
 }
 
 type GwasTargetAnalytics @cacheControl(maxAge: 604800) {
@@ -1025,4 +1075,9 @@ collision. Available prefixes are: "CID:" for PubChem IDs, "DC:" for DrugCentral
 
      hierarchicalFilters: FilterSets
      filterHierarchy(model: String!, facetName: String!, filter: IFilter, batch: [String]): JSON
+
+     getAPIMetadata(url: String!, pageInfo: JSON!): JSON @cacheControl(maxAge: 0)
+     getAPIResults(url: String!, pageInfo: JSON!): JSON @cacheControl(maxAge: 0)
+     parseAPIResults(results: JSON!): JSON @cacheControl(maxAge: 0)
+     communityAPIs: [APIDetails] @cacheControl(maxAge: 0)
 }

@@ -47,7 +47,7 @@ const resolvers = {
                 detail1: args.detail1,
                 detail2: args.detail2,
                 detail3: args.detail3,
-                schema: dataSources.tcrd.tableInfo.configDB,
+                schema: 'pharos_config_prod',
                 time_stamp: new Date().toISOString()
             };
             return dataSources.tcrd.db('result_cache.feature_tracking').insert(insert).then(res => {
@@ -69,6 +69,13 @@ const resolvers = {
         }
     },
     Query: {
+        communityAPIs: async function (_, args, {dataSources}) {
+            const apis = [];
+            for (let group of dataSources.tcrd.tableInfo.communityDataList.keys()) {
+                apis.push(...dataSources.tcrd.tableInfo.communityDataList.get(group));
+            }
+            return apis;
+        },
         usageData: async function (_, args, {dataSources}) {
             const interval = args.interval;
             let summaryColumn;
@@ -328,9 +335,9 @@ const resolvers = {
                 })
                 .select({
                     dataSource: "ncats_dataSource.dataSource",
-                    url: knex.raw("url"),
-                    license: knex.raw("license"),
-                    licenseURL: knex.raw("licenseURL"),
+                    url: knex.raw("ncats_dataSource_map.url"),
+                    license: knex.raw("ncats_dataSource_map.license"),
+                    licenseURL: knex.raw("ncats_dataSource_map.licenseURL"),
                     targetCount: knex.raw("COUNT(protein_id)"),
                     diseaseCount: knex.raw("COUNT(disease_name)"),
                     ligandCount: knex.raw("COUNT(ncats_ligand_id)")
@@ -542,10 +549,46 @@ const resolvers = {
         },
         dtoNode: async function (_, args, {dataSources}) {
             return dataSources.tcrd.getDTO(args);
+        },
+        getAPIMetadata: async function(_, args, {dataSources}) {
+            const externalDataFetcher = new DynamicPredictions(dataSources.tcrd);
+            const detailsObj = await externalDataFetcher.getDetails(args.pageInfo);
+            if (detailsObj) {
+                const url = externalDataFetcher.getFetchUrl(args.url, args.pageInfo, detailsObj);
+                return {
+                    url: url,
+                    details: detailsObj
+                };
+            }
+        },
+        getAPIResults: async function(_, args, {dataSources}) {
+            const externalDataFetcher = new DynamicPredictions(dataSources.tcrd);
+            const detailsObj = await externalDataFetcher.getDetails(args.pageInfo);
+            if (detailsObj) {
+                const url = externalDataFetcher.getFetchUrl(args.url, args.pageInfo, detailsObj);
+                return externalDataFetcher.getResults(url);
+            }
+        },
+        parseAPIResults: async function(_, args, {dataSources}) {
+            const externalDataFetcher = new DynamicPredictions(dataSources.tcrd);
+            return externalDataFetcher.parseResults(args.results);
         }
     },
 
     Target: {
+        communityAPIs: async function (target, args, {dataSources}) {
+            return dataSources.tcrd.tableInfo.communityDataList.get('target-details');
+        },
+        communityData: async function (target, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd).fetchCommunityData(args.apiCode, target, 'target')
+                .then(res => {
+                return res;
+            });
+        },
+        abstractWordCounts: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getAbstractWordCounts();
+        },
         dataVersions: async function (_, args, {dataSources}) {
             versionInfo = new VersionInfo(dataSources.tcrd.db);
             return versionInfo.getVersion(args.keys);
@@ -654,6 +697,21 @@ const resolvers = {
                 return rows;
             }).catch(function (error) {
                 console.error(error);
+            });
+        },
+
+        publicationCount: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getPublicationCount();
+        },
+
+        publications: async function (target, args, {dataSources}) {
+            const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
+            return targetDetails.getPublications().then(res => {
+                res.forEach(row => {
+                    row.target = target;
+                });
+                return res;
             });
         },
 
@@ -1413,6 +1471,15 @@ const resolvers = {
     },
 
     Disease: {
+        communityAPIs: async function (disease, args, {dataSources}) {
+            return dataSources.tcrd.tableInfo.communityDataList.get('disease-details');
+        },
+        communityData: async function (disease, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd).fetchCommunityData(args.apiCode, disease, 'disease')
+                .then(res => {
+                    return res;
+                });
+        },
         predictions: async function (disease, args, {dataSources}) {
             const dids = await resolvers.Disease.dids(disease, args, {dataSources});
             return new DynamicPredictions(dataSources.tcrd).fetchDiseaseAPIs(disease, dids.map(r => {
@@ -1693,14 +1760,15 @@ const resolvers = {
     },
     Uberon: {
         ancestors: async function (expr, args, {dataSources}) {
-            const query = dataSources.tcrd.db({uberon: 'uberon', uberon_ancestry: 'uberon_ancestry'})
+            const query = dataSources.tcrd.db({uberon: 'uberon', ancestry_uberon: 'ancestry_uberon'})
                 .select({
                     uid: 'uid',
                     name: 'name',
                     def: 'def',
                     comment: 'comment'
-                }).where('uberon.uid', dataSources.tcrd.db.raw('uberon_ancestry.ancestor_uberon_id'))
-                .andWhere('uberon_id', expr.uid);
+                }).where('uberon.uid', dataSources.tcrd.db.raw('ancestry_uberon.ancestor_id'))
+                .andWhere('oid', expr.uid)
+                .andWhere('oid', '!=', dataSources.tcrd.db.raw('ancestor_id'));
             return query;
         }
     },
@@ -2053,6 +2121,16 @@ const resolvers = {
     },
 
     Ligand: {
+        communityAPIs: async function (ligand, args, {dataSources}) {
+            return dataSources.tcrd.tableInfo.communityDataList.get('ligand-details');
+        },
+        communityData: async function (ligand, args, {dataSources}) {
+            return new DynamicPredictions(dataSources.tcrd)
+                .fetchCommunityData(args.apiCode, ligand, "ligand")
+                .then(res => {
+                    return res;
+                });
+        },
         predictions: async function (ligand, args, {dataSources}) {
             return new DynamicPredictions(dataSources.tcrd).fetchLigandAPIs(ligand);
         },
@@ -2134,6 +2212,13 @@ const resolvers = {
             }
             // console.error('No doid in TINX ' + JSON.stringify(tinx));
             return null;
+        }
+    },
+
+    PublicationObject: {
+        generifs: async function(pub, _, {dataSources}) {
+            const targetDetails = new TargetDetails({}, pub.target, dataSources.tcrd);
+            return targetDetails.getGenerifsForTargetPub(pub);
         }
     }
 };

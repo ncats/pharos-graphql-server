@@ -8,8 +8,9 @@ export class HierarchicalQuery {
     getHierarchyQuery(protein_id: number, tables: any,
                       columns: { id: string|any, type: string|any, value?: string|any, oid: string, ancestor_oid?:
                               string, ancestor_name?: string, ancestor_parent?: string, link_oid: string},
+                      badRoots: string[] = []
     ) {
-        return this.knex(tables)
+        const query = this.knex(tables)
             .select({
                 id: columns.id,
                 type: columns.type,
@@ -22,9 +23,14 @@ export class HierarchicalQuery {
             .where('dataTable.' + columns.oid, this.knex.raw('ancestryTable.oid'))
             .where('ancestryTable.ancestor_id', this.knex.raw('parentTable.' + columns.link_oid))
             .where('ancestryTable.ancestor_id', this.knex.raw('detailTable.' + columns.link_oid));
+        if (badRoots.length > 0) {
+            query.whereNotIn('ancestryTable.ancestor_id', badRoots);
+        }
+        return query;
     }
 
-    parseHierarchyResponse(res: any[], summaryFunction: (list: number[]) => number, manualRoots?: any[], normalize = false) {
+    parseHierarchyResponse(res: any[], summaryFunction: (list: number[]) => number, manualRoots?: any[],
+                           normalize = false, collapseBranches = true) {
         const ontologyDict = new Map<string, any>();
         const parentDict = new Map<string, string[]>();
         let min: number;
@@ -40,6 +46,7 @@ export class HierarchicalQuery {
                 });
             });
         }
+        res.sort((a,b) => b.value - a.value);
         res.forEach((row: any) => {
             const dictElement = this.tryAddSingleElement(ontologyDict, row.ancestor_oid, {
                 oid: row.ancestor_oid,
@@ -79,9 +86,12 @@ export class HierarchicalQuery {
                 this.calcData(v, summaryFunction,'oid', normalize ? [min, max] : null);
             }
         });
-        this.collapseDictionary(ontologyDict)
+        if (collapseBranches) {
+            this.collapseDictionary(ontologyDict)
+        }
         return Array.from(ontologyDict.values());
     }
+
     getTinxHierarchy(protein_id: number) {
         const manualRoots = [
             {oid: 'DOID:4', name: 'disease'}
@@ -91,8 +101,10 @@ export class HierarchicalQuery {
             {id: this.knex.raw("concat(dataTable.doid, '-', dataTable.protein_id)"), link_oid: 'doid',
                 value: this.knex.raw('log(dataTable.score)'), type: this.knex.raw('"Tin-X"'), oid: 'doid'});
         // console.log(query.toString());
-        return query.then((res: any[]) => this.parseHierarchyResponse(res, (list) => Math.max(...list), manualRoots, true));
+        return query.then((res: any[]) => this.parseHierarchyResponse(res,
+            (list) => Math.max(...list), manualRoots, true));
     }
+
     getDiseaseHierarchy(protein_id: number) {
         const manualRoots = [
             {oid: 'MONDO:0000001', name: 'disease or disorder'},
@@ -105,117 +117,39 @@ export class HierarchicalQuery {
         return query.then((res: any[]) => this.parseHierarchyResponse(res, (list) => list.length, manualRoots));
     }
 
-    getExpressionHierarchy2(protein_id: number) {
-        const manualRoots: any[] = [
-            // {oid: 'DOID:4', name: 'disease'}
-        ];
-        const query = this.getHierarchyQuery(protein_id,
-            {dataTable: 'expression', ancestryTable: 'ancestry_uberon', detailTable: 'uberon', parentTable: 'uberon_parent'},
-            {id: this.knex.raw("concat('expression-',dataTable.id)"),
-                value: this.knex.raw('coalesce(source_rank, number_value / 5)'), type: 'etype', oid: 'uberon_id', link_oid: 'uid'});
-        console.log(query.toString());
-        return query.then((res: any[]) => this.parseHierarchyResponse(res, (list) => Math.max(...list), manualRoots, true));
-    }
-    getExpressionTableData(table: string, select: any, protein_id: number) {
-        const query = this.knex(
-            {
-                [table]: table,
-                uberon_ancestry: 'uberon_ancestry',
-                direct: 'uberon',
-                ancestor: 'uberon',
-                direct_parent: 'uberon_parent',
-                ancestor_parent: 'uberon_parent'
-            }
-        ).select(select)
-            .select({
-                uberon_id: table + '.uberon_id',
-                direct_name: 'direct.name',
-                direct_parent: 'direct_parent.parent_id',
-                ancestor_uberon_id: 'ancestor_uberon_id',
-                ancestor_name: 'ancestor.name',
-                ancestor_parent: 'ancestor_parent.parent_id'
-            })
-            .where(table + '.uberon_id', this.knex.raw('uberon_ancestry.uberon_id'))
-            .where('protein_id', protein_id)
-            .where('direct.uid', this.knex.raw(table + '.uberon_id'))
-            .where('ancestor.uid', this.knex.raw('uberon_ancestry.ancestor_uberon_id'))
-            .where('direct_parent.uid', this.knex.raw(table + '.uberon_id'))
-            .where('ancestor_parent.uid', this.knex.raw('uberon_ancestry.ancestor_uberon_id'))
-            .whereNotIn('uberon_ancestry.ancestor_uberon_id', ['GO:0005623']);
-        return query;
-    }
-
     getExpressionHierarchy(protein_id: number) {
-        const expressionQuery = this.getExpressionTableData('gtex', {
-            id: this.knex.raw(`concat('gtex-',gtex.id)`),
-            etype: this.knex.raw('"GTEx"'),
-            tissue: 'tissue',
-            value: 'tpm_rank'
-        }, protein_id)
-            .union(this.getExpressionTableData('expression', {
-                id: this.knex.raw(`concat('expression-',expression.id)`),
-                etype: 'etype',
-                tissue: 'tissue',
+        const badRoots: string[] = ['GO:0005623'];
+        const exprQuery = this.getHierarchyQuery(protein_id,
+            {
+                dataTable: 'expression',
+                ancestryTable: 'ancestry_uberon',
+                detailTable: 'uberon',
+                parentTable: 'uberon_parent'
+            },{
+                id: this.knex.raw("concat('expression-',dataTable.id)"),
                 value: this.knex.raw('coalesce(source_rank, number_value / 5)'),
-            }, protein_id));
-        // console.log(expressionQuery.toString());
-        return expressionQuery.then((res: any[]) => {
-                const uberonDict = new Map<string, any>();
-                const parentDict = new Map<string, string[]>();
-                const expressionDict = new Map<string, any>();
-                res.forEach(row => {
-                    if (row.value > 0) {
-                        this.tryAddSingleElement(expressionDict, row.id, {
-                            etype: row.etype,
-                            value: row.value,
-                            uberon_id: row.uberon_id,
-                            tissue: row.direct_name
-                        });
-                        const dictElement = this.tryAddSingleElement(uberonDict, row.uberon_id, {
-                            uid: row.uberon_id,
-                            name: row.direct_name,
-                            data: new Map<string, number>(),
-                            parents: [],
-                            children: []
-                        });
-                        this.tryAddSingleElement(dictElement.data, row.id, row.value);
-                        this.tryAddSingleElement(uberonDict, row.ancestor_uberon_id, {
-                            uid: row.ancestor_uberon_id,
-                            name: row.ancestor_name,
-                            data: new Map<string, number>(),
-                            parents: [],
-                            children: []
-                        });
-                        this.tryAddListElement(parentDict, row.uberon_id, row.direct_parent);
-                        this.tryAddListElement(parentDict, row.ancestor_uberon_id, row.ancestor_parent);
-                    }
-                });
-                const nonRoots: string[] = [];
-                uberonDict.forEach((v, k) => {
-                    const parents = parentDict.get(k) || [];
-                    v.parents = parents;
-                    parents.forEach(uid => {
-                        const oneParent = uberonDict.get(uid);
-                        if (oneParent) {
-                            if (!nonRoots.includes(k)) {
-                                nonRoots.push(k);
-                            }
-                            oneParent.children.push(v);
-                        }
-                    });
-                });
-                nonRoots.forEach(nonRoot => {
-                    uberonDict.delete(nonRoot);
-                });
-                uberonDict.forEach((v, k) => {
-                    // @ts-ignore
-                    this.calcData(v,(list) => Math.max(...list), 'uid');
-                });
-                this.collapseDictionary(uberonDict)
-                return {
-                    uberonDict: Array.from(uberonDict.values())
-                };
-            });
+                type: 'etype',
+                oid: 'uberon_id',
+                link_oid: 'uid'
+            }, badRoots);
+
+        const gtexQuery = this.getHierarchyQuery(protein_id,
+            {
+                dataTable: 'gtex',
+                ancestryTable: 'ancestry_uberon',
+                detailTable: 'uberon',
+                parentTable: 'uberon_parent'
+            },{
+                id: this.knex.raw("concat('gtex-',dataTable.id)"),
+                value: 'tpm_rank',
+                type: this.knex.raw('"GTEx"'),
+                oid: 'uberon_id',
+                link_oid: 'uid'
+            }, badRoots);
+
+        return Promise.all([exprQuery, gtexQuery]).then((responses: any[][]) =>
+            this.parseHierarchyResponse([...responses[0], ...responses[1]],
+                (list) => Math.max(...list), [], true));
     }
 
     tryAddSingleElement(dict: Map<string, any>, key: string, value: any) {
@@ -266,13 +200,6 @@ export class HierarchicalQuery {
         }
         const value = normalizeRange ? normalize(summaryFunction(list), normalizeRange[0], normalizeRange[1]) : summaryFunction(list);
         node.value = value;
-    }
-
-    tryPushValue(map: Map<number, number>, id: number, val: number) {
-        if (map.has(id)) {
-            return;
-        }
-        map.set(id, val);
     }
 
     trimNode(node: any) {

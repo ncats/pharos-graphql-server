@@ -2,6 +2,9 @@ import {DatabaseConfig} from "../databaseConfig";
 import {FieldInfo} from "../FieldInfo";
 import {ListContext} from "../listManager";
 import {HierarchicalQuery} from "../hierarchicalQuery";
+import {PythonCalculation} from "../externalAPI/PythonCalculation";
+
+const abstractCountString = '__ABSTRACT_COUNT__';
 
 export class TargetDetails {
     facetName: string;
@@ -23,6 +26,170 @@ export class TargetDetails {
         const context = new ListContext('Target', '', 'facet', '');
         const list = this.databaseConfig.listManager.listMap.get(context.toString()) || [];
         this.facet = list.find(f => f.name === this.facetName) || new FieldInfo({});
+    }
+
+    getPublicationCount() {
+        const query = this.knex('protein2pubmed')
+            .countDistinct({count: 'pubmed_id'})
+            .where('protein_id', this.target.protein_id)
+            .andWhere('source', 'NCBI');
+        return query.then((res: any[]) => {
+            if (res && res.length > 0) {
+                return res[0].count;
+            }
+            return 0;
+        })
+    }
+
+    getPublications() {
+        const that = this;
+        const query = this.knex({pubmed: 'ncats_pubmed.pubmed', pp: 'protein2pubmed'})
+            .select({
+                pmid: 'pubmed.id',
+                gene_id: this.knex.raw('group_concat(pp.gene_id)'),
+                title: `title`,
+                journal: `journal`,
+                date: `date`,
+                authors: `authors`,
+                abstract: `abstract`,
+                fetch_date: `fetch_date`
+            })
+            .where('pp.pubmed_id', this.knex.raw('pubmed.id'))
+            .andWhere('pp.protein_id', this.target.protein_id)
+            .andWhere('pp.source', 'NCBI')
+            .orderBy('pubmed.date', 'desc')
+            .groupBy('pubmed.id')
+            .limit(this.top).offset(this.skip);
+        return query.then((res: any[]) => {
+            res.forEach((row: any) => {
+                if (row.gene_id && row.gene_id.length > 0) {
+                    row.gene_id = row.gene_id.split(',');
+                }
+            });
+            return res;
+        });
+    }
+
+    getGenerifsForTargetPub(pubObj: any) {
+        const query = this.knex({generif: 'generif', generif2pubmed: 'generif2pubmed'})
+            .select({
+                rifid: 'generif.id',
+                gene_id: this.knex.raw('group_concat(generif.gene_id)'),
+                text: 'generif.text',
+                date: 'generif.date'
+            })
+            .where('generif.id', this.knex.raw('generif2pubmed.generif_id'))
+            .andWhere('protein_id', this.target.protein_id)
+            .andWhere('pubmed_id', pubObj.pmid)
+            .groupBy('generif.text')
+        return query.then((res: any[]) => {
+            res.forEach((row: any) => {
+                if (row.gene_id && row.gene_id.length > 0) {
+                    row.gene_id = row.gene_id.split(',');
+                }
+            });
+            return res;
+        });
+    }
+
+    private getWordRegex() {
+        const wordPattern = /\b[A-Za-z]+[A-Za-z0-9\-\./\+]{1,}\b|\b[0-9]+[A-Za-z]+[0-9]+\b/;
+        return new RegExp(wordPattern, 'gm');
+    };
+
+    private getAbstractQuery(columns: string[] | any, limit: number | null = null) {
+        const abstractQuery = this.knex({pubmed: 'ncats_pubmed.pubmed', pp: 'protein2pubmed'})
+            .distinct(columns)
+            .where('pp.pubmed_id', this.knex.raw('pubmed.id'))
+            .andWhere('pp.protein_id', this.target.protein_id)
+            .andWhere('source', 'NCBI')
+            .whereNotNull('abstract');
+        if (limit) {
+            abstractQuery.orderBy('pubmed_id', 'desc').limit(limit);
+        }
+        return abstractQuery;
+    }
+
+    getAbstractWordCounts() {
+        const re = this.getWordRegex();
+        const abstractQuery = this.getAbstractQuery(['pubmed_id', 'abstract'], 100);
+
+        return abstractQuery.then((abstractRows: any[]) => {
+            const articleSetWordCount = new Map<string, number>();
+            const wordFormDictionary = new Map<string, { text: string, count: number }[]>();
+
+            abstractRows.forEach((articleRow: any) => {
+                const wordMatches = articleRow.abstract.match(re);
+                const articleWordList = new Map<string, number>();
+                wordMatches.forEach((actualWord: string) => {
+                    const lowercaseWord = actualWord.toLowerCase();
+                    articleWordList.set(lowercaseWord, 1);
+                    const wordFormList = wordFormDictionary.get(lowercaseWord) || [];
+                    wordFormDictionary.set(lowercaseWord, wordFormList);
+
+                    const existingMatch = wordFormList.find((m: any) => m.text === actualWord);
+                    if (existingMatch) {
+                        existingMatch.count++;
+                    } else {
+                        wordFormList.push({text: actualWord, count: 1});
+                    }
+                });
+                articleWordList.forEach((v, k) => {
+                    const count = articleSetWordCount.get(k) || 0;
+                    articleSetWordCount.set(k, count + 1);
+                });
+            });
+
+            var items = Array.from(articleSetWordCount.keys()).map(word => {
+                return {name: word, count: articleSetWordCount.get(word) || 0};
+            });
+
+            if (abstractRows.length > 20) {
+                items = items.filter(r => r.count >= 2);
+            }
+
+            const wordQuery = this.knex('word_count').select('*')
+                .whereIn('word', [abstractCountString, ...items.map(a => a.name)]);
+
+            return wordQuery.then((fullCounts: { word: string, count: number }[]) => {
+                const fullCountDict = new Map<string, number>();
+                fullCounts.forEach(row => {
+                    fullCountDict.set(row.word, row.count);
+                });
+
+                const totalAbstractCount = fullCountDict.get(abstractCountString);
+                const contingencyTables: any[] = [];
+                const wordCounts: { name: string, count: number, oddsRatio: number, pValue: number }[] = [];
+                let count = 0;
+                items.forEach(wordCountPair => {
+                    const wordFormList = wordFormDictionary.get(wordCountPair.name) || [];
+                    const name = wordFormList.sort((a: any, b: any) => b.count - a.count)[0].text;
+
+                    const inListHasValue = wordCountPair.count;
+                    const inListNoValue = abstractRows.length - inListHasValue;
+                    const fullListHasValue = fullCountDict.get(wordCountPair.name);
+                    // @ts-ignore
+                    const fullListNoValue = totalAbstractCount - fullListHasValue;
+                    // @ts-ignore
+                    const outListHasValue = fullListHasValue - inListHasValue;
+                    const outListNoValue = fullListNoValue - inListNoValue;
+                    let oddsRatio = (inListHasValue * outListNoValue) / (inListNoValue * outListHasValue);
+                    if (isFinite(oddsRatio) && oddsRatio > 0) {
+                        count += 1;
+                        wordCounts.push({name: name, count: inListHasValue, oddsRatio: oddsRatio, pValue: 0});
+                        contingencyTables.push([[inListHasValue, outListHasValue], [inListNoValue, outListNoValue]]);
+                    }
+                });
+
+                const pyCalc = new PythonCalculation();
+                return pyCalc.calculateFisherTest(contingencyTables).then((fisherResults: any[]) => {
+                    wordCounts.forEach((wc, index) => {
+                        wc.pValue = -Math.log(fisherResults[index][1]);
+                    });
+                    return wordCounts.sort((a, b) => b.pValue - a.pValue).slice(0, this.top);
+                });
+            });
+        });
     }
 
     getTaus() {
