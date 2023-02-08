@@ -1,7 +1,9 @@
 instance_class: F4_1G
-runtime: custom
-env: flex
+runtime: nodejs14
+automatic_scaling:
+  min_instances: 1
 vpc_access_connector:
   name: projects/ncatsidg/locations/us-central1/connectors/pharos-redis-connector
+#  name: projects/ncatsidg-dev/locations/us-east1/connectors/pharos-redis-connector
 includes:
   - env_variables.yaml
