@@ -19,6 +19,7 @@
     "apollo-fetch": "^0.7.0",
     "apollo-server": "^3.11.1",
     "apollo-server-cache-redis": "^3.3.1",
+    "apollo-server-core": "^3.11.1",
     "apollo-server-express": "^3.11.1",
     "apollo-server-plugin-response-cache": "^3.8.1",
     "apollo-server-testing": "^2.15.0",
