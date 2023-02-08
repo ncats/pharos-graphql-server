@@ -2,7 +2,7 @@ const {BaseRedisCache} = require("apollo-server-cache-redis");
 const {ApolloServer} = require("apollo-server-express");
 const responseCachePlugin = require("apollo-server-plugin-response-cache");
 const {connectToRedis} = require("./redis");
-const { ApolloServerPluginLandingPageLocalDefault } = require("apollo-server-core");
+const apolloCore = require("apollo-server-core");
 
 
 module.exports.getServer = (schema, tcrd, app, schemaDirectives) => {
@@ -12,7 +12,7 @@ module.exports.getServer = (schema, tcrd, app, schemaDirectives) => {
             introspection: true,
             plugins: [
                 responseCachePlugin.default(),
-                ApolloServerPluginLandingPageLocalDefault({ footer: false})
+                apolloCore.ApolloServerPluginLandingPageLocalDefault({ footer: false})
             ],
             playground: true,
             dataSources: () => ({
