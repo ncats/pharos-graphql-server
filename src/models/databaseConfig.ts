@@ -121,6 +121,7 @@ export class DatabaseConfig {
 
     modelList: Map<string, ModelInfo> = new Map<string, { name: string, table: string, column: string }>();
     communityDataList: Map<string, any[]> = new Map<string, any[]>();
+    communityDataSequenceList: Map<string, any> = new Map<string, any>();
     database: any;
     dbName: string;
     settingsDB: any;
@@ -141,6 +142,13 @@ export class DatabaseConfig {
 
     get communityDataTable(): {community_data: string} {
         return {community_data: 'community_data'};
+    }
+
+    get communitySequenceDataTables(): {community_sequence_data: string, community_sequence_tracks: string} {
+        return {
+            community_sequence_data: 'community_sequence_data',
+            community_sequence_tracks: 'community_sequence_tracks'
+        };
     }
 
     get assocModelTable(): { associated_model: string } {
@@ -175,6 +183,53 @@ export class DatabaseConfig {
                 list.push(row);
             });
         });
+        const seqQuery = this.settingsDB({...this.communitySequenceDataTables})
+            .select({
+                code: 'code',
+                category_label: 'community_sequence_data.label',
+                category_type: 'community_sequence_data.trackType',
+                track_label: 'community_sequence_tracks.label',
+                instructions: 'community_sequence_tracks.instructions',
+                track_type: 'community_sequence_tracks.trackType',
+                adapter: 'community_sequence_tracks.adapter',
+                url: 'community_sequence_tracks.url',
+                tooltip: 'community_sequence_tracks.tooltip',
+                row: 'community_sequence_tracks.row',
+                filter: 'community_sequence_tracks.filter'
+            })
+            .whereRaw('community_sequence_tracks.sequence_category = community_sequence_data.code')
+            .then((rows: any[]) => {
+                rows.forEach(row => {
+                    const appendTrack = (list: any[], currentRow: any) => {
+                        list.push({
+                            name: row.code + '-' + row.row,
+                            row: row.row,
+                            label: row.track_label,
+                            instructions: row.instructions,
+                            filter: JSON.parse(row.filter),
+                            trackType: row.track_type,
+                            data: [{
+                                adapter: row.adapter,
+                                url: row.url
+                            }],
+                            tooltip: row.tooltip
+                        });
+                    }
+                    if (this.communityDataSequenceList.has(row.code)) {
+                        const categoryObj = this.communityDataSequenceList.get(row.code);
+                        appendTrack(categoryObj.tracks, row);
+                    } else {
+                        const categoryObj = {
+                            name: row.code,
+                            label: row.category_label,
+                            trackType: row.category_type,
+                            tracks: []
+                        };
+                        appendTrack(categoryObj.tracks, row);
+                        this.communityDataSequenceList.set(row.code, categoryObj);
+                    }
+                });
+            });
     }
     loadMondoMap() {
         const query = this.database('mondo_xref').distinct({
