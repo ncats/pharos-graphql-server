@@ -198,6 +198,7 @@ export class DatabaseConfig {
                 filter: 'community_sequence_tracks.filter'
             })
             .whereRaw('community_sequence_tracks.sequence_category = community_sequence_data.code')
+            .where('community_sequence_data.default', true)
             .then((rows: any[]) => {
                 rows.forEach(row => {
                     const appendTrack = (list: any[], currentRow: any) => {
