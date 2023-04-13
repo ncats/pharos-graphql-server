@@ -61,6 +61,16 @@ module.exports.applySpecialRoutes = (app, tcrd) => {
     res.end(JSON.stringify(parseResidueData(results)));
   });
 
+  app.get("/sources", async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const list = [];
+    tcrd.tableInfo.communityDataSequenceList.forEach((v,k) => {
+      list.push(v);
+   })
+    res.end(JSON.stringify(list));
+  });
+
   app.get("/sitemap.xml", async (req, res) => {
     res.setHeader('Content-Type', 'application/xml');
     res.setHeader('Access-Control-Allow-Origin', '*');
