@@ -382,7 +382,7 @@ const resolvers = {
             return q.then(rows => {
                 if (rows) {
                     if (rows.length > 0) {
-                        dataSources.associatedTargetTCRDID = rows[0].id;
+                        dataSources.associatedTargetTCRDID = rows[0].tcrdid || rows[0].id;
                     }
                     return rows[0];
                 }
