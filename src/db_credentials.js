@@ -3,9 +3,9 @@
 //
 const cred = {
     DBHOST: 'tcrd-cluster.cluster-ceyknq0yekb3.us-east-1.rds.amazonaws.com',
-    DBNAME: 'pharos316',
+    DBNAME: 'pharos317',
     USER: 'tcrd',
     PWORD: '',
-    LASTMOD: '2023-03-30'
+    LASTMOD: '2023-07-19'
 };
 module.exports.cred = cred;
