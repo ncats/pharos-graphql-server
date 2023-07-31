@@ -3,10 +3,11 @@ const {ApolloServer} = require("apollo-server-express");
 const responseCachePlugin = require("apollo-server-plugin-response-cache");
 const {connectToRedis} = require("./redis");
 const {ApolloServerPluginLandingPageLocalDefault} = require("apollo-server-core");
-
+const bodyParser = require('body-parser');
 
 module.exports.getServer = (schema, tcrd, app, schemaDirectives) => {
     return connectToRedis().then(async redisClient => {
+        app.use(bodyParser.json({ limit: '50mb' }));
         const serverOptions = {
             schema: schema,
             introspection: true,
@@ -30,7 +31,7 @@ module.exports.getServer = (schema, tcrd, app, schemaDirectives) => {
         await server.start();
         server.applyMiddleware({
             app,
-            path: '/graphql'
+            path: '/graphql',
         });
 
         return {apollo: server, redis: redisClient};
