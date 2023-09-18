@@ -203,9 +203,8 @@ export class QueryDefinition {
                 if(dataTable.schema.length > 0){
                     tableNameToUse = dataTable.schema + '.' + dataTable.tableName;
                 }
-                // @ts-ignore
                 query[joinFunction]({[dataTable.alias]: tableNameToUse}, function (this: any) {
-                    if(leftTable.alias !== dataTable.alias || !dataTable.joinConstraint) {
+                    if(leftTable.tableName !== dataTable.tableName || !dataTable.joinConstraint) {
                         this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${dataTable.alias}.${linkInfo.toCol}`);
                     }
                     if (dataTable.joinConstraint) {

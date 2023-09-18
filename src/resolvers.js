@@ -1903,11 +1903,12 @@ const resolvers = {
                         return a.stats.pValue - b.stats.pValue;
                     });
 
-                    let last = 0;
-                    values.forEach((val, index) => {
+                    let last = 1;
+                    for (let index = values.length - 1 ; index >= 0 ; index-- ) {
+                        const val = values[index];
                         const data = val.data;
                         const tempQ = val.stats.pValue * values.length / (index + 1);
-                        val.stats.qValue = Math.min(Math.max(last, tempQ), 1);
+                        val.stats.qValue = Math.min(Math.min(last, tempQ), 1);
                         if (val.stats.qValue <= 0.05) {
                             val.stats.rejected = true;
                         } else {
@@ -1916,7 +1917,7 @@ const resolvers = {
                         val.stats.statistic = val.value / data.facetCount;
                         val.stats.nullValue = data.p;
                         last = val.stats.qValue;
-                    });
+                    }
                 }
                 values.splice(1000);
             }
