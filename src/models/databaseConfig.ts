@@ -171,6 +171,7 @@ export class DatabaseConfig {
             this.loadModelMap(),
             this.loadCounts(),
             this.loadMondoMap(),
+            this.loadTargetMap(),
             this.loadCommunityAPIs()
         ]);
     }
@@ -231,6 +232,10 @@ export class DatabaseConfig {
                     }
                 });
             });
+    }
+    loadTargetMap() {
+        const query = this.database;
+        //TODO
     }
     loadMondoMap() {
         const query = this.database('mondo_xref').distinct({
