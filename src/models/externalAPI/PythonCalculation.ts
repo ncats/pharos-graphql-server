@@ -1,6 +1,9 @@
 const axios = require('axios');
 
 export function parsePythonJSON(input: string) {
+    if (!input || input.length == 0) {
+        return input;
+    }
     let data = input.replace(/-Infinity/g, "\"-Infinity\"")
         .replace(/\[Infinity/g, "[\"Infinity\"")
         .replace(/NaN/g, "\"NaN\"");
