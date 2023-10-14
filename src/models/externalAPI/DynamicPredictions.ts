@@ -1,5 +1,6 @@
 import {Knex} from "knex";
 import {LigandDetails} from "../ligand/ligandDetails";
+import {parsePythonJSON} from "./PythonCalculation";
 
 const axios = require('axios');
 
@@ -258,8 +259,12 @@ export class DynamicPredictions {
         return Promise.all(queries)
             .then(async (responses: any[]) => {
                 for (let j = 0; j < responses.length; j++) {
-                    const r = responses[j]
+                    let r = responses[j];
                     if (r.data) {
+                        let data = r.data;
+                        if (data[0] === '[') {
+                            data = parsePythonJSON(data);
+                        }
                         for (let i = 0; i < r.data.length; i++) {
                             this.findDiseases(r.data[i]);
                             this.findTargets(r.data[i]);

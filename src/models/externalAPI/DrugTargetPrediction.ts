@@ -1,5 +1,38 @@
+import { parsePythonJSON } from "./PythonCalculation";
+
 const axios = require('axios');
 const crypto = require('crypto');
+
+export class ModelDetails {
+    AUC: number;
+    'Applicability domain': string;
+    'Balanced Accuracy': number;
+    Descriptors: string;
+    'End Point': string;
+    Group: string;
+    Link: string;
+    'Machine learning approach': string;
+    Model_ID: string;
+    Name: string;
+    'Number compounds in the test set': number;
+    'Number compounds in the training set': number;
+    'Prediction Type': string;
+    R2: number;
+    RMSE: number
+    Reference: string;
+    Source: string;
+    Title: string;
+    'Validation approach': string
+
+}
+
+export class PredictorResult {
+    applicability: number;
+    model: ModelDetails;
+    nearest: { result:number, smiles: string };
+    result: number
+}
+
 
 export class DrugTargetPrediction {
     smiles: string;
@@ -46,15 +79,13 @@ export class DrugTargetPrediction {
         }
     }
 
-    private addResults(dataArray: any[]) {
-        const filteredData = dataArray.filter(row => {
-            return row.group === 'Target' && row.domain >= this.similarityCutoff;
-        });
+    private addResults(dataBlob: string) {
+        let filteredData: PredictorResult[] = parsePythonJSON(dataBlob);
         const inserts: any[] = [];
-        filteredData.forEach(row => {
-            const modelstring = row.name.split(row.endPoint)[0];
+        filteredData.forEach((row: PredictorResult) => {
+
+            const modelstring = row.model.Name.split(row.model["End Point"])[0];
             const models = modelstring.split('|') || [modelstring];
-            const pieces = row.similarity.neighborhoodActivity.split(':');
             models.forEach((model: string) => {
                 const protein_id = this.modelMap.get(model.trim());
                 if(protein_id && !inserts.find(ex => ex.protein_id === protein_id)) {
@@ -63,15 +94,15 @@ export class DrugTargetPrediction {
                         query_hash: this.queryHash,
                         protein_id: protein_id,
                         result: row.result,
-                        end_point: row.endPoint,
-                        neighbor_smiles: row.similarity.neighborhoodStructure,
-                        neighbor_activity: pieces[1],
-                        neighbor_unit: pieces[0],
-                        similarity: row.domain,
-                        model_name: row.name,
-                        model_type: row.type,
-                        target_chembl_id: row.id,
-                        group: row.group
+                        end_point: row.model["End Point"],
+                        neighbor_smiles: row.nearest.smiles,
+                        neighbor_activity: row.nearest.result,
+                        neighbor_unit: "pIC50",
+                        similarity: row.applicability,
+                        model_name: row.model.Name,
+                        model_type: row.model["Prediction Type"],
+                        target_chembl_id: row.model.Model_ID,
+                        group: row.model.Group
                     });
                 }
             });
@@ -126,7 +157,7 @@ export class DrugTargetPrediction {
     }
 
     private url(): string {
-        return 'https://tripod.nih.gov/predictor/route/microservice/predict/smiles/' + encodeURIComponent(encodeURIComponent(this.smiles));
+        return 'https://stitcher.ncats.io/predictor/predictedTargets?smiles=' + encodeURIComponent(this.smiles);
     }
 
     initMap(){
