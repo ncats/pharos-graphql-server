@@ -275,7 +275,7 @@ export class DynamicPredictions {
                 return responses.map(r => r.data ? r.data : null);
             }, (rejected: any) => {
                 console.log(rejected);
-                throw new Error(rejected);
+                return [];
             });
     }
 
