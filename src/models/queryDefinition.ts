@@ -204,7 +204,7 @@ export class QueryDefinition {
                     tableNameToUse = dataTable.schema + '.' + dataTable.tableName;
                 }
                 query[joinFunction]({[dataTable.alias]: tableNameToUse}, function (this: any) {
-                    if(leftTable.tableName !== dataTable.tableName || !dataTable.joinConstraint) {
+                    if((leftTable.alias !== dataTable.alias && joinFunction == "join") || !dataTable.joinConstraint) {
                         this.on(`${leftTable.alias}.${linkInfo.fromCol}`, `=`, `${dataTable.alias}.${linkInfo.toCol}`);
                     }
                     if (dataTable.joinConstraint) {
