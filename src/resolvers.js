@@ -1,4 +1,5 @@
 const {SequenceSearch} = require("./models/externalAPI/SequenceSearch");
+const {cred} = require("./db_credentials");
 const {PythonCalculation} = require("./models/externalAPI/PythonCalculation");
 const {ListContext} = require("./models/listManager");
 const {DataModelListFactory} = require("./models/DataModelListFactory");
@@ -68,7 +69,12 @@ const resolvers = {
                 .andWhere('uniprot', sequenceSimilarityDetails.uniprot);
         }
     },
+
     Query: {
+        dbVersion: async function(_, args, {dataSources}) {
+            return cred.DBNAME;
+        },
+
         communityAPIs: async function (_, args, {dataSources}) {
             const apis = [];
             for (let group of dataSources.tcrd.tableInfo.communityDataList.keys()) {

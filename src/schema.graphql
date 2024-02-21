@@ -1021,6 +1021,8 @@ type DataVersionResponse @cacheControl(maxAge: 604800) {
 }
 
 type Query @cacheControl(maxAge: 604800){
+     dbVersion: String
+
      configuration: PharosConfiguration
      download(model: String!, fields: [String!], sqlOnly: Boolean = true, skip: Int, top: Int, filter: IFilter, batch: [String]): DownloadResult
 
