@@ -42,8 +42,7 @@ export class TargetDetails {
     }
 
     getPublications() {
-        const that = this;
-        const query = this.knex({pubmed: 'ncats_pubmed.pubmed', pp: 'protein2pubmed'})
+        const query = this.knex({pubmed: 'ncats_pubmed.pubmed', pp: 'protein2pubmed', t2tc: 't2tc'})
             .select({
                 pmid: 'pubmed.id',
                 gene_id: this.knex.raw('group_concat(pp.gene_id)'),
@@ -55,7 +54,8 @@ export class TargetDetails {
                 fetch_date: `fetch_date`
             })
             .where('pp.pubmed_id', this.knex.raw('pubmed.id'))
-            .andWhere('pp.protein_id', this.target.protein_id)
+            .andWhere('pp.protein_id', this.knex.raw('t2tc.protein_id'))
+            .andWhere('t2tc.target_id', this.target.tcrdid)
             .andWhere('pp.source', 'NCBI')
             .orderBy('pubmed.date', 'desc')
             .groupBy('pubmed.id')
