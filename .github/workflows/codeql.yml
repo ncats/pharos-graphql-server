@@ -4,9 +4,9 @@ name: "CodeQL"
 # Define when the workflow should be triggered (on push to a specific branch and pull requests to the master branch)
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 # Define the jobs that will be executed as part of the workflow
 jobs:
