@@ -86,7 +86,8 @@ jobs:
           image: ncats/pharos-graphql-server:$BUILD_VERSION
           args: "--sarif-file-output=snyk.sarif --file=Dockerfile"
       
-      - name: Replace security-severity undefined for license-related findings 
+      - name: Replace security-severity undefined for license-related findings
+        continue-on-error: true
         run: |
          sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
          sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
