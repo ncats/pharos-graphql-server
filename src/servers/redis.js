@@ -17,9 +17,11 @@ module.exports.getReadablePrefix = getReadablePrefix;
 module.exports.connectToRedis = () => {
     const REDISHOST = process.env.REDISHOST || 'localhost';// || '10.120.0.3';
     const REDISPORT = process.env.REDISPORT || 6379;
+    const REDISPASSWORD = process.env.REDISPASSWORD || null;
     let redisClient = new Redis({
         host: REDISHOST,
         port: REDISPORT,
+        password: REDISPASSWORD,
         keyPrefix: getPrefix(),
         lazyConnect: true
     });

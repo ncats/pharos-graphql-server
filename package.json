@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node src/index.js & (sleep 10 && jest)",
     "justTests": "jest",
-    "start": "nodemon src/index.js",
+    "start": "node src/index.js",
     "perfmon": "nodemon src/index.js perf",
     "start:ci": "tsc && node src/index.js",
     "gcp-build": "tsc -p ."

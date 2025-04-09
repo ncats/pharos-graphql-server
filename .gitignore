@@ -1,2 +1,3 @@
 /env_variables.yaml
 .DS_Store
+secrets.env

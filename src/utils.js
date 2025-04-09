@@ -44,10 +44,13 @@ module.exports.applySpecialRoutes = (app, tcrd) => {
     const queryMap = querystring.parse(parsedUrl.query);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
-
-    const targetDetails = new TargetDetails({}, {uniprot: queryMap.uniprot}, tcrd);
-    const results = await targetDetails.getSequenceAnnotations();
-    res.end(JSON.stringify(results));
+    if (queryMap.uniprot) {
+      const targetDetails = new TargetDetails({}, {uniprot: queryMap.uniprot}, tcrd);
+      const results = await targetDetails.getSequenceAnnotations();
+      res.end(JSON.stringify(results));
+    } else {
+      res.end(JSON.stringify([]))
+    }
   });
 
   app.get("/variants?*", async (req, res) => {
@@ -56,9 +59,13 @@ module.exports.applySpecialRoutes = (app, tcrd) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
 
-    const targetDetails = new TargetDetails({}, {uniprot: queryMap.uniprot}, tcrd);
-    const results = await targetDetails.getSequenceVariants();
-    res.end(JSON.stringify(parseResidueData(results)));
+    if (queryMap.uniprot) {
+      const targetDetails = new TargetDetails({}, {uniprot: queryMap.uniprot}, tcrd);
+      const results = await targetDetails.getSequenceVariants();
+      res.end(JSON.stringify(parseResidueData(results)));
+    } else {
+      res.end(JSON.stringify([]))
+    }
   });
 
   app.get("/sources", async (req, res) => {

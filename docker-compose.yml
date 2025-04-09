@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pharos-graphql-server
+    working_dir: /usr/src/app
+    env_file:
+      - secrets.env
+    restart: always
+    environment:
+      PORT: 4000
+    ports:
+      - "4000:4000"
