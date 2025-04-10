@@ -4,7 +4,6 @@
 
 const {cred} = require('./db_credentials');
 const express = require('express');
-const { makeExecutableSchema } = require('graphql-tools');
 const TCRD = require('./TCRD');
 const fs = require('fs');
 require('typescript-require');
@@ -14,6 +13,7 @@ const {getServer} = require("./servers/apollo");
 const {applySpecialRoutes, monitorPerformance, addFriendlyFirewall} = require("./utils");
 const {getReadablePrefix} = require("./servers/redis");
 const {UndocumentedDirective} = require("./UndocumentedDirective");
+const {makeExecutableSchema} = require("@graphql-tools/schema");
 
 const schemaDirectives = {
     undocumented: UndocumentedDirective
