@@ -1220,7 +1220,7 @@ const resolvers = {
             return {target: target};
         },
 
-        ligandCounts: async function (target) {
+        ligandCounts: async function (target, args, {dataSources}) {
             let ligandArgs = args;
             ligandArgs.filter = ligandArgs.filter || {};
             ligandArgs.filter.associatedTarget = target.uniprot;
