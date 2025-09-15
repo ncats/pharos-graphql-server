@@ -1,4 +1,3 @@
-const {SequenceSearch} = require("./models/externalAPI/SequenceSearch");
 const {cred} = require("./db_credentials");
 const {PythonCalculation} = require("./models/externalAPI/PythonCalculation");
 const {ListContext} = require("./models/listManager");
@@ -9,17 +8,15 @@ const {LigandList} = require("./models/ligand/ligandList");
 const {DiseaseList} = require("./models/disease/diseaseList");
 const {TargetList} = require("./models/target/targetList");
 const {Virus} = require("./models/virus/virusQuery");
-const {performance} = require('perf_hooks');
-const {find, filter, slice, partition} = require('lodash');
+const {find, filter, slice} = require('lodash');
 const {LigandDetails} = require("./models/ligand/ligandDetails");
 const { parseResidueData } = require('./utils');
 const {DynamicPredictions} = require("./models/externalAPI/DynamicPredictions");
 const {VersionInfo} = require('./models/versionInfo/versionInfo');
 
 const resolvers = {
-
     PharosConfiguration: {
-        downloadLists: async function (config, args, {dataSources}) {
+        downloadLists: async function (config, args) {
             const lists = config.listManager.getDownloadLists(
                 args.modelName,
                 args.associatedModelName,
@@ -51,7 +48,7 @@ const resolvers = {
                 schema: 'pharos_config_prod',
                 time_stamp: new Date().toISOString()
             };
-            return dataSources.tcrd.db('result_cache.feature_tracking').insert(insert).then(res => {
+            return dataSources.tcrd.db('result_cache.feature_tracking').insert(insert).then(() => {
                 return {success: true};
             }).catch((e) => {
                 return {success: false, message: e.message};
@@ -71,7 +68,7 @@ const resolvers = {
     },
 
     Query: {
-        dbVersion: async function(_, args, {dataSources}) {
+        dbVersion: async function() {
             return cred.DBNAME;
         },
 
@@ -83,7 +80,6 @@ const resolvers = {
             return apis;
         },
         usageData: async function (_, args, {dataSources}) {
-            const interval = args.interval;
             let summaryColumn;
             switch (args.interval) {
                 case 'day':
@@ -253,7 +249,7 @@ const resolvers = {
                 ligandFacets: ligandFilters.filter(f => f.dataType === 'category').map(f => f.name)
             };
         },
-        hierarchicalFilters: async function (_, args, {dataSources}) {
+        hierarchicalFilters: async function () {
             return {
                 targetFacets: ['DTO Class', 'PANTHER Class'],
                 diseaseFacets: [],
@@ -309,7 +305,7 @@ const resolvers = {
             return dataSources.tcrd.tableInfo;
         },
 
-        autocomplete: async function (_, args, {dataSources}, info) {
+        autocomplete: async function (_, args, {dataSources}) {
             let query = dataSources.tcrd.getSuggestions(args.name);
             return query.then(rows => {
                 rows.forEach(row => {
@@ -603,7 +599,7 @@ const resolvers = {
             return new DynamicPredictions(dataSources.tcrd).fetchTargetAPIs(target);
         },
         affiliate_links: async function (target, args, {dataSources}) {
-            let query = dataSources.tcrd.db({extlink: 'extlink', t2tc: 't2tc', affiliate: 'affiliate'})
+            return dataSources.tcrd.db({extlink: 'extlink', t2tc: 't2tc', affiliate: 'affiliate'})
                 .select(
                     {
                         url: 'url',
@@ -615,7 +611,6 @@ const resolvers = {
                 .andWhere(dataSources.tcrd.db.raw('extlink.source = affiliate.source'))
                 .groupBy('extlink.source')
                 .orderBy('affiliate.id');
-            return query;
         },
         dataSources: async function (target, args, {dataSources}) {
             let query = dataSources.tcrd.db({ncats_dataSource_map: "ncats_dataSource_map", t2tc: "t2tc"})
@@ -802,7 +797,6 @@ const resolvers = {
                     return rowData.tcrdid == target.tcrdid;
                 });
                 if (theRow) {
-                    theRow.score = theRow.score;
                     return theRow;
                 }
             }
@@ -920,9 +914,11 @@ const resolvers = {
         pantherPaths: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getPanther(target);
             return q.then(rows => {
+                let j;
+                let i;
                 let classes = {};
                 let children = {};
-                for (var i in rows) {
+                for (i in rows) {
                     let r = rows[i];
                     let toks = r.parent_pcids.split('|');
                     let p = {
@@ -931,7 +927,7 @@ const resolvers = {
                         'parents': []
                     };
                     let unique = {};
-                    for (var j in toks) {
+                    for (j in toks) {
                         if (unique[toks[j]] == undefined
                             && toks[j] !== 'PC00000') {
                             p.parents.push(toks[j]);
@@ -943,11 +939,11 @@ const resolvers = {
                 }
 
                 let panthers = [];
-                for (var i in classes) {
+                for (i in classes) {
                     let p = classes[i];
                     let parents = p.parents;
                     p.parents = [];
-                    for (var j in parents) {
+                    for (j in parents) {
                         p.parents.push(classes[parents[j]]);
                     }
                     if (children[i] == undefined)
@@ -1057,8 +1053,7 @@ const resolvers = {
             });
         },
         expressions: async function (target, args, {dataSources}) {
-            const q = dataSources.tcrd.getExpressionsForTarget(target, args);
-            return q;
+            return dataSources.tcrd.getExpressionsForTarget(target, args);
         },
         expressionTree: async function(target, args, {dataSources}) {
             const targetDetails = new TargetDetails(args, target, dataSources.tcrd);
@@ -1077,13 +1072,12 @@ const resolvers = {
             return targetDetails.getTaus();
         },
         gtex: async function (target, args, {dataSources}) {
-            const q = dataSources.tcrd.db({t2tc: 't2tc', gtex: 'gtex'})
+            return dataSources.tcrd.db({t2tc: 't2tc', gtex: 'gtex'})
                 .leftJoin('uberon', 'uberon_id', 'uberon.uid')
                 .select(['name', 'def', 'comment',
                     `tissue`, `tpm`, `tpm_rank`, `tpm_male`, `tpm_male_rank`, `tpm_female`, `tpm_female_rank`, `uberon_id`])
                 .where('gtex.protein_id', dataSources.tcrd.db.raw('t2tc.protein_id'))
                 .andWhere('t2tc.target_id', target.tcrdid);
-            return q;
         },
         orthologCounts: async function (target, args, {dataSources}) {
             const q = dataSources.tcrd.getOrthologCountsForTarget(target);
@@ -1222,11 +1216,11 @@ const resolvers = {
                 });
         },
 
-        harmonizome: async function (target, args, {dataSources}) {
+        harmonizome: async function (target) {
             return {target: target};
         },
 
-        ligandCounts: async function (target, args, {dataSources}) {
+        ligandCounts: async function (target) {
             let ligandArgs = args;
             ligandArgs.filter = ligandArgs.filter || {};
             ligandArgs.filter.associatedTarget = target.uniprot;
@@ -1415,7 +1409,7 @@ const resolvers = {
     },
 
     TargetNeighbor: {
-        props: async function (neighbor, args, {dataSources}) {
+        props: async function (neighbor) {
             let props = [
                 {'name': 'tdl', 'value': neighbor.tdl}
             ];
@@ -1766,7 +1760,7 @@ const resolvers = {
     },
     Uberon: {
         ancestors: async function (expr, args, {dataSources}) {
-            const query = dataSources.tcrd.db({uberon: 'uberon', ancestry_uberon: 'ancestry_uberon'})
+            return dataSources.tcrd.db({uberon: 'uberon', ancestry_uberon: 'ancestry_uberon'})
                 .select({
                     uid: 'uid',
                     name: 'name',
@@ -1775,11 +1769,10 @@ const resolvers = {
                 }).where('uberon.uid', dataSources.tcrd.db.raw('ancestry_uberon.ancestor_id'))
                 .andWhere('oid', expr.uid)
                 .andWhere('oid', '!=', dataSources.tcrd.db.raw('ancestor_id'));
-            return query;
         }
     },
     GTEXExpression: {
-        uberon: async function (expr, args, {dataSources}) {
+        uberon: async function (expr) {
             if (expr.uberon_id && expr.name) {
                 return {
                     uid: expr.uberon_id,
@@ -1790,7 +1783,7 @@ const resolvers = {
             }
             return null;
         },
-        log2foldchange: async function (expr, args, {dataSources}) {
+        log2foldchange: async function (expr) {
             if (!expr.tpm_male || !expr.tpm_female) {
                 return null;
             }
@@ -1798,7 +1791,7 @@ const resolvers = {
         }
     },
     Expression: {
-        uberon: async function (expr, args, {dataSources}) {
+        uberon: async function (expr) {
             if (expr.uberon_id) {
                 return {
                     uid: expr.uberon_id,
@@ -1885,7 +1878,7 @@ const resolvers = {
                     }
                 }
                 if (tables.length > 0) {
-                    const stats = await new PythonCalculation().calculateFisherTest(tables).then(results => {
+                    await new PythonCalculation().calculateFisherTest(tables).then(results => {
                         values.forEach((val, index) => {
                             const oddsRatio = (val.table.inListHasValue * val.table.outListNoValue) /
                                 (val.table.inListNoValue * val.table.outListHasValue);
@@ -1915,11 +1908,7 @@ const resolvers = {
                         const data = val.data;
                         const tempQ = val.stats.pValue * values.length / (index + 1);
                         val.stats.qValue = Math.min(Math.min(last, tempQ), 1);
-                        if (val.stats.qValue <= 0.05) {
-                            val.stats.rejected = true;
-                        } else {
-                            val.stats.rejected = false;
-                        }
+                        val.stats.rejected = val.stats.qValue <= 0.05;
                         val.stats.statistic = val.value / data.facetCount;
                         val.stats.nullValue = data.p;
                         last = val.stats.qValue;
@@ -2186,7 +2175,6 @@ const resolvers = {
                 return synonyms;
             };
 
-            let synonyms = [];
             if (!ligand['PubChem'] && !ligand['Guide to Pharmacology'] && !ligand['ChEMBL'] && !ligand['DrugCentral'] && !ligand['unii'] && !ligand['pt']) {
                 let query = dataSources.tcrd.db('ncats_ligands')
                     .select(['unii', 'PubChem', 'Guide to Pharmacology', 'ChEMBL', 'DrugCentral', 'pt'])
@@ -2285,7 +2273,7 @@ async function getTargetResult(args, dataSources) {
                     single_response: targetList.facetsToFetch[i].single_response,
                     facet: targetList.facetsToFetch[i].name,
                     modifier: targetList.facetsToFetch[i].typeModifier,
-                    count: rowData.length,
+                    count: rowData?.length || 0,
                     values: rowData,
                     sql: facetQueries[i].toString(),
                     elapsedTime: targetList.getElapsedTime(targetList.facetsToFetch[i].name),
@@ -2334,7 +2322,7 @@ function getDiseaseResult(args, tcrd) {
                 elapsedTime: diseaseList.getElapsedTime(diseaseList.facetsToFetch[i].name),
                 facet: diseaseList.facetsToFetch[i].name,
                 modifier: diseaseList.facetsToFetch[i].typeModifier,
-                count: rowData.length,
+                count: rowData?.length || 0,
                 values: rowData,
                 sourceExplanation: diseaseList.facetsToFetch[i].description
             })
@@ -2403,7 +2391,7 @@ async function getLigandResult(args, dataSources) {
                 single_response: ligandList.facetsToFetch[i].single_response,
                 facet: ligandList.facetsToFetch[i].name,
                 modifier: ligandList.facetsToFetch[i].typeModifier,
-                count: rowData.length,
+                count: rowData?.length || 0,
                 values: rowData,
                 sql: facetQueries[i].toString(),
                 elapsedTime: ligandList.getElapsedTime(ligandList.facetsToFetch[i].name),

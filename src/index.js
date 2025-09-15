@@ -1,7 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
-// DON'T EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING!
-////////////////////////////////////////////////////////////////////////////////
-
 const {cred} = require('./db_credentials');
 const express = require('express');
 const TCRD = require('./TCRD');
@@ -114,7 +110,7 @@ const updateUnfilteredCounts = async (db, resolvers, tcrd) => {
         table.increments('id');
         table.string('model', 20).notNullable();
         table.string('filter', 100).notNullable();
-        table.string('value').notNullable();
+        table.string('value'); // .notNullable();
         table.integer('count').notNullable();
         table.double('p').notNullable();
         table.index(['filter', 'value']);
@@ -164,7 +160,7 @@ const updateUnfilteredCounts = async (db, resolvers, tcrd) => {
 
 const getUnfilteredCounts = async (countDB, resolvers, tcrd) => {
     [changed, versionDetails] = await versionChanged(countDB);
-    if (changed) {
+    if (changed || true) {
         console.log(`version changed: ${JSON.stringify(versionDetails)}`);
         console.log('Updating unfiltered counts table');
         return updateUnfilteredCounts(countDB, resolvers, tcrd);

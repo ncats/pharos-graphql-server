@@ -69,13 +69,14 @@ function dtoTraversal(matches, node, args, doRegex) {
 }
 
 function diseaseOntologyTraversal(matches, node, args) {
+    let n;
     if (args.doid) {
         if (node.doid == args.doid) {
             matches.push(node);
             return;
         }
 
-        for (var n in node.children)
+        for (n in node.children)
             diseaseOntologyTraversal(matches, node.children[n], args);
     } else {
         var matched = node.name == args.name;
@@ -86,7 +87,7 @@ function diseaseOntologyTraversal(matches, node, args) {
         if (matched)
             matches.push(node);
 
-        for (var n in node.children)
+        for (n in node.children)
             diseaseOntologyTraversal(matches, node.children[n], args);
     }
 }
@@ -109,6 +110,7 @@ class TCRD extends SQLDataSource {
         this.doTree[root.doid] = root;
         this.getDOHierarchy()
             .then(rows => {
+                let key;
                 rows.forEach(r => {
                     let d = _this.doTree[r.doid];
                     if (!d) {
@@ -134,9 +136,9 @@ class TCRD extends SQLDataSource {
                     }
                 });
 
-                for (var key in _this.doTree) {
+                for (key in _this.doTree) {
                     let n = _this.doTree[key];
-                    for (var i in n._parents) {
+                    for (const i in n._parents) {
                         let id = n._parents[i];
                         let p = _this.doTree[id];
                         if (p) {
@@ -152,7 +154,7 @@ class TCRD extends SQLDataSource {
                     }
                 }
 
-                for (var key in _this.doTree) {
+                for (key in _this.doTree) {
                     let n = _this.doTree[key];
                     if (n.parents.length == 0) {
                         //console.log('!!!!! '+n.doid+' '+n.name);
@@ -166,6 +168,7 @@ class TCRD extends SQLDataSource {
         this.dto = {};
         this.getDTOHierarchy()
             .then(rows => {
+                let key;
                 rows.forEach(r => {
                     let d = _this.dto[r.id];
                     if (!d) {
@@ -186,7 +189,7 @@ class TCRD extends SQLDataSource {
                     }
                 });
 
-                for (var key in _this.dto) {
+                for (key in _this.dto) {
                     let n = _this.dto[key];
                     if (n._parent) {
                         n.parent = _this.dto[n._parent];
@@ -200,7 +203,7 @@ class TCRD extends SQLDataSource {
                     }
                 }
 
-                for (var key in _this.dto) {
+                for (key in _this.dto) {
                     let n = _this.dto[key];
                     if (!n.parent) {
                         //console.log('!!!!! '+n.dtoid+' '+n.name);
@@ -248,13 +251,12 @@ class TCRD extends SQLDataSource {
     }
 
     getTargetGOFacetSubquery(values, prefix) {
-        let q = this.db.select(this.db.raw(`protein_id from goa`))
+        return this.db.select(this.db.raw(`protein_id from goa`))
             .whereIn('go_term', values.map(x => {
                 if (!x.startsWith(prefix))
                     return prefix + x;
                 return x;
             }));
-        return q;
     }
 
     getTargetFacetSubQueries(facets) {
@@ -487,7 +489,7 @@ and b.id = c.target_id`));
 
     getGOCountsForTarget(target) {
         return this.db.select(this.db.raw(`
-substr(go_term,1,1) as name, count(*) as value 
+substr(go_term,1,1) as name, COUNT(distinct a.protein_id, a.go_id) AS value
 from goa a, t2tc b where a.protein_id = b.protein_id
 and b.target_id = ?
 group by substr(go_term, 1, 1)
@@ -502,9 +504,10 @@ order by value desc`, [target.tcrdid]));
                     type: this.db.raw('substr(go_term,1,1)'),
                     term: this.db.raw('substr(go_term,3)'),
                     goeco: 'goeco',
-                    evidence: 'evidence',
-                    assigned_by: 'assigned_by',
+                    evidence: this.db.raw('group_concat(distinct evidence separator ", ")'),
+                    assigned_by: this.db.raw('group_concat(distinct assigned_by separator ", ")'),
                     explanation: this.db.raw(`CASE
+        when count(distinct evidence) > 1 THEN 'Multiple'
         WHEN evidence = 'EXP' THEN 'Inferred from Experiment'
         WHEN evidence = 'IDA' THEN 'Inferred from Direct Assay'
         WHEN evidence = 'IPI' THEN 'Inferred from Physical Interaction'
@@ -532,6 +535,7 @@ order by value desc`, [target.tcrdid]));
         WHEN evidence = 'ND' THEN 'No biological Data available'
         WHEN evidence = 'IEA' THEN 'Inferred from Electronic Annotation' END`),
                     sort_column: this.db.raw(`CASE
+        when evidence like '%,' THEN 0
         WHEN evidence =  'EXP' THEN 1
         WHEN evidence =  'IDA' THEN 2
         WHEN evidence =  'IPI' THEN 3
@@ -583,6 +587,7 @@ match(go_term) against(? in boolean mode)`, [t]));
         if (args.skip)
             q = q.offset(args.skip);
 
+        q.groupBy('goa.protein_id', 'goa.go_id');
         q.orderBy('sort_column');
         // console.log('>>> getGOTermsForTarget: '+q);
         return q;
@@ -596,7 +601,7 @@ and a.xtype = ?
 and b.target_id = ?`, ['MIM', target.tcrdid]));
     }
 
-    getMIMForTarget(target, args) {
+    getMIMForTarget(target) {
         return this.db.select(this.db.raw(`
 a.mim as mimid, a.title as term
 from omim a, xref b, t2tc c
@@ -854,11 +859,10 @@ order by date desc limit ? offset ?`,
     getPubsForGeneRIF(generif) {
         //console.log('>>> getPubsForGeneRIF: '+generif.rifid);
 
-        let q = this.db({pubmed: 'ncats_pubmed.pubmed', generif2pubmed: 'generif2pubmed'})
+        return this.db({pubmed: 'ncats_pubmed.pubmed', generif2pubmed: 'generif2pubmed'})
             .select({pmid: 'id', title: 'title', journal: 'journal', date: 'date', abstract: 'abstract'})
             .where('generif2pubmed.generif_id', generif.rifid)
             .andWhere(this.db.raw('pubmed.id = generif2pubmed.pubmed_id'));
-        return q;
 
     }
 
@@ -975,30 +979,27 @@ and b.id = d.other_id and d.id = ?`, [neighbor.nid]));
 * from ncats_ppi where id = ?`, [neighbor.nid]));
     }
 
-    getGeneAttributesForTarget(target, args) {
-        let q = this.db.select(this.db.raw(`
+    getGeneAttributesForTarget(target) {
+        return this.db.select(this.db.raw(`
 id as gaid, type as _type, attr_count as count, attr_cdf as cdf
 from hgram_cdf a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ?`, [target.tcrdid]));
-        return q;
     }
 
-    getGeneAttributeTypeForGeneAttribute(ga, args) {
-        let q = this.db.select(this.db.raw(`
+    getGeneAttributeTypeForGeneAttribute(ga) {
+        return this.db.select(this.db.raw(`
 *, id as gatid, resource_group as category, 
 attribute_group as 'group', attribute_type as type
 from gene_attribute_type
 where name = ?`, [ga._type]));
-        return q;
     }
 
-    getGeneAttributeCountForTarget(target, args) {
-        let q = this.db.select(this.db.raw(`count(*) as cnt
+    getGeneAttributeCountForTarget(target) {
+        return this.db.select(this.db.raw(`count(*) as cnt
 from hgram_cdf a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ?`, [target.tcrdid]));
-        return q;
     }
 
     getGeneAttributeSummaryForTarget(target, args) {
@@ -1014,14 +1015,13 @@ and b.target_id = ?`, [target.tcrdid]));
                 p = 'attribute_type';
         }
 
-        let q = this.db.select(this.db.raw(p + ` as name,
+        return this.db.select(this.db.raw(p + ` as name,
 avg(a.attr_cdf) as value, group_concat(distinct concat(b.name,'!',b.url) order by b.name separator '|') as sources
 from hgram_cdf a, gene_attribute_type b, t2tc c
 where a.protein_id = c.protein_id
 and c.target_id = ?
 and a.type = b.name
 group by ` + p + ` order by name`, [target.tcrdid]));
-        return q;
     }
 
     getGeneAttributeTypes() {
@@ -1039,7 +1039,7 @@ from gene_attribute_type order by attribute_group`));
 from gene_attribute_type order by resource_group`));
     }
 
-    getPubsForGeneAttributeType(gat, args) {
+    getPubsForGeneAttributeType(gat) {
         let q;
         if (gat.pubmed_ids) {
             q = this.db.select(this.db.raw(`
@@ -1064,14 +1064,14 @@ from ncats_pubmed.pubmed`)).whereIn('id', pubs);
         return q;
     }
 
-    getOrthologDiseasesForOrtholog(ortho, args) {
+    getOrthologDiseasesForOrtholog(ortho) {
         return this.db.select(this.db.raw(`
 *,id as ordid from ortholog_disease 
 where ortholog_id = ?`, [ortho.orid]));
     }
 
-    getDiseasesForOrthologDisease(ortho, args) {
-        const query = this.db.select(this.db.raw(`
+    getDiseasesForOrthologDisease(ortho) {
+        return this.db.select(this.db.raw(`
 a.ncats_name as name,count(*) as associationCount
 from disease a, ortholog_disease b, ortholog c
 where a.did = b.did
@@ -1079,17 +1079,16 @@ and c.id = b.ortholog_id
 and c.id = ?
 group by a.ncats_name
 order by associationCount desc, zscore desc`, [ortho.ortholog_id]));
-        return query;
     }
 
-    getPatentCounts(target, args) {
+    getPatentCounts(target) {
         return this.db.select(this.db.raw(`
 * from patent_count a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ? order by year`, [target.tcrdid]));
     }
 
-    getPubTatorScores(target, args) {
+    getPubTatorScores(target) {
         return this.db.select(this.db.raw(`
 year,sum(score) as score 
 from ptscore a, t2tc b
@@ -1098,7 +1097,7 @@ and b.target_id = ?
 group by year order by year`, [target.tcrdid]));
     }
 
-    getPubMedScores(target, args) {
+    getPubMedScores(target) {
         return this.db.select(this.db.raw(`
 * from pmscore a, t2tc b
 where a.protein_id = b.protein_id
@@ -1619,7 +1618,8 @@ from gwas a, t2tc b`));
 
         let sort = true;
         if (args.filter) {
-            for (var i in args.filter.frange) {
+            let i;
+            for (i in args.filter.frange) {
                 let f = args.filter.frange[i];
                 if ('pvalue' == f.facet) {
                     f.facet = 'p_value';
@@ -1633,7 +1633,7 @@ from gwas a, t2tc b`));
                 }
             }
 
-            for (var i in args.filter.facets) {
+            for (i in args.filter.facets) {
                 let f = args.filter.facets[i];
                 if ('trait' == f.facet)
                     f.facet = 'disease_trait';
@@ -1666,9 +1666,8 @@ and b.target_id = ?`, [target.tcrdid]));
     }
 
     getDOHierarchy() {
-        let q = this.db.select(this.db.raw(`
+        return this.db.select(this.db.raw(`
 a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
-        return q;
     }
 
     getDiseaseOntology(args) {
@@ -1707,12 +1706,11 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
     }
 
     getTINXCountForTarget(target) {
-        let q = this.db.select(this.db.raw(`
+        return this.db.select(this.db.raw(`
 count(*) as cnt
 from tinx_importance a, t2tc b
 where a.protein_id = b.protein_id
 and b.target_id = ?`, [target.tcrdid]));
-        return q;
     }
 
     getTINXForTarget(target, args) {
@@ -1747,7 +1745,7 @@ and c.target_id = ?`, [target.tcrdid]));
     }
 
     getSuggestions(key) {
-        const q = this.db("ncats_typeahead_index")
+        return this.db("ncats_typeahead_index")
             .select({
                 value: "value",
                 category: this.db.raw("group_concat(`category` separator '|')"),
@@ -1757,7 +1755,6 @@ and c.target_id = ?`, [target.tcrdid]));
             .groupBy("value")
             .orderByRaw(`(case when value like "${key}%" then 1 else 2 end), length(value), count(*) desc`)
             .limit(20);
-        return q;
     }
 
 }

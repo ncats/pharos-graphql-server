@@ -88,7 +88,7 @@ type OddsRatio @cacheControl(maxAge: 604800) {
 }
 
 type FacetProp @cacheControl(maxAge: 604800) {
-    name: String!
+    name: String
     value: Int!
     stats: FisherStats
     table: ContingencyTable
@@ -213,7 +213,7 @@ type Pathway @cacheControl(maxAge: 604800) {
 }
 
 input ITarget {
-     tcrdid: Int
+     tcrdid: String
      uniprot: String
      geneid: Int
      sym: String
@@ -618,7 +618,7 @@ type Target @cacheControl(maxAge: 604800){
      affiliate_links: [LinkInfo]
 
      """Internal TCRD ID; should not be used externally!"""
-     tcrdid: Int!
+     tcrdid: String!
      """UniProt Accession"""
      uniprot: String!
      """Target name"""
