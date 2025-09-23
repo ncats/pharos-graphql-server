@@ -56,8 +56,8 @@ export class DatabaseTable {
 
     static nonStandardLinks: Map<string, string> = new Map(
         [
-            ["structure_search_results-ncats_ligands", "lychi_h4-identifier"],
-            ["ncats_ligands-structure_search_results", "identifier-lychi_h4"],
+            // ["structure_search_results-ncats_ligands", "lychi_h4-identifier"],
+            // ["ncats_ligands-structure_search_results", "identifier-lychi_h4"],
             ["predictor_results-protein", "protein_id-id"],
             ["protein-predictor_results", "id-protein_id"],
             ["sequence_search_summary-protein", "protein_id-id"],

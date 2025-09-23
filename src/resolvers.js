@@ -2147,15 +2147,17 @@ const resolvers = {
                 .whereRaw(`ncats_ligands.identifier = "${ligand.ligid}"`)
                 .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`));
             if (dataSources.associatedTargetTCRDID) {
-                query.andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.target_id = ${dataSources.associatedTargetTCRDID}`));
+                query.andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.target_id ="${dataSources.associatedTargetTCRDID}"`));
             }
             return query.then(rows => {
                 for (let i = 0; i < rows.length; i++) {
                     rows[i].parent = ligand;
-                    if (rows[i].pubs) {
+                    if (rows[i].pubs != null && rows[i].pubs != '') {
                         rows[i].pubs = rows[i].pubs.split('|').map(r => {
                             return {pmid: r};
                         });
+                    } else {
+                        rows[i].pubs = null
                     }
                 }
                 return rows;
