@@ -236,15 +236,27 @@ export class FieldInfo {
     private getStandardFacetQuery() {
         let queryDefinition = QueryDefinition.GenerateQueryDefinition(this.parent,
             [
-                (this.getCountColumnInfo()),
+                {
+                    table: this.parent.rootTable,
+                    column: this.parent.keyColumn,
+                    alias: 'id'
+                } as FieldInfo,
                 {...this, alias: 'name'}
             ]);
 
-        let query = queryDefinition.generateBaseQuery(true);
+        let distinctPairsQuery = queryDefinition.generateBaseQuery(true);
 
-        this.parent.addFacetConstraints(query, this.parent.filteringFacets, this.name);
-        this.parent.addModelSpecificFiltering(query, false);
-        query.groupBy(2).orderBy('value', 'desc');
+        this.parent.addFacetConstraints(distinctPairsQuery, this.parent.filteringFacets, this.name);
+        this.parent.addModelSpecificFiltering(distinctPairsQuery, false);
+        distinctPairsQuery.distinct();
+
+        let query = this.parent.database(distinctPairsQuery.as('facet_values'))
+            .select({
+                value: this.parent.database.raw('count(*)'),
+                name: 'name'
+            })
+            .groupBy('name')
+            .orderBy('value', 'desc');
         // console.log(query.toString());
         return query;
     }
