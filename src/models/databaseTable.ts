@@ -60,6 +60,8 @@ export class DatabaseTable {
             // ["ncats_ligands-structure_search_results", "identifier-lychi_h4"],
             ["predictor_results-protein", "protein_id-id"],
             ["protein-predictor_results", "id-protein_id"],
+            ["p2dto-ancestry_dto", "dtoid-oid"],
+            ["ancestry_dto-p2dto", "oid-dtoid"],
             ["sequence_search_summary-protein", "protein_id-id"],
             ["protein-sequence_search_summary", 'id-protein_id'],
             ["sequence_search_results-protein", "protein_id-id"],
@@ -70,7 +72,8 @@ export class DatabaseTable {
 
     static preferredLink: Map<string, string> = new Map(
         [
-            ["ncats_ppi-protein", "protein_id"]
+            ["ncats_ppi-protein", "protein_id"],
+            ["ancestry_dto-dto", "ancestor_id"]
         ]
     );
 
@@ -86,7 +89,7 @@ export class DatabaseTable {
             ["protein-tinx_disease", ["tinx_importance"]],
             ["protein-pubmed", ["protein2pubmed"]],
             ["protein-virus", ["viral_protein", "viral_ppi"]],
-            ["protein-dto", ["p2dto"]],
+            ["protein-dto", ["ancestry_dto", "p2dto"]],
             ["protein-panther_class", ["p2pc"]],
             ["protein-target", ["t2tc"]],
             ["protein-nih_list_type", ["nih_list"]],
@@ -94,7 +97,7 @@ export class DatabaseTable {
             ["protein-ncats_ligand_activity", ["target", "t2tc"]],
             ["protein-drgc_resource", ["target", "t2tc"]],
             ["ncats_ligands-panther_class", ["p2pc", "protein", "t2tc", "target", "ncats_ligand_activity"]],
-            ["ncats_ligands-dto", ["p2dto", "protein", "t2tc", "target", "ncats_ligand_activity"]],
+            ["ncats_ligands-dto", ["ancestry_dto", "p2dto", "protein", "t2tc", "target", "ncats_ligand_activity"]],
             ["ncats_ligands-pathway", ["protein", "t2tc", "target", "ncats_ligand_activity"]],
             ["ncats_ligands-goa", ["protein", "t2tc", "target", "ncats_ligand_activity"]],
             ["protein-tissue", ["expression"]],

@@ -2,12 +2,12 @@ const {cred} = require('./db_credentials');
 const express = require('express');
 const TCRD = require('./TCRD');
 const fs = require('fs');
+const {execSync} = require('child_process');
 require('typescript-require');
 const typeDefs = fs.readFileSync(__dirname + '/schema.graphql','utf8');
 const resolvers = require('./resolvers');
 const {getServer} = require("./servers/apollo");
 const {applySpecialRoutes, monitorPerformance, addFriendlyFirewall} = require("./utils");
-const {getReadablePrefix} = require("./servers/redis");
 const {UndocumentedDirective} = require("./UndocumentedDirective");
 const {makeExecutableSchema} = require("@graphql-tools/schema");
 
@@ -82,7 +82,45 @@ getServer(schema, tcrd, app, schemaDirectives).then((servers) => {
     }, resolvers);
 }, resolvers);
 
-const versionChanged = async (db) => {
+const getCodeVersion = () => {
+    try {
+        return execSync('git rev-parse HEAD', {cwd: __dirname + '/..', stdio: ['ignore', 'pipe', 'ignore']})
+            .toString().trim();
+    } catch {
+        return `package-${require('../package.json').version}`;
+    }
+}
+
+const getDataVersion = async (tcrd) => {
+    const baseQuery = tcrd.db('etl_run')
+        .select(['id', 'stage', 'database_name', 'run_date', 'git_commit'])
+        .where('database_name', cred.DBNAME)
+        .orderBy([{column: 'run_date', order: 'desc'}, {column: 'id', order: 'desc'}]);
+
+    let run = await baseQuery.clone().where('stage', 'graph_to_mysql').first();
+    if (!run) {
+        run = await baseQuery.first();
+    }
+    if (!run) {
+        return `${cred.DBNAME}-no-etl-run`;
+    }
+
+    return [
+        cred.DBNAME,
+        run.stage,
+        run.id,
+        new Date(run.run_date).toISOString(),
+        run.git_commit || 'no-git-commit'
+    ].join(':');
+}
+
+const getUnfilteredCountsVersion = async (tcrd) => {
+    const dataVersion = await getDataVersion(tcrd);
+    const codeVersion = getCodeVersion();
+    return `${dataVersion}|${codeVersion}`;
+}
+
+const versionChanged = async (db, tcrd) => {
     const hasOldVersion = await db.schema.hasTable('version');
     let oldVersion = 'undefined';
     if (hasOldVersion) {
@@ -91,16 +129,16 @@ const versionChanged = async (db) => {
             oldVersion = versionInfo[0].version;
         }
     }
-    const newVersion = getReadablePrefix();
+    const newVersion = await getUnfilteredCountsVersion(tcrd);
     return [(oldVersion != newVersion), {oldVersion, newVersion}];
 }
 
-const setVersion = async (db) => {
+const setVersion = async (db, version) => {
     await db.schema.dropTableIfExists('version');
     return db.schema.createTable('version', (table) => {
-       table.string('version', 128).notNullable();
+       table.string('version', 255).notNullable();
     }).then(() => {
-        return db('version').insert({version: getReadablePrefix()});
+        return db('version').insert({version});
     });
 }
 
@@ -155,12 +193,13 @@ const updateUnfilteredCounts = async (db, resolvers, tcrd) => {
             await Promise.all(queries);
         }
     }
-    await setVersion(db);
+    const version = await getUnfilteredCountsVersion(tcrd);
+    await setVersion(db, version);
 }
 
 const getUnfilteredCounts = async (countDB, resolvers, tcrd) => {
-    [changed, versionDetails] = await versionChanged(countDB);
-    if (changed || true) {
+    [changed, versionDetails] = await versionChanged(countDB, tcrd);
+    if (changed) {
         console.log(`version changed: ${JSON.stringify(versionDetails)}`);
         console.log('Updating unfiltered counts table');
         return updateUnfilteredCounts(countDB, resolvers, tcrd);
@@ -169,4 +208,3 @@ const getUnfilteredCounts = async (countDB, resolvers, tcrd) => {
         return Promise.resolve();
     }
 }
-

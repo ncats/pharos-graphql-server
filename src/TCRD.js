@@ -1682,10 +1682,32 @@ a.*,b.parent_id from do a, do_parent b where a.doid = b.doid`));
     }
 
     getDTOHierarchy() {
-        return this.db.select(this.db.raw(`dtoid as id, name, parent_id as parent from dto`));
+       return this.db.select(this.db.raw(`dtoid as id, name, parent_id as parent from dto`));
     }
 
     getDTO(args) {
+        if (args.protein_id != null) {
+            return this.db('p2dto')
+                .distinct('dtoid')
+                .where('protein_id', args.protein_id)
+                .orderBy('dtoid')
+                .then(rows => {
+                    let matches = [];
+                    let seen = new Set();
+                    rows.forEach(row => {
+                        let n = this.dto[row.dtoid];
+                        while (n) {
+                            if (!seen.has(n.dtoid)) {
+                                matches.push(n);
+                                seen.add(n.dtoid);
+                            }
+                            n = n.parent;
+                        }
+                    });
+                    return matches;
+                });
+        }
+
         let matches = [];
         if (args.dtoid) {
             const dtoFormat = args.dtoid.replace('_',':');

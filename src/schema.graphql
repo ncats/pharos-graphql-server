@@ -64,7 +64,7 @@ type Prop @cacheControl(maxAge: 604800) {
 
 type IntProp @cacheControl(maxAge: 604800) {
      name: String!
-     value: Int!
+     value: Int  # TEMP: nullable during database build; revert to Int! after build completes
 }
 
 type FloatProp @cacheControl(maxAge: 604800) {
@@ -282,7 +282,7 @@ type Disease @cacheControl(maxAge: 604800) {
      communityAPIs: [APIDetails] @cacheControl(maxAge: 0)
      communityData(apiCode: [String]): [JSON] @cacheControl(maxAge: 0)
      name: String!
-     associationCount: Int!
+     associationCount: Int  # TEMP: nullable during database build; revert to Int! after build completes
      gard_rare: Boolean
      directAssociationCount: Int
      mondoID: String
@@ -358,7 +358,7 @@ type LINCS @cacheControl(maxAge: 604800) {
 
 type Uberon @cacheControl(maxAge: 604800) {
      uid: String!
-     name: String!
+     name: String  # TEMP: nullable during database build; revert to Int! after build completes
      def: String
      comment: String
      ancestors: [Uberon]
