@@ -27,16 +27,15 @@
         }
         tinxCount
         tinx(top:50){
+          doid
           novelty
           score
           disease{
-            doid
             name
-            def
+            mondoID
           }
         }
       }
     }
   }
 }
-

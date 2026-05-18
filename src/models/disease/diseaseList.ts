@@ -15,25 +15,28 @@ export class DiseaseList extends DataModelList {
             .andWhere('ncats_p2da.name', diseaseName);
     }
 
-    static getTinxQuery(knex: any, diseaseName: string) {
-        let doidList = knex({disease: 'disease', ncats_p2da: 'ncats_p2da'}).distinct('did')
-            .where('disease_assoc_id', knex.raw('disease.id'))
-            .andWhere('ncats_p2da.name', diseaseName);
-        let tinxQuery = knex({target: "target", t2tc:"t2tc", tinx_novelty:"tinx_novelty", tinx_importance:"tinx_importance", tinx_disease:"tinx_disease"})
+    static getTinxQuery(knex: any, disease: {name: string, mondoID?: string}) {
+        let diseaseIdList = knex({ncats_disease: 'ncats_disease'}).distinct({ncats_disease_id: 'ncats_disease.id'});
+        if (disease.mondoID) {
+            diseaseIdList.where('ncats_disease.mondoid', disease.mondoID).orWhere('ncats_disease.name', disease.name);
+        } else {
+            diseaseIdList.where('ncats_disease.name', disease.name);
+        }
+        let tinxQuery = knex({tinx_importance:"tinx_importance"})
             .select({
                 targetID: 'target.id',
                 targetName: 'target.name',
                 tdl: 'target.tdl',
-                novelty:knex.raw('(tinx_novelty.score)'),
-                doid:knex.raw('(tinx_disease.doid)'),
-                name:knex.raw('(tinx_disease.name)'),
+                novelty:'protein.novelty',
+                doid:knex.raw('(tinx_importance.doid)'),
+                name:knex.raw('(ncats_disease.name)'),
                 importance:knex.raw('(tinx_importance.score)')
             })
-            .join(doidList.as('idList'), 'idList.did', 'tinx_disease.doid')
-            .where(knex.raw('tinx_importance.doid = tinx_disease.doid'))
-            .andWhere(knex.raw('tinx_importance.protein_id = t2tc.protein_id'))
-            .andWhere(knex.raw('tinx_importance.protein_id = tinx_novelty.protein_id'))
-            .andWhere(knex.raw('t2tc.target_id = target.id'));
+            .join(diseaseIdList.as('idList'), 'idList.ncats_disease_id', 'tinx_importance.ncats_disease_id')
+            .join({ncats_disease:"ncats_disease"}, 'tinx_importance.ncats_disease_id', 'ncats_disease.id')
+            .join({protein:"protein"}, 'tinx_importance.protein_id', 'protein.id')
+            .join({t2tc:"t2tc"}, 'tinx_importance.protein_id', 't2tc.protein_id')
+            .join({target:"target"}, 't2tc.target_id', 'target.id');
         return tinxQuery;
     }
 
@@ -181,4 +184,3 @@ export class DiseaseList extends DataModelList {
     }
 
 }
-

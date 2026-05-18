@@ -513,11 +513,13 @@ type DTO @cacheControl(maxAge: 604800) {
 }
 
 type TINXDisease @cacheControl(maxAge: 604800) {
+     """Provenance DOID from the source TIN-X-style calculation"""
+     doid: String
      """Disease novelty"""
      novelty: Float
      """Importance of disease-target combination"""
      score: Float
-     disease: DiseaseOntology
+     disease: Disease
 }
 
 type TINXTargetDetails @cacheControl(maxAge: 604800) {

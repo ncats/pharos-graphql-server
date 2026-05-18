@@ -451,7 +451,6 @@ and b.id = c.target_id`));
             t2tc: 't2tc',
             protein: 'protein'
         })
-            .leftJoin('tinx_novelty', 'tinx_novelty.protein_id', 'protein.id')
             .leftJoin('tdl_info',  q => {
                 q.on('tdl_info.protein_id', 'protein.id')
                     .andOn('tdl_info.itype', this.db.raw(`"${CONSTANTS.DESCRIPTION_TYPE}"`))
@@ -459,7 +458,7 @@ and b.id = c.target_id`));
             .select(['target.tdl', 'target.fam', 'protein.dtoid', 'protein.uniprot', 'protein.seq', 'protein.sym'])
             .select({
                 protein_id: 'protein.id',
-                novelty: 'tinx_novelty.score',
+                novelty: 'protein.novelty',
                 tcrdid: 'target.id',
                 preferredSymbol: 'protein.preferred_symbol',
                 name: 'protein.description',
@@ -891,10 +890,8 @@ group by ppitypes order by value desc`, [target.tcrdid]));
         const PPI_SQL = `
 a.id as nid, ppitypes as type, 
 p_int, p_ni, p_wrong, evidence, interaction_type, a.score as score,
-c.score as novelty, d.tdl as tdl, d.fam as fam, e.sym as sym, ppiTypes
+e.novelty as novelty, d.tdl as tdl, d.fam as fam, e.sym as sym, ppiTypes
 from ncats_ppi a, target d, protein e, t2tc b1, t2tc b2
-left join tinx_novelty c use index(tinx_novelty_idx3)
-on c.protein_id = b2.protein_id
 `;
         let q;
         if (args.filter) {
@@ -962,11 +959,9 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
     getTargetForPPINeighbor(neighbor) {
         //console.log('>>> getTargetForNeighbor: '+neighbor.nid);
         return this.db.select(this.db.raw(`
-a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid,b.preferred_symbol as preferredSymbol, e.score as novelty, 
+a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid,b.preferred_symbol as preferredSymbol, b.novelty as novelty, 
 b.description as name, f.string_value as description
 from target a, protein b, ncats_ppi d, t2tc c
-left join tinx_novelty e use index(tinx_novelty_idx3)
-on e.protein_id = c.protein_id
 left join tdl_info f on f.protein_id = c.protein_id 
 and f.itype = '${CONSTANTS.DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
@@ -1145,11 +1140,9 @@ order by value desc`, [pubmed.pmid]));
 
     getTargetsForPubMed(pubmed, args) {
         const PUBMED_SQL = `
-a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
+a.*,b.uniprot,b.sym,b.seq,b.novelty as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
 b.description as name, g.string_value as description
 from target a, protein b, protein2pubmed f, t2tc c
-left join tinx_novelty e use index(tinx_novelty_idx3)
-on e.protein_id = c.protein_id
 left join tdl_info g on g.protein_id = c.protein_id and 
 g.itype = '${CONSTANTS.DESCRIPTION_TYPE}'
 `;
@@ -1252,11 +1245,9 @@ limit ? offset ?`, [pubmed.pmid, args.top, args.skip]));
 
     getTargetsForPathway(pathway, args) {
         const PATHWAY_SQL = `
-a.*,b.uniprot,b.sym,b.seq,e.score as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
+a.*,b.uniprot,b.sym,b.seq,b.novelty as novelty, a.id as tcrdid,b.preferred_symbol as preferredSymbol,
 b.description as name, g.string_value as description
 from target a, protein b, pathway f, t2tc c
-left join tinx_novelty e use index(tinx_novelty_idx3)
-on e.protein_id = c.protein_id
 left join tdl_info g on g.protein_id = c.protein_id 
 and g.itype = '${CONSTANTS.DESCRIPTION_TYPE}'`;
         let q;
@@ -1366,9 +1357,8 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
     getKeggDistancesForTarget(target, args) {
         const KEGG_SQL = `
 a.id as nid, 'KEGG' as type, distance, 
-c.score as novelty, d.tdl as tdl, d.fam as fam, e.sym as sym
+e.novelty as novelty, d.tdl as tdl, d.fam as fam, e.sym as sym
 from t2tc b1, t2tc b2, target d, protein e, kegg_distance a
-left join tinx_novelty c use index(tinx_novelty_idx3) on c.protein_id = a.pid2
 `;
         let q;
         if (args.filter) {
@@ -1415,7 +1405,7 @@ where a.pid1 = b1.protein_id
 and a.pid2 = e.id
 and a.pid2 = b2.protein_id
 and d.id = b2.target_id
-and b1.target_id = ? order by distance, c.score desc
+and b1.target_id = ? order by distance, e.novelty desc
 limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
         }
         return q;
@@ -1423,11 +1413,9 @@ limit ? offset ?`, [target.tcrdid, args.top, args.skip]));
 
     getTargetForKeggNeighbor(neighbor) {
         return this.db.select(this.db.raw(`
-a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid,b.preferred_symbol as preferredSymbol, e.score as novelty,
+a.*,b.uniprot,b.sym,b.seq,a.id as tcrdid,b.preferred_symbol as preferredSymbol, b.novelty as novelty,
 b.description as name, f.string_value as description
 from target a, protein b, kegg_distance d, t2tc c
-left join tinx_novelty e use index(tinx_novelty_idx3)
-on e.protein_id = c.protein_id
 left join tdl_info f on f.protein_id = c.protein_id 
 and f.itype = '${CONSTANTS.DESCRIPTION_TYPE}'
 where a.id = c.target_id and b.id = c.protein_id
@@ -1737,19 +1725,19 @@ and b.target_id = ?`, [target.tcrdid]));
 
     getTINXForTarget(target, args) {
         let q = this.db.select(this.db.raw(`
-a.*, b.doid, b.score as novelty
-from tinx_importance a, tinx_disease b, t2tc c`));
+a.score, a.doid, d.novelty, d.name as diseaseName, d.mondoid as mondoID
+from tinx_importance a, ncats_disease d, t2tc c`));
 
         let sort = true;
         if (args.filter) {
             let t = args.filter.term;
             if (t != undefined && t != '') {
                 q = q.andWhere(this.db.raw(`
-match(b.name,b.summary) against(? in boolean mode)`, [t]));
+match(d.name, d.uniprot_description, d.do_description, d.mondo_description) against(? in boolean mode)`, [t]));
                 sort = false;
             }
         }
-        q = q.andWhere(this.db.raw(`a.doid = b.doid
+        q = q.andWhere(this.db.raw(`a.ncats_disease_id = d.id
 and a.protein_id = c.protein_id
 and c.target_id = ?`, [target.tcrdid]));
 
@@ -1760,7 +1748,7 @@ and c.target_id = ?`, [target.tcrdid]));
             q.offset(args.skip);
         }
         if (sort) {
-            q = q.orderBy('b.score', 'desc');
+            q = q.orderBy('d.novelty', 'desc');
         }
 
         return q;

@@ -1623,7 +1623,7 @@ const resolvers = {
         },
 
         tinx: async function (disease, args, {dataSources}) {
-            let query = DiseaseList.getTinxQuery(dataSources.tcrd.db, disease.name);
+            let query = DiseaseList.getTinxQuery(dataSources.tcrd.db, disease);
             return query.then(rows => {
                 let associationMap = new Map();
                 for (let i = 0; i < rows.length; i++) {
@@ -2203,11 +2203,19 @@ const resolvers = {
 
     TINXDisease: {
         disease: async function (tinx, _, {dataSources}) {
-            //console.log('~~~~~ tinx: '+tinx.doid);
-            if (tinx.doid && dataSources.tcrd.doTree[tinx.doid]) {
-                return dataSources.tcrd.doTree[tinx.doid];
+            const diseaseKey = tinx.mondoID || tinx.diseaseName;
+            if (diseaseKey) {
+                return dataSources.tcrd.getDisease(diseaseKey)
+                    .then(rows => {
+                        rows = filter(rows, r => r.name != null);
+                        if (rows.length > 0) {
+                            return rows[0];
+                        }
+                        return {name: tinx.diseaseName, mondoID: tinx.mondoID};
+                    }).catch(function (error) {
+                        console.error(error);
+                    });
             }
-            // console.error('No doid in TINX ' + JSON.stringify(tinx));
             return null;
         }
     },
