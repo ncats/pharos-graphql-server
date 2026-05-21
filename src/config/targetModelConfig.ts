@@ -231,15 +231,15 @@ export class TargetModelConfig extends ReadableModel {
             use(this.idgResourceType),
             use(this.uniprotKeyword, {default: false}),
             use(this.ortholog, {default: false}),
-            // use(this.impcPhenotype, {default: false}),
-            // use(this.expression, {default: false}),
-            // use(this.wikipathwaysPathway, {default: false}),
-            // use(this.keggPathway, {default: false}),
-            // use(this.interactingViralProtein, {default: false}),
-            // use(this.interactingVirus, {default: false}),
-            // use(this.dataSource, {default: false}),
-            // use(this.uniprotPathway, {default: false}),
-            // use(this.pathwaycommonsPathway, {default: false})
+            use(this.impcPhenotype, {default: false}),
+            use(this.expression, {default: false}),
+            use(this.wikipathwaysPathway, {default: false}),
+            use(this.keggPathway, {default: false}),
+            use(this.interactingViralProtein, {default: false}),
+            use(this.interactingVirus, {default: false}),
+            use(this.dataSource, {default: false}),
+            use(this.uniprotPathway, {default: false}),
+            use(this.pathwaycommonsPathway, {default: false})
         ]);
 
     readonly list = new ModelList("list", [

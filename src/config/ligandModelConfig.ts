@@ -44,11 +44,11 @@ export class LigandModelConfig extends ReadableModel {
             use(this.type),
             use(this.activity),
             use(this.action),
-            // use(this.targetCount),
-            // use(this.dataSource),
-            // use(this.pantherClass),
-            // use(this.dtoClass),
-            // use(this.reactomePathway),
+            use(this.targetCount),
+            use(this.dataSource),
+            use(this.pantherClass),
+            use(this.dtoClass),
+            use(this.reactomePathway),
             use(this.target, {default: false})
         ]);
 
