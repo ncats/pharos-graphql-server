@@ -88,6 +88,7 @@ type OddsRatio @cacheControl(maxAge: 604800) {
 }
 
 type FacetProp @cacheControl(maxAge: 604800) {
+    id: String
     name: String
     value: Int!
     stats: FisherStats

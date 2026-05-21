@@ -17,6 +17,7 @@ export class FieldInfo {
     column: string;
     alias: string;
     select: string;
+    filter_select: string;
     where_clause: string;
     group_method: string;
 
@@ -54,6 +55,7 @@ export class FieldInfo {
             }
         }
         this.alias = obj?.alias || this.column;
+        this.filter_select = obj?.filter_select || obj?.filterSelect || '';
         this.where_clause = obj?.where_clause || '';
         this.group_method = obj?.group_method || '';
         this.single_response = obj?.single_response || false;
@@ -145,10 +147,11 @@ export class FieldInfo {
                 }
             }
         } else {
+            const filterSelect = this.filter_select || this.select;
             if (this.valuesDelimited) {
-                query.where(this.parent.database.raw(`${this.select} REGEXP "${this.allowedValues.join('|')}"`));
+                query.where(this.parent.database.raw(`${filterSelect} REGEXP "${this.allowedValues.join('|')}"`));
             } else {
-                query.whereIn(this.parent.database.raw(this.select), this.allowedValues);
+                query.whereIn(this.parent.database.raw(filterSelect), this.allowedValues);
             }
         }
         if (this.where_clause.length > 0) {
@@ -212,7 +215,8 @@ export class FieldInfo {
         if (this.dataType === FacetDataType.numeric) {
             query = this.getNumericFacetQuery();
             this.parent.captureQueryPerformance(query, this.name);
-        } else if (this.parent.isNull() && !this.parent.noOptimization) {
+        } else if (this.parent.isNull() && !this.parent.noOptimization
+            && this.parent.databaseConfig.getUnfilteredCounts(this.parent.modelInfo.name, this.name)) {
             query = this.getPrecalculatedFacetQuery();
         } else {
             query = this.getStandardFacetQuery();
@@ -234,15 +238,19 @@ export class FieldInfo {
     }
 
     private getStandardFacetQuery() {
-        let queryDefinition = QueryDefinition.GenerateQueryDefinition(this.parent,
-            [
-                {
-                    table: this.parent.rootTable,
-                    column: this.parent.keyColumn,
-                    alias: 'id'
-                } as FieldInfo,
-                {...this, alias: 'name'}
-            ]);
+        const facetFields = [
+            {
+                table: this.parent.rootTable,
+                column: this.parent.keyColumn,
+                alias: 'id'
+            } as FieldInfo,
+            {...this, alias: 'name'}
+        ];
+        if (this.filter_select) {
+            facetFields.push({...this, select: this.filter_select, alias: 'filterValue'});
+        }
+
+        let queryDefinition = QueryDefinition.GenerateQueryDefinition(this.parent, facetFields);
 
         let distinctPairsQuery = queryDefinition.generateBaseQuery(true);
 
@@ -250,12 +258,16 @@ export class FieldInfo {
         this.parent.addModelSpecificFiltering(distinctPairsQuery, false);
         distinctPairsQuery.distinct();
 
-        let query = this.parent.database(distinctPairsQuery.as('facet_values'))
-            .select({
+        const select: any = {
                 value: this.parent.database.raw('count(*)'),
                 name: 'name'
-            })
-            .groupBy('name')
+        };
+        if (this.filter_select) {
+            select.id = 'filterValue';
+        }
+        let query = this.parent.database(distinctPairsQuery.as('facet_values'))
+            .select(select)
+            .groupBy(this.filter_select ? ['name', 'filterValue'] : ['name'])
             .orderBy('value', 'desc');
         // console.log(query.toString());
         return query;

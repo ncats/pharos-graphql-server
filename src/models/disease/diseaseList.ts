@@ -5,14 +5,32 @@ import {SqlTable} from "../sqlTable";
 export class DiseaseList extends DataModelList {
 
     static getAssociationDetails(knex: any, diseaseName: string, targetId: number) {
-        return knex({disease: 'disease', t2tc: 't2tc', ncats_p2da: 'ncats_p2da'})
+        return knex({disease: 'disease', t2tc: 't2tc', ncats_d2da: 'ncats_d2da', ncats_disease: 'ncats_disease'})
             .select({name: "ncats_name", dataType: "dtype", evidence: "evidence", zscore: "zscore",
                 conf: "conf", reference: "reference", drug_name: "drug_name", log2foldchange: "log2foldchange",
                 pvalue: "pvalue", score: "score", source: "source", O2S: "O2S", S2O: "S2O"})
             .where('t2tc.target_id', targetId)
-            .andWhere('ncats_p2da.disease_assoc_id', knex.raw('disease.id'))
-            .andWhere('ncats_p2da.protein_id', knex.raw('t2tc.protein_id'))
-            .andWhere('ncats_p2da.name', diseaseName);
+            .andWhere('ncats_d2da.disease_assoc_id', knex.raw('disease.id'))
+            .andWhere('ncats_d2da.ncats_disease_id', knex.raw('ncats_disease.id'))
+            .andWhere('disease.protein_id', knex.raw('t2tc.protein_id'))
+            .andWhere((builder: any) => {
+                const ancestorIDs = knex
+                    .select('mondoid')
+                    .from('mondo')
+                    .where('name', diseaseName)
+                    .union([
+                        knex('ncats_disease')
+                            .select('mondoid')
+                            .where('name', diseaseName)
+                            .whereNotNull('mondoid')
+                    ]);
+                builder.where('ncats_disease.name', diseaseName)
+                    .orWhereIn('ncats_disease.mondoid',
+                        knex('ancestry_mondo')
+                            .select('oid')
+                            .whereIn('ancestor_id', ancestorIDs)
+                    );
+            });
     }
 
     static getTinxQuery(knex: any, disease: {name: string, mondoID?: string}) {

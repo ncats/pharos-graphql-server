@@ -8,7 +8,7 @@
     "justTests": "jest",
     "start": "node src/index.js",
     "perfmon": "nodemon src/index.js perf",
-    "start:ci": "tsc && node src/index.js",
+    "start:ci": "tsc -p . && node src/index.js",
     "build": "tsc -p .",
     "gcp-build": "tsc -p ."
   },

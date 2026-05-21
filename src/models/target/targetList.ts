@@ -8,6 +8,7 @@ import {SequenceSearch} from "../externalAPI/SequenceSearch";
 export class TargetList extends DataModelList {
     proteinList: string[] = [];
     proteinListCached: boolean = false;
+    associatedDiseaseMondoID: string = '';
 
     defaultSortParameters(): { column: string; order: string }[] {
         if (this.fields.length > 0) {
@@ -458,7 +459,25 @@ export class TargetList extends DataModelList {
     }
 
     getDiseaseQuery() {
-        const q = this.database('ncats_p2da').distinct('protein_id').where('name', this.associatedDisease);
+        const q = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease'})
+            .distinct({protein_id: 'disease.protein_id'})
+            .where('ncats_disease.id', this.database.raw('ncats_d2da.ncats_disease_id'))
+            .andWhere('ncats_d2da.disease_assoc_id', this.database.raw('disease.id'))
+            .whereNotNull('disease.protein_id');
+        if (this.associatedDiseaseMondoID) {
+            q.andWhere((builder: any) => {
+                builder.whereIn('ncats_disease.mondoid',
+                    this.database('ancestry_mondo')
+                        .select('oid')
+                        .where('ancestor_id', this.associatedDiseaseMondoID)
+                ).orWhere('ncats_disease.mondoid', this.associatedDiseaseMondoID);
+            });
+        } else {
+            q.andWhere((builder: any) => {
+                builder.where('ncats_disease.name', this.associatedDisease)
+                    .orWhereIn('ncats_disease.mondoid', this.getAssociatedDiseaseSubtreeQuery());
+            });
+        }
         return q;
     }
 
@@ -507,7 +526,29 @@ export class TargetList extends DataModelList {
             if (modifiedFacet) {
                 modifiedFacet.typeModifier = this.associatedDisease;
             }
-            return `disease.id in (select disease_assoc_id from ncats_p2da where name = "${this.associatedDisease}")`;
+            const diseaseFilter = this.associatedDiseaseMondoID ?
+                `(ncats_disease.mondoid = ${this.sqlString(this.associatedDiseaseMondoID)}
+                    or ncats_disease.mondoid in (
+                        select oid from ancestry_mondo
+                        where ancestor_id = ${this.sqlString(this.associatedDiseaseMondoID)}
+                    ))` :
+                `(ncats_disease.name = ${this.sqlString(this.associatedDisease)}
+                    or ncats_disease.mondoid in (
+                        select oid from ancestry_mondo
+                        where ancestor_id in (
+                            select mondoid from mondo where name = ${this.sqlString(this.associatedDisease)}
+                            union
+                            select mondoid from ncats_disease
+                            where name = ${this.sqlString(this.associatedDisease)}
+                            and mondoid is not null
+                        )
+                    ))`;
+            return `disease.id in (
+                select ncats_d2da.disease_assoc_id
+                from ncats_d2da, ncats_disease
+                where ncats_disease.id = ncats_d2da.ncats_disease_id
+                and ${diseaseFilter}
+            )`;
         }
         if (this.associatedLigand && (fieldInfo.table === 'ncats_ligand_activity' || rootTableOverride === 'ncats_ligand_activity')) {
             const modifiedFacet = this.facetsToFetch.find(f => f.name === fieldInfo.name);
@@ -544,6 +585,25 @@ export class TargetList extends DataModelList {
         return "";
     }
 
+    private getAssociatedDiseaseSubtreeQuery() {
+        const ancestorIDs = this.database
+            .select('mondoid')
+            .from('mondo')
+            .where('name', this.associatedDisease)
+            .union([
+                this.database('ncats_disease')
+                    .select('mondoid')
+                    .where('name', this.associatedDisease)
+                    .whereNotNull('mondoid')
+            ]);
+        return this.database('ancestry_mondo')
+            .select('oid')
+            .whereIn('ancestor_id', ancestorIDs);
+    }
+
+    private sqlString(value: string): string {
+        return `'${value.replace(/'/g, "''")}'`;
+    }
 
     doSafetyCheck(query: any) {
         if (this.fields.includes('Abstract')) {

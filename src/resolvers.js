@@ -610,7 +610,10 @@ const resolvers = {
                 .andWhere('t2tc.target_id', target.tcrdid)
                 .andWhere(dataSources.tcrd.db.raw('extlink.source = affiliate.source'))
                 .groupBy('extlink.source')
-                .orderBy('affiliate.id');
+                .orderBy([
+                    {column: 'affiliate.link_count', order: 'asc'},
+                    {column: 'affiliate.display_name', order: 'asc'}
+                ]);
         },
         dataSources: async function (target, args, {dataSources}) {
             let query = dataSources.tcrd.db({ncats_dataSource_map: "ncats_dataSource_map", t2tc: "t2tc"})
@@ -1542,6 +1545,7 @@ const resolvers = {
             targetArgs.filter.associatedDisease = disease.name;
             targetArgs.facets = ["Target Development Level"];
             let targetList = new TargetList(dataSources.tcrd, targetArgs);
+            targetList.associatedDiseaseMondoID = disease.mondoID || '';
             return targetList.getFacetQueries()[0]
                 .then(rows => {
                     return rows;
@@ -1554,6 +1558,7 @@ const resolvers = {
             targetArgs.filter = targetArgs.filter || {};
             targetArgs.filter.associatedDisease = disease.name;
             let targetList = new TargetList(dataSources.tcrd, targetArgs);
+            targetList.associatedDiseaseMondoID = disease.mondoID || '';
             return targetList.getListQuery('list').then(rows => {
                 rows.forEach(x => {
                     x.parent = disease;

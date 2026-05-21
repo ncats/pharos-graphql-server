@@ -1,9 +1,9 @@
+require('ts-node').register({transpileOnly: true, preferTsExts: true});
 const {cred} = require('./db_credentials');
 const express = require('express');
 const TCRD = require('./TCRD');
 const fs = require('fs');
 const {execSync} = require('child_process');
-require('typescript-require');
 const typeDefs = fs.readFileSync(__dirname + '/schema.graphql','utf8');
 const resolvers = require('./resolvers');
 const {getServer} = require("./servers/apollo");

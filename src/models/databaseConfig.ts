@@ -1,6 +1,8 @@
 import {DatabaseTable, TableLink, TableLinkInfo} from "./databaseTable";
 import {FieldInfo} from "./FieldInfo";
 import {ListManager} from "./listManager";
+import {readablePharosModels} from "../config/readablePharosModels";
+import {getReadableModelLists, toListManagerFieldRow} from "../config/readableConfigAdapter";
 
 export class ModelInfo {
     name: string;
@@ -72,51 +74,31 @@ export class DatabaseConfig {
     }
 
     populateFieldLists() {
-        const query = this.settingsDB({...this.modelTable, ...this.fieldListTable, ...this.fieldTable, ...this.contextTable}
-        ).leftJoin({...this.assocModelTable}, 'associated_model.id', 'field_context.associated_model_id')
-            .select(
-                {
-                    // list defining fields
-                    model: 'model.name',
-                    context: 'field_context.context',
-                    associatedModel: 'associated_model.name',
-                    listName: 'field_context.name',
-
-                    // field defining fields
-                    name: 'field.name',
-                    alias: 'field_list.alias',
-                    order: 'field_list.order',
-                    default: 'field_list.default',
-                    description: this.settingsDB.raw('COALESCE(field_list.description, field.description)'),
-
-                    // where is the data
-                    schema: 'field.schema',
-                    requirement: 'field.requirement',
-                    table: 'field.table',
-                    column: 'field.column',
-                    select: 'field.select',
-                    where_clause: 'field.where_clause',
-                    group_method: 'field.group_method',
-
-                    // numeric facets
-                    dataType: 'field.dataType',
-                    binSize: 'field.binSize',
-                    single_response: 'field.single_response',
-                    log: 'field.log'
-                })
-            .where('field_context.model_id', this.settingsDB.raw('model.id'))
-            .andWhere('field_context.id', this.settingsDB.raw('field_list.context_id'))
-            .andWhere('field_list.field_id', this.settingsDB.raw('field.id'))
-            .orderBy(
-                [
-                    'model.id', 'field_context.context', 'associated_model.id', 'field_context.name',
-                    'field_list.order', 'field.table'
-                ]);
-        return query.then((rows: any[]) => {
-            rows.forEach(row => {
-                this.listManager.addField(row.model, row.associatedModel, row.context, row.listName, row);
+        readablePharosModels.forEach(model => {
+            getReadableModelLists(model).forEach(list => {
+                list.enabledFields.forEach((usage, index) => {
+                    this.listManager.addField(
+                        model.name,
+                        list.associatedModel,
+                        list.context,
+                        list.name,
+                        toListManagerFieldRow(usage, index + 1)
+                    );
+                });
             });
         });
+        return Promise.resolve();
+    }
+
+    loadModelMap() {
+        readablePharosModels.forEach(model => {
+            this.modelList.set(model.name, new ModelInfo({
+                name: model.name,
+                table: model.table,
+                column: model.keyColumn
+            }));
+        });
+        return Promise.resolve();
     }
 
     modelList: Map<string, ModelInfo> = new Map<string, { name: string, table: string, column: string }>();
@@ -291,14 +273,6 @@ export class DatabaseConfig {
             }
             return Promise.all(this.tables.map(t => t.loadPromise));
         });
-    }
-
-    loadModelMap() {
-        return this.settingsDB({...this.modelTable}).select('*').then((rows: any[]) => {
-            rows.forEach(row => {
-                this.modelList.set(row.name, new ModelInfo(row));
-            });
-        })
     }
 
     getPrimaryKey(table: string): string {

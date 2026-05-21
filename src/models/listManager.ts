@@ -4,6 +4,9 @@ import {TargetList} from "./target/targetList";
 
 export class ListManager {
     listMap: Map<string, FieldInfo[]> = new Map<string, FieldInfo[]>();
+    static fieldAliases: Map<string, string> = new Map([
+        ['Disease Ancestry', 'Disease Subtree']
+    ]);
 
     addField(model: string, associatedModel: string, type: string, name: string, field: any) {
         const context = new ListContext(model, associatedModel, type, name);
@@ -99,9 +102,10 @@ export class ListManager {
         const list = this.listMap.get(context.toString()) || [];
         const filteringFacets: FieldInfo[] = [];
         fields.forEach(ff => {
-            const facet = list.find(field => field.name === ff.facet)?.copy();
+            const facet = this.findInList(list, ff.facet, listObj);
             if (facet) {
                 if (!this.listHasRequirement(facet.requirement, listObj)) {return;}
+                facet.name = ff.facet;
                 facet.allowedValues = ff.values || [];
                 facet.upsetValues = ff.upSets || [];
                 facet.parent = listObj;
@@ -227,9 +231,11 @@ export class ListManager {
     }
 
     private findInList(list: FieldInfo[], fieldName: string, listObj: DataModelList) {
-        const f = list.find(field => field.name === fieldName)?.copy();
+        const canonicalName = ListManager.fieldAliases.get(fieldName) || fieldName;
+        const f = list.find(field => field.name === fieldName || field.name === canonicalName)?.copy();
         if (f) {
             f.parent = listObj;
+            f.name = fieldName;
         }
         return f;
     }

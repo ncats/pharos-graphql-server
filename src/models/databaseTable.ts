@@ -66,7 +66,9 @@ export class DatabaseTable {
             ["protein-sequence_search_summary", 'id-protein_id'],
             ["sequence_search_results-protein", "protein_id-id"],
             ["protein-sequence_search_results", 'id-protein_id'],
-            ["protein2pubmed-pubmed","pubmed_id-id"]
+            ["protein2pubmed-pubmed","pubmed_id-id"],
+            ["ncats_disease-ancestry_mondo", "mondoid-oid"],
+            ["ancestry_mondo-ncats_disease", "oid-mondoid"]
         ]
     );
 
@@ -90,6 +92,7 @@ export class DatabaseTable {
             ["protein-pubmed", ["protein2pubmed"]],
             ["protein-virus", ["viral_protein", "viral_ppi"]],
             ["protein-dto", ["ancestry_dto", "p2dto"]],
+            ["ancestry_mondo-protein", ["disease", "ncats_d2da", "ncats_disease"]],
             ["protein-panther_class", ["p2pc"]],
             ["protein-target", ["t2tc"]],
             ["protein-nih_list_type", ["nih_list"]],
