@@ -458,6 +458,26 @@ export class TargetList extends DataModelList {
             .where('ncats_ligands.identifier', this.associatedLigand);
     }
 
+    getDefaultSortedAssociatedLigandProteinPage(): any {
+        if (!this.associatedLigand || this.sortField || this.filteringFacets.length > 0 || !this.top) {
+            return null;
+        }
+        return this.database({
+            ncats_ligands: 'ncats_ligands',
+            ncats_ligand_activity: 'ncats_ligand_activity',
+            t2tc: 't2tc'
+        })
+            .select({protein_id: 't2tc.protein_id'})
+            .avg({avgActVal: 'ncats_ligand_activity.act_value'})
+            .where('t2tc.target_id', this.database.raw('ncats_ligand_activity.target_id'))
+            .where('ncats_ligand_activity.ncats_ligand_id', this.database.raw('ncats_ligands.id'))
+            .where('ncats_ligands.identifier', this.associatedLigand)
+            .groupBy('t2tc.protein_id')
+            .orderBy('avgActVal', 'desc')
+            .limit(this.top)
+            .offset(this.skip || 0);
+    }
+
     getDiseaseQuery() {
         const q = this.database({ncats_disease: 'ncats_disease', ncats_d2da: 'ncats_d2da', disease: 'disease'})
             .distinct({protein_id: 'disease.protein_id'})

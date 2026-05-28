@@ -9,6 +9,9 @@ export class LigandDetails {
         if (!input) {
             return {term: null, column: null};
         }
+        if (input.toUpperCase().startsWith('CHEMBL.COMPOUND:')) {
+            return {term: input, column: 'identifier'};
+        }
         const pieces = input.split(':');
         const column = this.getColumn(pieces[0], input);
         const term = pieces.length === 1 ? pieces[0] : pieces.slice(1).join(':');

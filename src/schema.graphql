@@ -480,7 +480,7 @@ type Ligand @cacheControl(maxAge: 604800) {
      """Activity count"""
      actcnt: Int
      targetCount: Int
-     activities (all: Boolean = true): [LigandActivity]
+     activities (all: Boolean = true, skip: Int = 0, top: Int, pageByTarget: Boolean = false): [LigandActivity]
      similarity: Float
      predictions: [JSON] @deprecated(reason: "predictions is deprecated. Use communityData instead.")
 }

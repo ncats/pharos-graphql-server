@@ -3,3 +3,4 @@
 secrets.env
 node_modules
 src/config/*.js
+.idea

@@ -26,6 +26,7 @@ export abstract class DataModelList implements IBuildable {
     filteringFacets: FieldInfo[] = [];
     facetsToFetch: FieldInfo[] = [];
     dataFields: FieldInfo[] = [];
+    pagedIds: any[] = [];
 
     structureQueryHash: string = '';
     sequenceQueryHash: string = '';
@@ -220,6 +221,9 @@ export abstract class DataModelList implements IBuildable {
 
         this.addFacetConstraints(query, this.filteringFacets);
         this.addModelSpecificFiltering(query, true);
+        if (this.pagedIds.length > 0) {
+            query.whereIn(this.keyString(), this.pagedIds);
+        }
 
         if (queryDefinition.hasGroupedColumns()) {
             query.groupBy(this.keyString());
@@ -233,6 +237,46 @@ export abstract class DataModelList implements IBuildable {
         }
         this.doSafetyCheck(query);
         // this.logit('list', query);
+        return query;
+    }
+
+    cachePagedIds(ids: any[]) {
+        this.pagedIds = ids;
+    }
+
+    getPagedIdQuery(context: string, innerJoinAll: boolean = false): any {
+        if (!this.top || context !== 'list' || !this.sortField) {
+            return null;
+        }
+        const sortField = this.databaseConfig.listManager.getOneField(this, context, this.sortField);
+        if (!sortField) {
+            return null;
+        }
+        sortField.alias = this.sortField;
+
+        const dataFields = [
+            new FieldInfo({
+                table: this.rootTable,
+                column: this.keyColumn,
+                alias: 'id'
+            } as FieldInfo),
+            sortField
+        ];
+        const queryDefinition = QueryDefinition.GenerateQueryDefinition(this, dataFields);
+        const query = queryDefinition.generateBaseQuery(innerJoinAll);
+
+        this.addFacetConstraints(query, this.filteringFacets);
+        this.addModelSpecificFiltering(query, true);
+
+        if (queryDefinition.hasGroupedColumns()) {
+            query.groupBy(this.keyString());
+        }
+        this.addSort(query, queryDefinition, sortField);
+        if (this.skip) {
+            query.offset(this.skip);
+        }
+        query.limit(this.top);
+        this.doSafetyCheck(query);
         return query;
     }
 

@@ -14,6 +14,43 @@ const { parseResidueData } = require('./utils');
 const {DynamicPredictions} = require("./models/externalAPI/DynamicPredictions");
 const {VersionInfo} = require('./models/versionInfo/versionInfo');
 
+async function applyPagedIdQuery(listObj) {
+    const pagedIdQuery = listObj.getPagedIdQuery('list');
+    if (!pagedIdQuery) {
+        return false;
+    }
+    const rows = await pagedIdQuery;
+    listObj.cachePagedIds(rows.length > 0 ? rows.map(row => row.id) : ['__NO_PAGED_RESULTS__']);
+    listObj.skip = undefined;
+    listObj.top = undefined;
+    return true;
+}
+
+function selectionIncludesField(selections, fieldName, fragments) {
+    if (!selections) {
+        return false;
+    }
+    return selections.some(selection => {
+        if (selection.kind === 'Field') {
+            return selection.name.value === fieldName;
+        }
+        if (selection.kind === 'InlineFragment') {
+            return selectionIncludesField(selection.selectionSet && selection.selectionSet.selections, fieldName, fragments);
+        }
+        if (selection.kind === 'FragmentSpread') {
+            const fragment = fragments && fragments[selection.name.value];
+            return selectionIncludesField(fragment && fragment.selectionSet && fragment.selectionSet.selections, fieldName, fragments);
+        }
+        return false;
+    });
+}
+
+function infoSelectsField(info, fieldName) {
+    return info.fieldNodes.some(fieldNode => {
+        return selectionIncludesField(fieldNode.selectionSet && fieldNode.selectionSet.selections, fieldName, info.fragments);
+    });
+}
+
 const resolvers = {
     PharosConfiguration: {
         downloadLists: async function (config, args) {
@@ -1956,6 +1993,21 @@ const resolvers = {
             dataSources.queryHash = listObj.structureQueryHash;
             dataSources.sequenceQueryHash = listObj.sequenceQueryHash;
             dataSources.associatedLigand = listObj.associatedLigand;
+            const proteinPageQuery = listObj.getDefaultSortedAssociatedLigandProteinPage();
+            if (!!proteinPageQuery) {
+                const rows = await proteinPageQuery;
+                listObj.cacheProteinList(Array.from(rows, row => row.protein_id));
+                listObj.skip = undefined;
+                listObj.top = undefined;
+            } else if (await applyPagedIdQuery(listObj)) {
+                // Paged IDs are cached on the list object for the hydration query below.
+            } else {
+                const proteinListQuery = listObj.fetchProteinList();
+                if (!!proteinListQuery && !Array.isArray(proteinListQuery)) {
+                    const rows = await proteinListQuery;
+                    listObj.cacheProteinList(Array.from(rows, row => row.protein_id));
+                }
+            }
             const q = listObj.getListQuery('list');
             return q.then(targets => {
                 dataSources.listResults = targets;
@@ -1977,7 +2029,9 @@ const resolvers = {
         diseases: async function (result, args, {dataSources}) {
             args.filter = result.filter;
             args.batch = result.batch;
-            return new DiseaseList(dataSources.tcrd, args).getListQuery('list')
+            const diseaseList = new DiseaseList(dataSources.tcrd, args);
+            await applyPagedIdQuery(diseaseList);
+            return diseaseList.getListQuery('list')
                 .then(diseases => {
                     diseases.forEach(x => {
                         x.filter = result.filter;
@@ -1997,6 +2051,7 @@ const resolvers = {
             args.batch = result.batch;
             let ligandList = new LigandList(dataSources.tcrd, args);
             await ligandList.getSimilarLigands();
+            await applyPagedIdQuery(ligandList);
             return ligandList.getListQuery('list').then(
                 ligands => {
                     return ligands;
@@ -2135,28 +2190,94 @@ const resolvers = {
         predictions: async function (ligand, args, {dataSources}) {
             return new DynamicPredictions(dataSources.tcrd).fetchLigandAPIs(ligand);
         },
-        activities: async function (ligand, args, {dataSources}) {
-            let query = dataSources.tcrd.db({
+        activities: async function (ligand, args, {dataSources}, info) {
+            const selectsTarget = infoSelectsField(info, 'target');
+            let targetPageIDs = null;
+            if (args.top != null && args.pageByTarget) {
+                const targetPageQuery = dataSources.tcrd.db({
+                    ncats_ligand_activity: 'ncats_ligand_activity',
+                    ncats_ligands: 'ncats_ligands'
+                })
+                    .distinct({target_id: 'ncats_ligand_activity.target_id'})
+                    .where('ncats_ligands.identifier', ligand.ligid)
+                    .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`))
+                    .orderBy('ncats_ligand_activity.target_id')
+                    .limit(args.top)
+                    .offset(args.skip || 0);
+                if (dataSources.associatedTargetTCRDID) {
+                    targetPageQuery.andWhere('ncats_ligand_activity.target_id', dataSources.associatedTargetTCRDID);
+                }
+                targetPageIDs = (await targetPageQuery).map(row => row.target_id);
+                if (targetPageIDs.length === 0) {
+                    return [];
+                }
+            }
+            const tables = {
                 ncats_ligand_activity: 'ncats_ligand_activity',
                 ncats_ligands: 'ncats_ligands'
-            })
+            };
+            if (selectsTarget) {
+                tables.target = 'target';
+                tables.t2tc = 't2tc';
+                tables.protein = 'protein';
+            }
+            let query = dataSources.tcrd.db(tables)
                 .select({
                     actid: 'ncats_ligand_activity.id',
-                    type: 'act_type',
-                    value: 'act_value',
-                    moa: 'action_type',
-                    target_id: 'target_id',
-                    reference: 'reference',
-                    pubs: 'pubmed_ids'
+                    type: 'ncats_ligand_activity.act_type',
+                    value: 'ncats_ligand_activity.act_value',
+                    moa: 'ncats_ligand_activity.action_type',
+                    target_id: 'ncats_ligand_activity.target_id',
+                    reference: 'ncats_ligand_activity.reference',
+                    pubs: 'ncats_ligand_activity.pubmed_ids'
                 })
-                .whereRaw(`ncats_ligands.identifier = "${ligand.ligid}"`)
+                .where('ncats_ligands.identifier', ligand.ligid)
                 .andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.ncats_ligand_id = ncats_ligands.id`));
+            if (selectsTarget) {
+                query.select({
+                    target_tdl: 'target.tdl',
+                    target_fam: 'target.fam',
+                    target_uniprot: 'protein.uniprot',
+                    target_sym: 'protein.sym',
+                    target_protein_id: 'protein.id',
+                    target_novelty: 'protein.novelty',
+                    target_tcrdid: 'target.id',
+                    target_preferredSymbol: 'protein.preferred_symbol',
+                    target_name: 'protein.description'
+                })
+                    .andWhere('target.id', dataSources.tcrd.db.raw('ncats_ligand_activity.target_id'))
+                    .andWhere('target.id', dataSources.tcrd.db.raw('t2tc.target_id'))
+                    .andWhere('protein.id', dataSources.tcrd.db.raw('t2tc.protein_id'));
+            }
             if (dataSources.associatedTargetTCRDID) {
-                query.andWhere(dataSources.tcrd.db.raw(`ncats_ligand_activity.target_id ="${dataSources.associatedTargetTCRDID}"`));
+                query.andWhere('ncats_ligand_activity.target_id', dataSources.associatedTargetTCRDID);
+            }
+            if (targetPageIDs) {
+                query.whereIn('ncats_ligand_activity.target_id', targetPageIDs)
+                    .orderBy([
+                        {column: 'ncats_ligand_activity.target_id', order: 'asc'},
+                        {column: 'ncats_ligand_activity.id', order: 'asc'}
+                    ]);
+            }
+            else if (args.top != null) {
+                query.limit(args.top).offset(args.skip || 0);
             }
             return query.then(rows => {
                 for (let i = 0; i < rows.length; i++) {
                     rows[i].parent = ligand;
+                    if (selectsTarget) {
+                        rows[i].target = {
+                            tdl: rows[i].target_tdl,
+                            fam: rows[i].target_fam,
+                            uniprot: rows[i].target_uniprot,
+                            sym: rows[i].target_sym,
+                            protein_id: rows[i].target_protein_id,
+                            novelty: rows[i].target_novelty,
+                            tcrdid: rows[i].target_tcrdid,
+                            preferredSymbol: rows[i].target_preferredSymbol,
+                            name: rows[i].target_name
+                        };
+                    }
                     if (rows[i].pubs != null && rows[i].pubs != '') {
                         rows[i].pubs = rows[i].pubs.split('|').map(r => {
                             return {pmid: r};
@@ -2197,6 +2318,9 @@ const resolvers = {
 
     LigandActivity: {
         target: async function (ligact, args, {dataSources}) {
+            if (ligact.target) {
+                return ligact.target;
+            }
             return dataSources.tcrd.getTarget({tcrdid: ligact.target_id})
                 .then(rows => {
                     return rows[0];

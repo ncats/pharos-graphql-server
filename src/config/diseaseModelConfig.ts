@@ -219,9 +219,9 @@ export class DiseaseModelConfig extends ReadableModel {
         use(this.highestTdl),
         use(this.gardAnnotation),
         use(this.dataSource),
-        use(this.drug),
-        use(this.target),
-        use(this.diseaseSubtree)
+        // use(this.drug),
+        // use(this.target),
+        // use(this.diseaseSubtree)
     ]);
 
     readonly search = new ModelList('search', [
