@@ -123,6 +123,7 @@ export class DiseaseList extends DataModelList {
 
 
     addModelSpecificFiltering(query: any, list: boolean): void {
+        query.where('ncats_disease.direct_target_count', '>', 0);
         if (this.term.length > 0) {
             query.join(this.getTermQuery().as('termSearch'), 'termSearch.id', this.keyString());
         }
