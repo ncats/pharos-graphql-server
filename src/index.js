@@ -198,6 +198,10 @@ const updateUnfilteredCounts = async (db, resolvers, tcrd) => {
 }
 
 const getUnfilteredCounts = async (countDB, resolvers, tcrd) => {
+    if (process.env.SKIP_UNFILTERED_COUNTS === 'true') {
+        console.log('Skipping unfiltered counts update because SKIP_UNFILTERED_COUNTS=true');
+        return Promise.resolve();
+    }
     [changed, versionDetails] = await versionChanged(countDB, tcrd);
     if (changed) {
         console.log(`version changed: ${JSON.stringify(versionDetails)}`);
