@@ -3,18 +3,20 @@ const {cred} = require("../db_credentials");
 const crypto = require("crypto");
 package_info = require("../../package.json");
 
-const getReadablePrefix = () => {
-    return package_info.version + '-' + cred.DBNAME;
+const getReadablePrefix = (cacheVersion = '') => {
+    return [package_info.version, cred.DBNAME, cacheVersion]
+        .filter(Boolean)
+        .join('-');
 }
 
-const getPrefix = () => {
+const getPrefix = (cacheVersion = '') => {
     return crypto.createHash('sha1')
-        .update(getReadablePrefix())
+        .update(getReadablePrefix(cacheVersion))
         .digest('base64').substring(0, 5);
 }
 module.exports.getReadablePrefix = getReadablePrefix;
 
-module.exports.connectToRedis = () => {
+module.exports.connectToRedis = (cacheVersion = '') => {
     const REDISHOST = process.env.REDISHOST || 'localhost';// || '10.120.0.3';
     const REDISPORT = process.env.REDISPORT || 6379;
     const REDISPASSWORD = process.env.REDISPASSWORD || null;
@@ -22,7 +24,7 @@ module.exports.connectToRedis = () => {
         host: REDISHOST,
         port: REDISPORT,
         password: REDISPASSWORD,
-        keyPrefix: getPrefix(),
+        keyPrefix: getPrefix(cacheVersion),
         lazyConnect: true
     });
     redisClient.on('error',(err) => {

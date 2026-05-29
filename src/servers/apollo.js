@@ -5,8 +5,8 @@ const {connectToRedis} = require("./redis");
 const {ApolloServerPluginLandingPageLocalDefault} = require("apollo-server-core");
 const bodyParser = require('body-parser');
 
-module.exports.getServer = (schema, tcrd, app, schemaDirectives) => {
-    return connectToRedis().then(async redisClient => {
+module.exports.getServer = (schema, tcrd, app, schemaDirectives, cacheVersion = '') => {
+    return connectToRedis(cacheVersion).then(async redisClient => {
         app.use(bodyParser.json({ limit: '50mb' }));
         const serverOptions = {
             schema: schema,

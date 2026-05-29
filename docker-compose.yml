@@ -8,6 +8,8 @@ services:
     restart: always
     environment:
       REDISHOST: redis
+    volumes:
+      - ./src/unfiltered_counts.sqlite:/usr/src/app/src/unfiltered_counts.sqlite
     ports:
       - "8040:4444"
     depends_on:

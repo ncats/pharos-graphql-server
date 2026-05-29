@@ -66,21 +66,6 @@ addFriendlyFirewall(app);
 monitorPerformance();
 
 const PORT = process.env.PORT || 4444;
-getServer(schema, tcrd, app, schemaDirectives).then((servers) => {
-    tcrd.tableInfo.loadPromise.then(async () => {
-        const countDB = require('knex')(unfilteredCountsDB)
-        await getUnfilteredCounts(countDB, resolvers, tcrd);
-        await tcrd.tableInfo.setUnfilteredCounts(countDB);
-        app.listen({port: PORT}, () => {
-            if (servers.redis) {
-                console.log(`💰 using redis cache at ` + servers.redis.options.host);
-            } else {
-                console.log(`⛔ No redis cache - using In-Memory Cache`);
-            }
-            console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
-        });
-    }, resolvers);
-}, resolvers);
 
 const getCodeVersion = () => {
     try {
@@ -212,3 +197,25 @@ const getUnfilteredCounts = async (countDB, resolvers, tcrd) => {
         return Promise.resolve();
     }
 }
+
+const startServer = async () => {
+    const cacheVersion = await getUnfilteredCountsVersion(tcrd);
+    const servers = await getServer(schema, tcrd, app, schemaDirectives, cacheVersion);
+    await tcrd.tableInfo.loadPromise;
+    const countDB = require('knex')(unfilteredCountsDB)
+    await getUnfilteredCounts(countDB, resolvers, tcrd);
+    await tcrd.tableInfo.setUnfilteredCounts(countDB);
+    app.listen({port: PORT}, () => {
+        if (servers.redis) {
+            console.log(`💰 using redis cache at ` + servers.redis.options.host);
+        } else {
+            console.log(`⛔ No redis cache - using In-Memory Cache`);
+        }
+        console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
+    });
+}
+
+startServer().catch(error => {
+    console.error(error);
+    process.exit(1);
+});

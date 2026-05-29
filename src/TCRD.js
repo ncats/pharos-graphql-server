@@ -274,14 +274,14 @@ protein_id from target a, t2tc b`))
                 }
                     break;
 
-                case 'NIH Target Lists': {
-                    let q = this.db({list: 'nih_list', type: 'nih_list_type'})
-                        .select('list.protein_id')
-                        .whereIn('type.list_type', f.values)
-                        .andWhere(this.db.raw(`list.nih_list = type.id`));
-                    subqueries.push(q);
-                }
-                    break;
+                // case 'NIH Target Lists': {
+                //     let q = this.db({list: 'nih_list', type: 'nih_list_type'})
+                //         .select('list.protein_id')
+                //         .whereIn('type.list_type', f.values)
+                //         .andWhere(this.db.raw(`list.nih_list = type.id`));
+                //     subqueries.push(q);
+                // }
+                //     break;
 
                 case 'fam': {
                     let q = this.db.select(this.db.raw(`
